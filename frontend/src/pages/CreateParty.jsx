@@ -23,6 +23,7 @@ export default function CreateParty() {
     balance_type: "collect",
     gstin: "",
     pan_number: "",
+    drug_license_number: "",
     party_type: "customer",
     party_category: "",
     billing_address: "",
@@ -52,14 +53,15 @@ export default function CreateParty() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await dispatch(createParty(formData)).unwrap();
+      const partyData = { ...formData };
+      partyData.opening_balance = Number(partyData.opening_balance);
+      await dispatch(createParty(partyData)).unwrap();
       toast({
         title: "Party created successfully",
         description: "The new party has been added to the system.",
         variant:"success"
       });
       navigate('/parties')
-      // Reset form or redirect to party list
     } catch (error) {
       toast({
         title: "Error creating party",
@@ -138,6 +140,16 @@ export default function CreateParty() {
           <div>
             <Label htmlFor="panNumber">PAN Number</Label>
             <Input id="panNumber" name="pan_number" value={formData.pan_number} onChange={handleInputChange} placeholder="Enter party PAN Number" />
+          </div>
+          <div>
+            <Label htmlFor="drugLicenseNumber">Drug License Number</Label>
+            <Input 
+              id="drugLicenseNumber" 
+              name="drug_license_number" 
+              value={formData.drug_license_number} 
+              onChange={handleInputChange} 
+              placeholder="Enter Drug License Number" 
+            />
           </div>
         </div>
 

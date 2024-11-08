@@ -7,7 +7,7 @@ import {
   TabsTrigger,
 } from "../components/ui/tabs";
 import Sales from "./Sales";
-import Purchase from "../components/custom/pharmacy/Purchase";
+import Purchase from "./Purchase";
 import PharmacyReports from "../components/custom/pharmacy/PharmacyReports";
 import PharmacyDashboard from "../components/custom/pharmacy/PharmacyDashboard";
 import Supplier from "../components/custom/pharmacy/Supplier";

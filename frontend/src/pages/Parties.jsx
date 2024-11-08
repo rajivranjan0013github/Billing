@@ -26,11 +26,11 @@ export default function Party() {
   // Calculate totals for the cards
   const totalParties = parties.length
   const toCollect = parties
-    .filter(party => party.balance_type === 'collect')
-    .reduce((sum, party) => sum + (party.opening_balance || 0), 0)
+    .filter(party => party.current_balance > 0)
+    .reduce((sum, party) => sum + party.current_balance, 0)
   const toPay = parties
-    .filter(party => party.balance_type === 'pay')
-    .reduce((sum, party) => sum + (party.opening_balance || 0), 0)
+    .filter(party => party.current_balance < 0)
+    .reduce((sum, party) => sum + Math.abs(party.current_balance), 0)
 
   // Filter parties based on search and filters
   const filteredParties = parties.filter(party => {
@@ -44,7 +44,8 @@ export default function Party() {
     
     const balanceTypeMatch = 
       filterBalanceType === 'all' || 
-      party.balance_type === filterBalanceType
+      (filterBalanceType === 'collect' && party.current_balance > 0) ||
+      (filterBalanceType === 'pay' && party.current_balance < 0)
 
     return searchMatch && partyTypeMatch && balanceTypeMatch
   })
@@ -165,17 +166,19 @@ export default function Party() {
         </TableHeader>
         <TableBody>
           {filteredParties.map((party) => (
-            <TableRow key={party._id}>
+            <TableRow 
+              key={party._id}
+              className="cursor-pointer hover:bg-gray-50"
+              onClick={() => navigate(`/party-details/${party._id}`)}
+            >
               <TableCell className="font-medium">{party.name}</TableCell>
               <TableCell>{party.party_category || '-'}</TableCell>
               <TableCell>{party.mobile_number || '-'}</TableCell>
               <TableCell>{party.party_type}</TableCell>
               <TableCell className="text-right">
-                <span className={
-                  party.balance_type === 'collect' ? "text-green-600" : "text-red-600"
-                }>
-                  {party.balance_type === 'collect' ? "↓ " : "↑ "}
-                  ₹ {Math.abs(party.opening_balance || 0)}
+                <span className={party.current_balance > 0 ? "text-green-600" : "text-red-600"}>
+                  {party.current_balance > 0 ? "↓ " : "↑ "}
+                  ₹ {Math.abs(party.current_balance || 0)}
                 </span>
               </TableCell>
             </TableRow>

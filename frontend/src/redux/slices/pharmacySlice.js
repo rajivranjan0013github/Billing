@@ -172,7 +172,7 @@ export const updateInventoryItem = createLoadingAsyncThunk(
 export const createInventoryItem = createLoadingAsyncThunk(
   "pharmacy/createInventoryItem",
   async (itemData) => {
-    const response = await fetch(`${Backend_URL}/api/pharmacy/inventory`, {
+    const response = await fetch(`${Backend_URL}/api/inventory/create`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

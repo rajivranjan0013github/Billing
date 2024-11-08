@@ -14,6 +14,7 @@ import {
   ChevronDown,
   LogOut,
   Users,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Button } from "../../ui/button";
@@ -42,7 +43,15 @@ export const navItems = [
   { name: "Parties", icon: Users, path: "/parties" },
   { name: "Expenses", icon: IndianRupee, path: "/expenses" },
   { name: "Sales", icon: ShoppingCart, path: "/sales" },
-  { name: "Purchase", icon: Truck, path: "/purchase" },
+  {
+    name: "Purchase",
+    icon: Truck,
+    path: "/purchase",
+    submenu: [
+      { name: "Purchase List", path: "/purchase" },
+      { name: "Payment Out", path: "/purchase/payment-out" },
+    ],
+  },
   { name: "Supplier", icon: Package, path: "/supplier" },
   { name: "Item Master", icon: Package, path: "/items-master" },
   { name: "Reports", icon: FileText, path: "/reports" },
@@ -90,12 +99,20 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
   const dispatch = useDispatch();
   const { toast } = useToast();
   const user = useSelector((state) => state.user.userData);
+  const [expandedItems, setExpandedItems] = useState([]);
 
-  const isActive = (itemPath) => {
+  const isActive = (itemPath, submenuPaths = []) => {
     if (itemPath === "/") {
       return location.pathname === "/";
     }
-    return location.pathname.startsWith(itemPath);
+    
+    // If this is a parent menu with submenu
+    if (submenuPaths.length > 0) {
+      return submenuPaths.some(subPath => location.pathname.startsWith(subPath));
+    }
+    
+    // For regular menu items and submenu items
+    return location.pathname === itemPath;
   };
 
   const handleLogout = async () => {
@@ -133,6 +150,14 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
     }
   };
 
+  const toggleSubmenu = (itemName) => {
+    setExpandedItems((prev) =>
+      prev.includes(itemName)
+        ? prev.filter((item) => item !== itemName)
+        : [...prev, itemName]
+    );
+  };
+
   return (
     <div
       className={cn(
@@ -153,7 +178,7 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
         {!isCollapsed && (
           <div className="flex items-center">
             <ColorfulLogo className="h-6 w-6" />
-            <span className="ml-2 text-lg font-bold text-gray-800">The Hospital</span>
+            <span className="ml-2 text-lg font-bold text-gray-800">The Pharma</span>
           </div>
         )}
       </div>
@@ -170,17 +195,38 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
                       variant="ghost"
                       className={cn(
                         "w-full justify-start",
-                        isActive(item.path)
+                        isActive(
+                          item.path,
+                          item.submenu?.map(sub => sub.path) || []
+                        )
                           ? "bg-blue-100 text-blue-900"
                           : "text-gray-600 hover:bg-blue-50 hover:text-blue-900",
                         isCollapsed ? "px-2" : "px-4"
                       )}
-                      onClick={() => navigate(item.path)}
+                      onClick={() => {
+                        if (item.submenu) {
+                          toggleSubmenu(item.name);
+                        } else {
+                          navigate(item.path);
+                        }
+                      }}
                     >
                       <item.icon
                         className={cn("h-5 w-5", isCollapsed ? "mr-0" : "mr-3")}
                       />
-                      {!isCollapsed && <span>{item.name}</span>}
+                      {!isCollapsed && (
+                        <>
+                          <span>{item.name}</span>
+                          {item.submenu && (
+                            <ChevronRight
+                              className={cn(
+                                "ml-auto h-4 w-4 transition-transform",
+                                expandedItems.includes(item.name) && "rotate-90"
+                              )}
+                            />
+                          )}
+                        </>
+                      )}
                     </Button>
                   </TooltipTrigger>
                   {isCollapsed && (
@@ -190,6 +236,28 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
                   )}
                 </Tooltip>
               </TooltipProvider>
+              
+              {/* Submenu items */}
+              {!isCollapsed && item.submenu && expandedItems.includes(item.name) && (
+                <ul className="ml-6 mt-1 space-y-1">
+                  {item.submenu.map((subItem) => (
+                    <li key={subItem.name}>
+                      <Button
+                        variant="ghost"
+                        className={cn(
+                          "w-full justify-start pl-7",
+                          isActive(subItem.path)
+                            ? "bg-blue-100 text-blue-900"
+                            : "text-gray-600 hover:bg-blue-50 hover:text-blue-900"
+                        )}
+                        onClick={() => navigate(subItem.path)}
+                      >
+                        <span>{subItem.name}</span>
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           ))}
         </ul>

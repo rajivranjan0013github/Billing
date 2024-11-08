@@ -9,7 +9,6 @@ import { createInventoryItem } from "../../../../redux/slices/pharmacySlice";
 import { useToast } from "../../../../hooks/use-toast";
 import { Separator } from "../../../ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../ui/tabs";
-import { RadioGroup, RadioGroupItem } from "../../../ui/radio-group";
 import { ScrollArea } from "../../../ui/scroll-area";
 
 // GST tax rates
@@ -21,8 +20,7 @@ const measuringUnits = ["Piece", "Box", "Strip", "Bottle", "Tablet", "Capsule", 
 export default function AddItemDialog({ isOpen, onClose }) {
   const dispatch = useDispatch();
   const { toast } = useToast();
-  const { createInventoryItemStatus } = useSelector((state) => state.pharmacy);
-  const { hospitalInfo } = useSelector((state) => state.hospital);
+  const { createItemStatus } = useSelector((state) => state.inventory);
   const pharmacyItemCategories = [
     'Tablet', 'Capsule', 'Injection', 'Cream', 'Ointment', 
     'Suspension', 'Powder', 'Liquid', 'Syrup', 'Drops', 
@@ -41,12 +39,14 @@ export default function AddItemDialog({ isOpen, onClose }) {
   const [priceWithTax, setPriceWithTax] = useState("withoutTax");
   const [sellPriceWithTax, setSellPriceWithTax] = useState("withoutTax");
   const [hsnCode, setHsnCode] = useState("");
+  const [manufactureName, setManufactureName] = useState("");
 
   const handleAddItem = () => {
     const itemData = {
       itemsDetails: {
         item_category: category,
         name,
+        manufacturer_name: manufactureName,
         gst_percentage: parseInt(gstRate),
         sales_info: {
           is_tax_included: sellPriceWithTax === "withTax",
@@ -71,6 +71,7 @@ export default function AddItemDialog({ isOpen, onClose }) {
           variant: "success",
         });
         onClose();
+        handleReset();
       })
       .catch((error) => {
         toast({
@@ -94,6 +95,7 @@ export default function AddItemDialog({ isOpen, onClose }) {
     setPriceWithTax("withoutTax");
     setSellPriceWithTax("withoutTax");
     setHsnCode("");
+    setManufactureName("");
   };
 
   return (
@@ -103,29 +105,38 @@ export default function AddItemDialog({ isOpen, onClose }) {
           <DialogTitle>Create New Item</DialogTitle>
         </DialogHeader>
         <Separator />
-        <form onSubmit={(e) => { e.preventDefault(); handleAddItem(); }} className="flex  flex-col flex-grow overflow-hidden">
+        <form onSubmit={(e) => { e.preventDefault(); handleAddItem(); }} className="flex flex-col flex-grow overflow-hidden">
           <div className="px-4 flex-grow overflow-y-auto ">
-            <Tabs defaultValue="basic" className="w-full ">
+            <Tabs defaultValue="basic" className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-4">
                 <TabsTrigger value="basic">Basic Details</TabsTrigger>
                 <TabsTrigger value="pricing">Pricing Details</TabsTrigger>
               </TabsList>
-              <TabsContent value="basic">
+              <TabsContent value="basic" className="mt-0">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="col-span-1">
                     <Label htmlFor="name">Item Name<span className="text-red-500">*</span></Label>
                     <Input id="name" placeholder="eg: Paracetamol" value={name} onChange={(e) => setName(e.target.value)} required />
                   </div>
                   <div className="col-span-1">
+                    <Label htmlFor="manufactureName">Manufacture Name</Label>
+                    <Input 
+                      id="manufactureName" 
+                      placeholder="eg: ABC Pharmaceuticals" 
+                      value={manufactureName} 
+                      onChange={(e) => setManufactureName(e.target.value)} 
+                    />
+                  </div>
+                  <div className="col-span-1">
                     <Label htmlFor="category">Category</Label>
-                    <Select onValueChange={setCategory} required>
+                    <Select value={category} onValueChange={setCategory} required>
                       <SelectTrigger id="category" className="w-full">
                         <SelectValue placeholder="Select Category" />
                       </SelectTrigger>
                       <SelectContent>
                         <ScrollArea className="h-[200px]">
-                          {pharmacyItemCategories.map((category) => (
-                            <SelectItem key={category} value={category}>{category}</SelectItem>
+                          {pharmacyItemCategories.map((cat) => (
+                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                           ))}
                         </ScrollArea>
                       </SelectContent>
@@ -133,7 +144,7 @@ export default function AddItemDialog({ isOpen, onClose }) {
                   </div>
                   <div>
                     <Label htmlFor="gstRate">GST Tax Rate (%)</Label>
-                    <Select onValueChange={setGstRate} required>
+                    <Select value={gstRate} onValueChange={setGstRate} required>
                       <SelectTrigger id="gstRate">
                         <SelectValue placeholder="Select GST Rate" />
                       </SelectTrigger>
@@ -172,7 +183,7 @@ export default function AddItemDialog({ isOpen, onClose }) {
                   </div>
                   <div>
                     <Label htmlFor="measuringUnit">Measuring Unit</Label>
-                    <Select onValueChange={setMeasuringUnit} required>
+                    <Select value={measuringUnit} onValueChange={setMeasuringUnit} required>
                       <SelectTrigger id="measuringUnit">
                         <SelectValue placeholder="Select Unit" />
                       </SelectTrigger>
@@ -185,7 +196,7 @@ export default function AddItemDialog({ isOpen, onClose }) {
                   </div>
 
                   <div>
-                    <Label htmlFor="quantity">Quantity</Label>
+                    <Label htmlFor="quantity">Opening Stock</Label>
                     <div className="flex">
                       <Input
                         id="quantity"
@@ -280,8 +291,8 @@ export default function AddItemDialog({ isOpen, onClose }) {
           <DialogFooter className="px-4 py-2 shrink-0">
             <Button className="hidden md:inline-flex" type="button" size="sm" variant="outline" onClick={handleReset}>Reset</Button>
             <Button type="button" size="sm" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" size="sm" disabled={createInventoryItemStatus === "loading"}>
-              {createInventoryItemStatus === "loading" ? "Adding..." : "Add Item"}
+            <Button type="submit" size="sm" disabled={createItemStatus === "loading"}>
+              {createItemStatus === "loading" ? "Adding..." : "Add Item"}
             </Button>
           </DialogFooter>
         </form>

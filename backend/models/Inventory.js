@@ -3,8 +3,11 @@ import {hospitalPlugin} from '../plugins/hospitalPlugin.js'
 
 const inventorySchema = new mongoose.Schema({
   name: { type: String, required: true },
-  item_type : {type : String, enum : ["Product", "Service"]},
   unit : String,
+  secondary_unit : {
+    unit : String,
+    conversion_rate : Number,
+  },
   expiry_date: { type: Date, },
   mrp: Number,
   quantity: { type: Number, default: 0 },
@@ -12,8 +15,8 @@ const inventorySchema = new mongoose.Schema({
   hsn_code:String,
   batch_number:String,
   item_category : String,
-  item_category_name : String,
   company_name : String,
+  manufacturer_name: String,
   pack : String,
   sales_info : {
     is_tax_included : {type : Boolean, default : false},

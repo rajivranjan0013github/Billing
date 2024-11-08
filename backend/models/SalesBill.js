@@ -74,10 +74,21 @@ const salesBillSchema = new mongoose.Schema({
     },
     payment_method: {
       type: String,
-      enum: ['cash', 'upi', 'card', 'bank'],
+      enum: ['Cash', 'UPI', 'Card', 'Bank'],
       required: true
     }
   },
+
+  payment_status: {
+    type: String,
+    enum: ['pending', 'paid'],
+    default: 'pending'
+  },
+
+  payment_details: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Payment',
+  }],
 
   is_round_off: {
     type: Boolean,

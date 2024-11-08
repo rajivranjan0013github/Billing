@@ -38,7 +38,6 @@ export const fetchUserData = createLoadingAsyncThunk(
       const response = await fetch(`${Backend_URL}/api/staff/me`, {
         method: 'GET',
         headers: {
-          
           'Content-Type': 'application/json',
         },
         credentials: 'include',

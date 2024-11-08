@@ -6,7 +6,7 @@ import { useParams } from "react-router-dom"
 import { useReactToPrint } from 'react-to-print';
 import { Loader2 } from "lucide-react";
 
-export default function ViewSalesBill() {
+export default function ViewPurchaseBill() {
     const { billId } = useParams();
     const [billData, setBillData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -16,12 +16,11 @@ export default function ViewSalesBill() {
         content: () => componentRef.current,
     });
 
-
     useEffect(() => {
         const fetchBill = async () => {
             try {
                 setIsLoading(true);
-                const response = await fetch(`${Backend_URL}/api/sales/sales-bill/${billId}`, { credentials: 'include' });
+                const response = await fetch(`${Backend_URL}/api/purchase/purchase-bill/${billId}`, { credentials: 'include' });
                 const data = await response.json();
                 setBillData(data);
             } catch (error) {
@@ -74,7 +73,7 @@ export default function ViewSalesBill() {
                 ref={componentRef}
                 className="max-w-4xl mx-auto p-6 bg-white my-8"
             >
-                <h1 className="text-xl font-bold mb-4">TAX INVOICE</h1>
+                <h1 className="text-xl font-bold mb-4">PURCHASE INVOICE</h1>
                 
                 <div className="border border-gray-300">
                     {/* Company Header */}
@@ -89,6 +88,8 @@ export default function ViewSalesBill() {
                             <div>
                                 <p className="text-sm">Invoice No.</p>
                                 <p className="text-sm">{billData?.bill_number}</p>
+                                <p className="text-sm mt-2">Supplier Invoice</p>
+                                <p className="text-sm">{billData?.supplier_invoice_number}</p>
                             </div>
                             <div>
                                 <p className="text-sm">Invoice Date</p>
@@ -97,15 +98,15 @@ export default function ViewSalesBill() {
                         </div>
                     </div>
 
-                    {/* Bill To Section */}
+                    {/* Supplier Details */}
                     <div className="grid grid-cols-2 border-b border-gray-300">
                         <div className="p-4">
-                            <h3 className="font-bold mb-2">BILL TO</h3>
+                            <h3 className="font-bold mb-2">SUPPLIER DETAILS</h3>
                             <div className="text-sm">
-                                <p className="font-bold">{billData?.party_name}</p>
-                                <p>{billData?.party?.billing_address}</p>
-                                <p>GSTIN: {billData?.party?.gstin}</p>
-                                <p>Mobile: {billData?.party?.mobile_number}</p>
+                                <p className="font-bold">{billData?.supplier?.name}</p>
+                                <p>{billData?.supplier?.billing_address}</p>
+                                <p>GSTIN: {billData?.supplier?.gstin}</p>
+                                <p>Mobile: {billData?.supplier?.mobile_number}</p>
                             </div>
                         </div>
                     </div>
@@ -118,7 +119,10 @@ export default function ViewSalesBill() {
                                     <th className="p-2 border text-left">S.NO.</th>
                                     <th className="p-2 border text-left">ITEMS</th>
                                     <th className="p-2 border text-left">HSN</th>
-                                    <th className="p-2 border text-left">QTY.</th>
+                                    <th className="p-2 border text-left">BATCH</th>
+                                    <th className="p-2 border text-left">EXPIRY</th>
+                                    <th className="p-2 border text-left">QTY</th>
+                                    <th className="p-2 border text-left">MRP</th>
                                     <th className="p-2 border text-left">RATE</th>
                                     <th className="p-2 border text-left">DISC.</th>
                                     <th className="p-2 border text-left">GST</th>
@@ -127,7 +131,7 @@ export default function ViewSalesBill() {
                             </thead>
                             <tbody>
                                 {billData?.items?.map((item, index) => {
-                                    const subtotal = (item?.quantity || 0) * (item?.price_per_unit || 0);
+                                    const subtotal = (item?.quantity || 0) * (item?.purchase_price || 0);
                                     const discountAmount = (subtotal * (item?.discount_percentage || 0)) / 100;
                                     const taxableAmount = subtotal - discountAmount;
                                     const taxAmount = (taxableAmount * (item?.gst_percentage || 0)) / 100;
@@ -138,8 +142,13 @@ export default function ViewSalesBill() {
                                             <td className="p-2 border">{index + 1}</td>
                                             <td className="p-2 border">{item?.item?.name}</td>
                                             <td className="p-2 border">{item?.hsn_code}</td>
+                                            <td className="p-2 border">{item?.batch_number}</td>
+                                            <td className="p-2 border">
+                                                {item?.expiry_date ? new Date(item.expiry_date).toLocaleDateString() : '-'}
+                                            </td>
                                             <td className="p-2 border">{item?.quantity} {item?.unit}</td>
-                                            <td className="p-2 border">{formatCurrency(item?.price_per_unit)}</td>
+                                            <td className="p-2 border">{formatCurrency(item?.mrp || 0)}</td>
+                                            <td className="p-2 border">{formatCurrency(item?.purchase_price)}</td>
                                             <td className="p-2 border">{formatCurrency(discountAmount)} ({item?.discount_percentage}%)</td>
                                             <td className="p-2 border">{formatCurrency(taxAmount)} ({item?.gst_percentage}%)</td>
                                             <td className="p-2 border">{formatCurrency(totalAmount)}</td>
@@ -147,9 +156,9 @@ export default function ViewSalesBill() {
                                     );
                                 })}
                                 <tr className="bg-gray-50 font-bold">
-                                    <td className="p-2 border" colSpan="3">TOTAL</td>
+                                    <td className="p-2 border" colSpan="5">TOTAL</td>
                                     <td className="p-2 border">{billData?.items?.reduce((acc, item) => acc + (item.quantity || 0), 0)}</td>
-                                    <td className="p-2 border"></td>
+                                    <td className="p-2 border" colSpan="2"></td>
                                     <td className="p-2 border">{formatCurrency(billData?.tax_summary?.[0]?.taxableAmount)}</td>
                                     <td className="p-2 border">{formatCurrency((billData?.tax_summary?.[0]?.sgst || 0) + (billData?.tax_summary?.[0]?.cgst || 0))}</td>
                                     <td className="p-2 border">{formatCurrency(billData?.grand_total)}</td>
@@ -161,10 +170,10 @@ export default function ViewSalesBill() {
                     {/* Payment Details */}
                     <div className="grid grid-cols-2 border-t border-gray-300">
                         <div className="p-4">
-                            <p className="text-sm">Paid Amount: {formatCurrency(billData?.payment?.amount_received)}</p>
+                            <p className="text-sm">Paid Amount ({billData?.payment?.payment_method}): {formatCurrency(billData?.payment?.amount_paid)}</p>
                         </div>
                         <div className="p-4">
-                            <p className="text-sm">Balance Amount: {formatCurrency((billData?.grand_total || 0) - (billData?.payment?.amount_received || 0))}</p>
+                            <p className="text-sm">Balance Amount: {formatCurrency((billData?.grand_total || 0) - (billData?.payment?.amount_paid || 0))}</p>
                         </div>
                     </div>
 
@@ -172,9 +181,9 @@ export default function ViewSalesBill() {
                     <div className="p-4 border-t border-gray-300">
                         <h3 className="font-bold mb-2">Terms and Conditions</h3>
                         <ol className="text-sm list-decimal list-inside">
-                            <li>Goods once sold will not be taken back or exchanged</li>
                             <li>All disputes are subject to Patna jurisdiction only</li>
-                            <li>Payment should be made within 30 days of invoice</li>
+                            <li>Payment should be made as per agreed terms</li>
+                            <li>Goods received in good condition</li>
                         </ol>
                     </div>
 

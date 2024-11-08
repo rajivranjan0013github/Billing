@@ -7,13 +7,13 @@ import { fileURLToPath } from "url";
 import inventoryRoutes from "./routes/inventoryRoutes.js";
 import staffRoutes from "./routes/staffRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
-import billRoutes from "./routes/billRoutes.js";
+import billRoutes from "./routes/sellBillRoutes.js";
 import { identifyHospital } from "./middleware/hospitalMiddleware.js";
 import hospitalRoutes from "./routes/hospitalRoutes.js";
 import superAdminRoutes from "./routes/superAdmin.js";
-import orderRoutes from "./routes/orderRoutes.js";
-import pharmacyRoutes from "./routes/pharmacyRoutes.js";
 import partyRoutes from "./routes/PartyRouter.js";
+import purchaseBillRoutes from "./routes/purchaseBillRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 dotenv.config({ path: "./config/config.env" });
 
 const app = express();
@@ -49,10 +49,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api", identifyHospital);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/staff", staffRoutes);
-app.use("/api/orders", orderRoutes);
-app.use("/api/pharmacy", pharmacyRoutes);
 app.use("/api/party", partyRoutes);
-app.use("/api/bills", billRoutes);
+app.use("/api/sales", billRoutes);
+app.use("/api/purchase", purchaseBillRoutes);
+app.use("/api/payment", paymentRoutes);
 // Serve index.html for any other routes
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/build/", "index.html"));

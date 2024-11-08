@@ -6,7 +6,7 @@ import { Backend_URL } from '../../assets/Data';
 export const createBill = createLoadingAsyncThunk(
   'bill/createBill',
   async (billData) => {
-    const response = await fetch(`${Backend_URL}/api/bills`, {
+    const response = await fetch(`${Backend_URL}/api/sales`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -27,7 +27,7 @@ export const createBill = createLoadingAsyncThunk(
 export const fetchBills = createLoadingAsyncThunk(
   'bill/fetchBills',
   async () => {
-    const response = await fetch(`${Backend_URL}/api/bills`, {
+    const response = await fetch(`${Backend_URL}/api/sales`, {
       credentials: 'include',
     });
     
@@ -42,7 +42,7 @@ export const fetchBills = createLoadingAsyncThunk(
 export const fetchBillById = createLoadingAsyncThunk(
   'bill/fetchBillById',
   async (id) => {
-    const response = await fetch(`${Backend_URL}/api/bills/sales-bill/${id}`, { credentials: 'include' });
+    const response = await fetch(`${Backend_URL}/api/sales/sales-bill/${id}`, { credentials: 'include' });
     if (!response.ok) {
       throw new Error('Failed to fetch bill');
     }
@@ -53,19 +53,13 @@ export const fetchBillById = createLoadingAsyncThunk(
 const billSlice = createSlice({
   name: 'bill',
   initialState: {
-    currentBill: null,
     bills: [],
     createBillStatus: 'idle',
     fetchStatus: 'idle',
     error: null,
   },
   reducers: {
-    clearBillError: (state) => {
-      state.error = null;
-    },
-    clearCurrentBill: (state) => {
-      state.currentBill = null;
-    },
+    
   },
   extraReducers: (builder) => {
     builder
@@ -75,7 +69,7 @@ const billSlice = createSlice({
       })
       .addCase(createBill.fulfilled, (state, action) => {
         state.createBillStatus = 'succeeded';
-        state.currentBill = action.payload;
+        state.bills.unshift(action.payload);
       })
       .addCase(createBill.rejected, (state, action) => {
         state.createBillStatus = 'failed';
@@ -95,5 +89,4 @@ const billSlice = createSlice({
   },
 });
 
-export const { clearBillError, clearCurrentBill } = billSlice.actions;
 export default billSlice.reducer;

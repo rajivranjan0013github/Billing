@@ -6,8 +6,9 @@ import loaderReducer from './slices/loaderSlice';
 import hospitalReducer from './slices/HospitalSlice';
 import expenseReducer from './slices/expenseSlice';
 import partyReducer from './slices/partySlice';
-import billReducer from './slices/BillSlice';
+import billReducer from './slices/SellBillSlice';
 import purchaseBillReducer from './slices/PurchaseBillSlice';
+import inventoryReducer from './slices/inventorySlice';
 
 export const store = configureStore({
   reducer: {
@@ -20,5 +21,6 @@ export const store = configureStore({
     party: partyReducer,
     bill: billReducer,
     purchaseBill: purchaseBillReducer,
+    inventory: inventoryReducer,
   },
 });

@@ -10,6 +10,7 @@ const HospitalSchema = new mongoose.Schema({
   hospitalId: {
     type: String,
     required: true,
+    unique: true,
   },
   itemExpiryThreshold: {
     type: Number,

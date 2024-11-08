@@ -3,7 +3,7 @@ import { Input } from "../../ui/input";
 import { Badge } from "../../ui/badge"; // Add this import
 import { ChevronsUpDown } from "lucide-react";
 
-export const SearchSuggestion = forwardRef(({ suggestions=[], placeholder, value, setValue, onSuggestionSelect, showStock=false }, ref) => {
+export const SearchSuggestion = forwardRef(({ suggestions=[], placeholder, value, setValue, onSuggestionSelect, showAmount=false }, ref) => {
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -92,9 +92,9 @@ export const SearchSuggestion = forwardRef(({ suggestions=[], placeholder, value
             >
               <div className="flex justify-between items-center">
                 <span className='capitalize'>{suggestion.name}</span>
-                {showStock && suggestion.quantity !== undefined && (
-                  <Badge variant={suggestion.quantity <= 100 ? "destructive" : "success"}>
-                    {suggestion.quantity}
+                {showAmount && suggestion?.current_balance !== undefined && (
+                  <Badge variant={suggestion?.current_balance <= 0 ? "destructive" : "success"}>
+                    {suggestion?.current_balance || 0}
                   </Badge>
                 )}
               </div>

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import SelectPartyDialog from "../components/custom/pharmacy/SelectPartyDialog";
 import SelectItemDialog from "../components/custom/pharmacy/SelectItemDialog";
 import { useDispatch, useSelector } from 'react-redux';
-import { createBill } from '../redux/slices/SellBillSlice';
+import { createPurchaseBill } from '../redux/slices/PurchaseBillSlice';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../hooks/use-toast';
 import { Backend_URL } from "../assets/Data";
@@ -40,7 +40,7 @@ const DiscountInputs = ({ billDiscountPercent, billDiscountAmount, handleBillDis
   </div>
 );
 
-const CreateSellInvoice = () => {
+const CreatePurchaseInvoice = () => {
   const [items, setItems] = useState([]);
   const [amountReceived, setAmountReceived] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState("cash");
@@ -59,21 +59,40 @@ const CreateSellInvoice = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { createBillStatus } = useSelector((state) => state.bill);
-  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [billNumber, setBillNumber] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [originalBillNumber, setOriginalBillNumber] = useState("");
 
   useEffect(() => {
-    const fetchNextInvoiceNumber = async () => {
+    const fetchNextBillNumber = async () => {
       try {
-        const response = await fetch(`${Backend_URL}/api/sales/next-invoice-number`, { credentials: 'include'});
+        const response = await fetch(`${Backend_URL}/api/purchase/next-bill-number`, { 
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
-        setInvoiceNumber(data.nextBillNumber);
+        
+        if (data.success && data.nextBillNumber) {
+          setBillNumber(data.nextBillNumber);
+        } else {
+          throw new Error(data.message || "Failed to get next bill number");
+        }
       } catch (error) {
-        console.error('Error fetching invoice number:', error);
+        console.error('Error fetching bill number:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to get bill number. Please refresh the page or contact support."
+        });
       }
     };
-    fetchNextInvoiceNumber();
-  }, []);
+
+    fetchNextBillNumber();
+  }, [toast]);
 
   const handleInputChange = (id, field, value) => {
     setItems((prevItems) =>
@@ -354,54 +373,44 @@ const CreateSellInvoice = () => {
       return;
     }
 
-    // Check if either cash customer or party is selected
-    if (!isCashCustomer && !selectedParty) {
-      alert('Please select a party or mark as cash customer');
+    if (!selectedParty) {
+      toast({ title: 'Error', description: 'Please select a supplier', variant: 'destructive',});
       return;
     }
 
     const totals = calculateTotals();
-    const billData = {
-      // Party details
-      party: isCashCustomer ? null : selectedParty._id,
-      is_cash_customer: isCashCustomer,
-      party_name: isCashCustomer ? "Cash Customer" : selectedParty.name,
-
-      // Items details
+    const purchaseBillData = {
+      supplier: selectedParty._id,
+      supplier_name: selectedParty.name,
+      supplier_invoice_number: originalBillNumber,
       items: items.map(item => ({
         _id: item._id,
         batchNo: item.batchNo,
         expDate: item.expDate,
         qty: parseFloat(item.qty),
         unit: item.unit,
-        pricePerItem: parseFloat(item.pricePerItem),
+        mrp: parseFloat(item.mrp),
+        purchasePrice: parseFloat(item.pricePerItem),
         discount: parseFloat(item.discount) || 0,
         tax: parseFloat(item.tax) || 0,
         hsn: item.hsn
       })),
-
-      // Bill discounts and totals
       bill_discount: parseFloat(billDiscountAmount) || 0,
-      
-      // Payment details
       payment: {
-        amount_received: parseFloat(amountReceived) || 0,
+        amount_paid: parseFloat(amountReceived) || 0,
         payment_method: paymentMethod
       },
-
-      // Additional details
       is_round_off: isRoundOff,
       grand_total: isRoundOff ? getRoundedTotal(totals.total) : totals.total,
-      tax_summary: calculateTaxSummary(),
-      invoice_date: invoiceDate,
+      tax_summary: calculateTaxSummary()
     };
 
     try {
-      const resultAction = await dispatch(createBill(billData)).unwrap();
-      toast({variant: 'success',title: 'Success',description: 'Bill created successfully',});
-      navigate(`/sales/${resultAction._id}`);
+      const resultAction = await dispatch(createPurchaseBill(purchaseBillData)).unwrap();
+      toast({variant: 'success', title: 'Success', description: 'Purchase bill created successfully',});
+      navigate(`/purchase/${resultAction._id}`);
     } catch (error) {
-      toast({variant: 'destructive',title: 'Error',description: error.message || 'Failed to create bill',});
+      toast({variant: 'destructive', title: 'Error', description: error.message || 'Failed to create purchase bill',});
     }
   };
 
@@ -411,7 +420,7 @@ const CreateSellInvoice = () => {
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <ArrowLeft className="cursor-pointer" onClick={() => navigate(-1)} />
-          <span>Create Sell Invoice</span>
+          <span>Create Purchase Invoice</span>
         </div>
         <div className=" flex gap-2">
           <Button  variant="outline"  size="sm"  onClick={handleSaveBill} disabled={createBillStatus === 'loading'}>
@@ -425,19 +434,13 @@ const CreateSellInvoice = () => {
         <div className="grid grid-cols-3 divide-x divide-gray-200 border-b border-gray-200">
           <div className=" col-span-2">
             <div className="border-b border-gray-200 p-2 flex justify-between items-center">
-              <div>Bill To</div>
+              <div>Supplier</div>
               <div className="flex items-center gap-4">
                 {selectedParty && (
                   <Button variant="outline" size="sm" className="h-6 text-blue-600" onClick={() => setShowPartyDialog(true)}>
-                    Change Party
+                    Change Supplier
                   </Button>
                 )}
-                <div className="flex items-center gap-2">
-                  <Checkbox id="cash-customer" checked={isCashCustomer} onCheckedChange={handleCashCustomerChange} />
-                  <label htmlFor="cash-customer" className="text-sm text-gray-600 cursor-pointer">
-                    Set Cash Sell as Default
-                  </label>
-                </div>
               </div>
             </div>
             <div className="p-4">
@@ -465,32 +468,45 @@ const CreateSellInvoice = () => {
                     </div>
                   </div>
                 </div>
-              ) : isCashCustomer ? (
-                <div className="space-y-2">
-                  <div className="font-medium text-lg">Cash Customer</div>
-                </div>
               ) : (
                 <div
                   onClick={() => setShowPartyDialog(true)}
-                  className={`cursor-pointer p-6 border border-dashed border-gray-200 rounded-md ${selectedParty ? "w-96" : "w-40"}`}>
-                  <div className="flex items-center justify-center h-full text-primary">+Add Party</div>
+                  className="cursor-pointer p-6 border border-dashed border-gray-200 rounded-md w-40">
+                  <div className="flex items-center justify-center h-full text-primary">+Add Supplier</div>
                 </div>
               )}
             </div>
           </div>
 
           <div className=" p-4">
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <div>
                 <div>Invoice No.</div>
-                <Input type="text" value={invoiceNumber} className="w-40" readOnly disabled />
+                <Input 
+                  type="text" 
+                  value={billNumber || 'Loading...'} 
+                  className="w-40" 
+                  readOnly 
+                  disabled={!billNumber}
+                />
               </div>
+              
               <div>
                 <div>Invoice Date</div>
                 <Input 
                   type="date" 
                   value={invoiceDate}
                   onChange={(e) => setInvoiceDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <div>Original Bill No.</div>
+                <Input 
+                  type="text" 
+                  value={originalBillNumber}
+                  onChange={(e) => setOriginalBillNumber(e.target.value)}
+                  className="w-40"
+                  placeholder="Enter supplier bill no."
                 />
               </div>
             </div>
@@ -542,9 +558,7 @@ const CreateSellInvoice = () => {
                       />
                     </td>
                     <td className="border border-gray-200 p-2 text-sm">
-                      ₹{((item.qty || 0) * (item.pricePerItem || 0)).toLocaleString("en-IN", {
-                        minimumFractionDigits: 2,
-                      })}
+                      ₹{((item.qty || 0) * (item.pricePerItem || 0)).toLocaleString("en-IN", {minimumFractionDigits: 2})}
                     </td>
                     <td className="border border-gray-200 p-2 text-sm">
                       <div className="flex flex-col gap-1">
@@ -763,10 +777,10 @@ const CreateSellInvoice = () => {
         open={showItemDialog} 
         onOpenChange={setShowItemDialog} 
         onSelectItem={handleItemSelect}
-        mode="sale"
+        mode="purchase"
       />
     </div>
   );
 };
 
-export default CreateSellInvoice;
+export default CreatePurchaseInvoice;
