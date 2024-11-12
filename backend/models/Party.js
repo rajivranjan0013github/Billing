@@ -11,7 +11,6 @@ const partySchema = new mongoose.Schema({
   pan_number: { type: String },
   drug_license_number: { type: String },
   party_type: { type: String, enum: ['customer', 'supplier'], required: true },
-  party_category: { type: String },
   billing_address: { type: String },
   shipping_address: { type: String },
   credit_period: { type: Number, default: 30 },

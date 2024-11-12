@@ -8,7 +8,7 @@ import { Separator } from "../../ui/separator";
 import { Checkbox } from "../../ui/checkbox";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchItems } from "../../../redux/slices/inventorySlice";
-import AddItemDialog from "./itemMaster/AddItemDialog";
+import AddItemDialog from "../itemMaster/AddItemDialog";
 
 const SelectItemDialog = ({ open, onOpenChange, onSelectItem, mode = "sale" }) => {
   const dispatch = useDispatch();

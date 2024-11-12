@@ -2,16 +2,16 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { format } from "date-fns";
-import { fetchItems } from "../../../redux/slices/inventorySlice";
+import { fetchItems } from "../redux/slices/inventorySlice";
 import { Search, ChevronLeft, ChevronRight, Plus, ListFilter, PackageX } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../ui/card";
-import { Input } from "../../ui/input";
-import { Button } from "../../ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../ui/dropdown-menu";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../ui/table";
-import { Badge } from "../../ui/badge";
-import AddItemDialog from "./itemMaster/AddItemDialog";
-import { useToast } from "../../../hooks/use-toast";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
+import { Badge } from "../components/ui/badge";
+import AddItemDialog from "../components/custom/itemMaster/AddItemDialog";
+import { useToast } from "../hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
 export default function ItemsMaster() {

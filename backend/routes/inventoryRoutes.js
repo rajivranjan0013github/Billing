@@ -60,6 +60,8 @@ router.get('/:itemId', verifyToken, async (req, res) => {
 
 // Adjust stock quantity
 router.post('/:itemId/adjust-stock', verifyToken, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { adjustmentType, quantity, remarks } = req.body;
         const itemId = req.params.itemId;
@@ -84,15 +86,20 @@ router.post('/:itemId/adjust-stock', verifyToken, async (req, res) => {
             closing_stock: newQuantity,
             remarks: remarks
         });
-        await stockDetail.save();
+        await stockDetail.save({ session });
 
         // Update inventory quantity
         item.quantity = newQuantity;
-        await item.save();
+        await item.save({ session });
 
-        res.status(200).json(item);
+        await session.commitTransaction();
+
+        return res.status(200).json(item);
     } catch (error) {
+        await session.abortTransaction();
         res.status(500).json({ message: error.message });
+    } finally {
+        session.endSession();
     }
 });
 

@@ -67,6 +67,13 @@ export default function ItemDetails() {
     }
   }, [itemId, activeTab]);
 
+  const handleStockAdjusted = (newQuantity) => {
+    setItem(prevItem => ({
+      ...prevItem,
+      quantity: newQuantity
+    }));
+  };
+
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -118,6 +125,7 @@ export default function ItemDetails() {
           open={isAdjustStockOpen} 
           onOpenChange={setIsAdjustStockOpen}
           item={item}
+          onStockAdjusted={handleStockAdjusted}
         />
       )}
 
@@ -160,6 +168,17 @@ export default function ItemDetails() {
                     <div className="text-sm text-muted-foreground mb-1">Current Stock</div>
                     <div>{item.quantity} {item.unit}</div>
                   </div>
+                  {item.secondary_unit?.unit && (
+                    <div>
+                      <div className="text-sm text-muted-foreground mb-1">Secondary Unit</div>
+                      <div>
+                        {item.secondary_unit.unit} 
+                        <span className="text-sm text-muted-foreground ml-1">
+                          (1 {item.unit} = {item.secondary_unit.conversion_rate} {item.secondary_unit.unit})
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <div className="text-sm text-muted-foreground mb-1">Manufacturer</div>
                     <div>{item.manufacturer_name || '-'}</div>

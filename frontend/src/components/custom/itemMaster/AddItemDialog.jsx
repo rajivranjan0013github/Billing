@@ -1,15 +1,15 @@
 import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../../ui/dialog";
-import { Input } from "../../../ui/input";
-import { Button } from "../../../ui/button";
-import { Label } from "../../../ui/label";
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "../../../ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../ui/dialog";
+import { Input } from "../../ui/input";
+import { Button } from "../../ui/button";
+import { Label } from "../../ui/label";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "../../ui/select";
 import { useDispatch, useSelector } from "react-redux";
-import { createInventoryItem } from "../../../../redux/slices/pharmacySlice";
-import { useToast } from "../../../../hooks/use-toast";
-import { Separator } from "../../../ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../ui/tabs";
-import { ScrollArea } from "../../../ui/scroll-area";
+import { createInventoryItem } from "../../../redux/slices/pharmacySlice";
+import { useToast } from "../../../hooks/use-toast";
+import { Separator } from "../../ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
+import { ScrollArea } from "../../ui/scroll-area";
 
 // GST tax rates
 const gstRates = [0, 5, 12, 18, 28];
@@ -40,11 +40,14 @@ export default function AddItemDialog({ isOpen, onClose }) {
   const [sellPriceWithTax, setSellPriceWithTax] = useState("withoutTax");
   const [hsnCode, setHsnCode] = useState("");
   const [manufactureName, setManufactureName] = useState("");
+  const [secondaryUnit, setSecondaryUnit] = useState("");
+  const [conversionRate, setConversionRate] = useState("");
+  const [showSecondaryUnit, setShowSecondaryUnit] = useState(false);
 
   const handleAddItem = () => {
     const itemData = {
       itemsDetails: {
-        item_category: category,
+        item_category: category,  
         name,
         manufacturer_name: manufactureName,
         gst_percentage: parseInt(gstRate),
@@ -57,6 +60,10 @@ export default function AddItemDialog({ isOpen, onClose }) {
           price_per_unit: parseFloat(purchasePrice),
         },
         unit: measuringUnit,
+        secondary_unit: secondaryUnit ? {
+          unit: secondaryUnit,
+          conversion_rate: parseFloat(conversionRate)
+        } : undefined,
         quantity: parseInt(quantity),
         expiry_date: expiryDate,
         mrp: parseFloat(MRP),
@@ -67,7 +74,6 @@ export default function AddItemDialog({ isOpen, onClose }) {
       .then(() => {
         toast({
           title: "Item added successfully",
-          description: "The new item has been added to the inventory.",
           variant: "success",
         });
         onClose();
@@ -76,7 +82,6 @@ export default function AddItemDialog({ isOpen, onClose }) {
       .catch((error) => {
         toast({
           title: "Failed to add item",
-          description: error.message || "There was an error adding the item. Please try again.",
           variant: "destructive",
         });
       })
@@ -96,6 +101,9 @@ export default function AddItemDialog({ isOpen, onClose }) {
     setSellPriceWithTax("withoutTax");
     setHsnCode("");
     setManufactureName("");
+    setSecondaryUnit("");
+    setConversionRate("");
+    setShowSecondaryUnit(false);
   };
 
   return (
@@ -155,7 +163,21 @@ export default function AddItemDialog({ isOpen, onClose }) {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
+                  <div>
+                    <Label htmlFor="measuringUnit">Measuring Unit</Label>
+                    <Select value={measuringUnit} onValueChange={setMeasuringUnit} required>
+                      <SelectTrigger id="measuringUnit">
+                        <SelectValue placeholder="Select Unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {measuringUnits.map((unit) => (
+                          <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <div>
                     <Label htmlFor="sellPrice">Sell Price</Label>
                     <div className="flex">
@@ -181,36 +203,51 @@ export default function AddItemDialog({ isOpen, onClose }) {
                       </Select>
                     </div>
                   </div>
-                  <div>
-                    <Label htmlFor="measuringUnit">Measuring Unit</Label>
-                    <Select value={measuringUnit} onValueChange={setMeasuringUnit} required>
-                      <SelectTrigger id="measuringUnit">
-                        <SelectValue placeholder="Select Unit" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {measuringUnits.map((unit) => (
-                          <SelectItem key={unit} value={unit}>{unit}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  
+                  <div className="col-span-2">
+                    {!showSecondaryUnit ? (
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        onClick={() => setShowSecondaryUnit(true)}
+                      >
+                        + Add Additional Unit
+                      </Button>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="col-span-1">
+                          <Label htmlFor="secondaryUnit">Secondary Unit</Label>
+                          <Select value={secondaryUnit} onValueChange={setSecondaryUnit}>
+                            <SelectTrigger id="secondaryUnit">
+                              <SelectValue placeholder="Select Secondary Unit" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {measuringUnits.map((unit) => (
+                                <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                  <div>
-                    <Label htmlFor="quantity">Opening Stock</Label>
-                    <div className="flex">
-                      <Input
-                        id="quantity"
-                        placeholder="Quantity"
-                        value={quantity}
-                        onChange={(e) => setQuantity(e.target.value)}
-                        required
-                        className="rounded-r-none"
-                      />
-                      <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-input bg-background text-sm text-gray-500">
-                        {measuringUnit || "Unit"}
-                      </span>
-                    </div>
+                        <div className="col-span-1">
+                          <Label htmlFor="conversionRate">
+                            Conversion Rate (1 {measuringUnit} = ? {secondaryUnit})
+                          </Label>
+                          <Input
+                            id="conversionRate"
+                            type="number"
+                            step="0.01"
+                            placeholder={`1 ${measuringUnit} = ? ${secondaryUnit}`}
+                            value={conversionRate}
+                            onChange={(e) => setConversionRate(e.target.value)}
+                            required={!!secondaryUnit}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
+                  
                 </div>
               </TabsContent>
               <TabsContent value="pricing">
@@ -282,6 +319,22 @@ export default function AddItemDialog({ isOpen, onClose }) {
                       value={expiryDate}
                       onChange={(e) => setExpiryDate(e.target.value)}
                     />
+                  </div>
+                  <div>
+                    <Label htmlFor="quantity">Opening Stock</Label>
+                    <div className="flex">
+                      <Input
+                        id="quantity"
+                        placeholder="Quantity"
+                        value={quantity}
+                        onChange={(e) => setQuantity(e.target.value)}
+                        required
+                        className="rounded-r-none"
+                      />
+                      <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-input bg-background text-sm text-gray-500">
+                        {measuringUnit || "Unit"}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </TabsContent>

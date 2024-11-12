@@ -2,37 +2,18 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
 import { Checkbox } from "../components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableFooter,
-} from "../components/ui/table";
-import {
-  ArrowLeft,
-  Calendar,
-  MessageSquare,
-  Search,
-  Settings,
-  Store,
-} from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "../components/ui/table";
+import { ArrowLeft, Calendar, MessageSquare, Search, Settings, Store } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect, useState, useRef } from "react";
 import { fetchParties } from "../redux/slices/partySlice";
-import { SearchSuggestion } from "../components/custom/registration/CustomSearchSuggestion";
+import { SearchSuggestion } from "../components/custom/custom-fields/CustomSearchSuggestion";
 import { Backend_URL } from "../assets/Data";
+import { useToast } from "../hooks/use-toast";
+import { createPayment } from "../redux/slices/paymentSlice";
 
 // First, let's create a TableContent component for better organization
 const TableContent = ({ isLoadingBills, pendingInvoices, selectedBills, onBillSelection }) => {
@@ -121,11 +102,13 @@ const TableContent = ({ isLoadingBills, pendingInvoices, selectedBills, onBillSe
 export default function Component() {
   const navigate = useNavigate();
   const { parties, fetchStatus } = useSelector((state) => state.party);
+  const { createStatus } = useSelector((state) => state.payment);
   const [pendingInvoices, setPendingInvoices] = useState([]);
   const [selectedParty, setSelectedParty] = useState(null);
   const [value, setValue] = useState("");
   const partyNameRef = useRef(null);
   const dispatch = useDispatch();
+  const {toast} = useToast();
   const [paymentDate, setPaymentDate] = useState(() => {
     return new Intl.DateTimeFormat('en-IN', {
       timeZone: 'Asia/Kolkata',
@@ -136,8 +119,8 @@ export default function Component() {
   });
   const [isLoadingBills, setIsLoadingBills] = useState(false);
   const [selectedBills, setSelectedBills] = useState([]);
-  const [paymentAmount, setPaymentAmount] = useState(0);
-  const [paymentMode, setPaymentMode] = useState("Cash");
+  const [paymentAmount, setPaymentAmount] = useState();
+  const [paymentMode, setPaymentMode] = useState("cash");
   const [notes, setNotes] = useState("");
   const [paymentOutNumber, setPaymentOutNumber] = useState("");
 
@@ -187,32 +170,25 @@ export default function Component() {
 
   const handleSubmit = async () => {
     if (!selectedParty) {
-      alert("Please select a party");
+      toast({ title: 'Select Party', variant: 'destructive',});
       return;
     }
 
     if (paymentAmount <= 0) {
-      alert("Payment amount must be greater than 0");
-      return;
-    }
-
-    if (selectedBills.length === 0) {
-      alert("Please select at least one invoice to settle");
+      toast({ title: 'Payment amount must be greater than 0', variant: 'destructive',});
       return;
     }
 
     if (!paymentOutNumber) {
-      alert("Please enter a payment out number");
+      toast({ title: 'Please enter a payment out number', variant: 'destructive',});
       return;
     }
 
     const paymentData = {
-      payment_type: "Expense",
-
+      payment_type: "Payment Out",
       party_id: selectedParty._id,
       payment_date: paymentDate,
       payment_method: paymentMode,
-      party_name: selectedParty.name,
       amount: paymentAmount,
       remarks: notes,
       payment_out_number: paymentOutNumber,
@@ -222,28 +198,15 @@ export default function Component() {
         bill_number: bill.bill_number
       }))
     };
-    console.log(paymentData);
 
-    // try {
-    //   const response = await fetch(`${Backend_URL}/api/payment/out`, {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json'
-    //     },
-    //     credentials: 'include',
-    //     body: JSON.stringify(paymentData)
-    //   });
-
-    //   if (!response.ok) {
-    //     throw new Error('Payment creation failed');
-    //   }
-
-    //   const data = await response.json();
-    //   navigate('/payments'); // or wherever you want to redirect after success
-    // } catch (error) {
-    //   console.error('Error creating payment:', error);
-    //   alert('Failed to create payment. Please try again.');
-    // }
+    dispatch(createPayment(paymentData)).unwrap().then(() => {
+        toast({title: "Payment added successfully", variant: "success",});
+        dispatch(fetchParties());
+        navigate('/purchase/payment-out');
+      })
+      .catch((error) => {
+        toast({title: "Failed to create payment", variant: "destructive",});
+      });
   };
 
   return (
@@ -303,15 +266,18 @@ export default function Component() {
             </label>
             <Input 
               type="number" 
-              value={paymentAmount}
-              onChange={(e) => setPaymentAmount(Number(e.target.value))}
+              value={paymentAmount || ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setPaymentAmount(value === '' ? '' : Number(value));
+              }}
               placeholder="0" 
             />
           </div>
         </Card>
 
         <Card className="p-4 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <label className="text-sm text-muted-foreground">
                 Payment Date
@@ -335,25 +301,24 @@ export default function Component() {
                   <SelectValue>Cash</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Cash">Cash</SelectItem>
-                  <SelectItem value="UPI">UPI</SelectItem>
-                  <SelectItem value="Cheque">Cheque</SelectItem>
-                  <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                  <SelectItem value="Card">Card</SelectItem>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="upi">UPI</SelectItem>
+                  <SelectItem value="cheque">Cheque</SelectItem>
+                  <SelectItem value="bank-transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="card">Card</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="space-y-2">
+            <div className="space-y-2">
             <label className="text-sm text-muted-foreground">
               Payment Out Number
             </label>
             <Input 
               value={paymentOutNumber}
               onChange={(e) => setPaymentOutNumber(e.target.value)}
-              placeholder="Enter Payment Out Number"
+              placeholder="Enter..."
             />
+          </div>
           </div>
 
           <div className="space-y-2">

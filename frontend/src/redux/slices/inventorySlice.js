@@ -6,6 +6,7 @@ const initialState = {
   items: [],
   itemsStatus: "idle",
   createItemStatus: "idle",
+  adjustStockStatus: "idle",
   error: null,
 };
 
@@ -82,12 +83,20 @@ const inventorySlice = createSlice({
         state.itemsStatus = "failed";
         state.error = action.error.message;
       })
+      .addCase(adjustStock.pending, (state) => {
+        state.adjustStockStatus = "loading";
+      })
       .addCase(adjustStock.fulfilled, (state, action) => {
-        const updatedItem = action.payload.item;
+        const updatedItem = action.payload;
         const index = state.items.findIndex(item => item._id === updatedItem._id);
         if (index !== -1) {
           state.items[index] = updatedItem;
         }
+        state.adjustStockStatus = "succeeded";
+      })
+      .addCase(adjustStock.rejected, (state, action) => {
+        state.adjustStockStatus = "failed";
+        state.error = action.error.message;
       })
       .addCase(createInventoryItem.pending, (state) => {
         state.createItemStatus = "loading";

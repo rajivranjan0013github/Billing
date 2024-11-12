@@ -6,13 +6,11 @@ import { store } from './redux/store';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchStaffMembers } from './redux/slices/staffSlice';
 import Home from './pages/Home';
-
-import VerticalNav, { navItems } from './components/custom/Navigations/VerticalNav';
+import VerticalNav from './components/custom/Navigations/VerticalNav';
 import Dashboard from './pages/Dashboard';
-import Reports from './pages/Reports';
+import Staffs from './pages/Staffs';
 import Settings from './pages/Settings';
 import StaffProfile from './pages/StaffProfile';
-import PharmacyAllBills from './pages/PharmacyAllBills';
 import AddStaff from './pages/AddStaff';
 import { fetchUserData } from "./redux/slices/userSlice";
 import { fetchHospitalInfo } from "./redux/slices/HospitalSlice";
@@ -23,9 +21,7 @@ import ContactPage from './pages/ContactUs';
 import Expenses from './pages/Expenses';
 import Sales from "./pages/Sales";
 import Purchase from "./pages/Purchase";
-import ItemsMaster from "./components/custom/pharmacy/ItemsMaster";
-import PharmacyReports from "./components/custom/pharmacy/PharmacyReports";
-import Supplier from "./components/custom/pharmacy/Supplier";
+import ItemsMaster from "./pages/ItemsMaster";
 import Parties from "./pages/Parties";
 import CreateParty from "./pages/CreateParty";
 import CreateSellInvoice from "./pages/CreateSellInvoice";
@@ -36,6 +32,7 @@ import ItemDetails from "./pages/ItemDetails";
 import PartyDetails from "./pages/PartyDetails";
 import PaymentOut from "./pages/PaymentOut";
 import CreatePaymentOut from "./pages/CreatePaymentOut";
+import PaymentDetails from "./pages/PaymentDetails";
 
 const AppContent = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -91,19 +88,16 @@ const AppContent = () => {
 
           {isAuthenticated && (
             <>
-              <Route path="/staff" element={<Reports />} />
+              <Route path="/staff" element={<Staffs />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/staff/:staffId" element={<StaffProfile />} />
-              <Route path="/pharmacy/all-bills" element={<PharmacyAllBills />} />
               <Route path="/addstaff" element={<AddStaff />} />
               <Route path="/editstaff/:staffId" element={<AddStaff />} />
               <Route path="/settings/hospital-info" element={<HospitalInfo />} />
               <Route path="/expenses" element={<Expenses />} />
               <Route path="/sales" element={<Sales />} />
               <Route path="/purchase" element={<Purchase />} />
-              <Route path="/supplier" element={<Supplier />} />
               <Route path="/items-master" element={<ItemsMaster />} />
-              <Route path="/reports" element={<PharmacyReports />} />
               <Route path="/parties" element={<Parties />} />
               <Route path="/parties/create-party" element={<CreateParty />} />
               <Route path="/sales/create-sell-invoice" element={<CreateSellInvoice />} />
@@ -113,6 +107,7 @@ const AppContent = () => {
               <Route path="/item-details/:itemId" element={<ItemDetails />} />
               <Route path="/party-details/:partyId" element={<PartyDetails />} />
               <Route path="/purchase/payment-out" element={<PaymentOut />} />
+              <Route path="/purchase/payment-out/:paymentId" element={<PaymentDetails />} />
               <Route path="/purchase/create-payment-out" element={<CreatePaymentOut />} />
             </>
           )}

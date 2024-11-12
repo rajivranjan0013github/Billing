@@ -5,12 +5,14 @@ import { useEffect, useState, useRef } from "react"
 import { useParams } from "react-router-dom"
 import { useReactToPrint } from 'react-to-print';
 import { Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom"
 
 export default function ViewPurchaseBill() {
     const { billId } = useParams();
     const [billData, setBillData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const componentRef = useRef();
+    const navigate = useNavigate();
 
     const handlePrint = useReactToPrint({
         content: () => componentRef.current,
@@ -68,6 +70,7 @@ export default function ViewPurchaseBill() {
             >
                 Print Invoice
             </button>
+            
             
             <div 
                 ref={componentRef}

@@ -9,6 +9,7 @@ import partyReducer from './slices/partySlice';
 import billReducer from './slices/SellBillSlice';
 import purchaseBillReducer from './slices/PurchaseBillSlice';
 import inventoryReducer from './slices/inventorySlice';
+import paymentReducer from './slices/paymentSlice';
 
 export const store = configureStore({
   reducer: {
@@ -22,5 +23,6 @@ export const store = configureStore({
     bill: billReducer,
     purchaseBill: purchaseBillReducer,
     inventory: inventoryReducer,
+    payment: paymentReducer,
   },
 });

@@ -6,6 +6,7 @@ import { verifyToken } from "../middleware/authMiddleware.js";
 import { PartyTransaction } from "../models/PartyTransaction.js";
 import { Party } from "../models/Party.js";
 import { Payment } from "../models/Payment.js";
+import { Ledger } from "../models/Ledger.js";
 import mongoose from "mongoose";
 
 const router = express.Router();
@@ -22,6 +23,8 @@ router.post("/", verifyToken, async (req, res) => {
       await session.abortTransaction();
       return res.status(400).json({ message: "Party is required for non-cash bills" });
     }
+
+    const partyDoc = await Party.findById(party);
 
     const newBill = new SalesBill({
       party: is_cash_customer ? null : party,
@@ -59,7 +62,6 @@ router.post("/", verifyToken, async (req, res) => {
     // Create party transaction
     if (!is_cash_customer) {
      
-
       await PartyTransaction.create([{
         party_id: party,
         amount: grand_total,
@@ -68,12 +70,24 @@ router.post("/", verifyToken, async (req, res) => {
         invoice_id: savedBill._id,
         amount_paid: payment.amount_received,
       }], { session });
+
+      partyDoc.current_balance += grand_total - payment.amount_received;
+      await partyDoc.save({ session });
+
+      // Create ledger entry
+      await Ledger.create([{
+        party_id: party,
+        type: "Sell Invoice",
+        bill_number: savedBill.bill_number,
+        debit: grand_total,
+        credit: payment.amount_received,
+        balance: partyDoc.current_balance
+      }], { session });
     }
 
     await session.commitTransaction();
 
-    const populatedBill = await SalesBill.findById(savedBill._id)
-      .populate('party').populate('items.item').populate('created_by');
+    const populatedBill = await SalesBill.findById(savedBill._id);
 
     res.status(201).json(populatedBill);
   } catch (error) {
@@ -94,8 +108,7 @@ router.post("/", verifyToken, async (req, res) => {
 // Get all bills
 router.get("/", verifyToken, async (req, res) => {
   try {
-    const bills = await SalesBill.find({ hospital: req.user.hospital })
-      .populate('party').populate('items.item').populate('created_by').sort({ createdAt: -1 });
+    const bills = await SalesBill.find({ hospital: req.user.hospital }).sort({ createdAt: -1 });
     res.json(bills);
   } catch (error) {
     console.error('Error fetching bills:', error);

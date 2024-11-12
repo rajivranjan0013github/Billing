@@ -3,13 +3,15 @@ import { Payment } from '../models/Payment.js';
 import mongoose from 'mongoose';
 import { PurchaseBill } from "../models/PurchaseBill.js";
 import { SalesBill } from "../models/SalesBill.js";
-
+import { Ledger } from "../models/Ledger.js";
+import { Party } from "../models/Party.js";
+import { PartyTransaction } from "../models/PartyTransaction.js";
 const router = express.Router();
 
 router.get("/", async (req, res) => {
   try {
     const { payment_type } = req.query;
-    const payments = await Payment.find({ payment_type });
+    const payments = await Payment.find({ payment_type }).sort({ createdAt: -1 }).lean();
     res.status(200).json(payments);
   } catch (error) {
     console.error("Error fetching payments:", error);
@@ -38,10 +40,10 @@ router.get("/pending-invoices/:partyId", async (req, res) => {
           payment_status: "pending" 
         }
       ).session(session)
-        .select('current_balance bill_number payment payment_status bill_date grand_total');
+        .select('bill_number payment payment_status bill_date grand_total');
     } else if (bill_type === "sales") {
       pendingInvoices = await SalesBill.find({ party: partyId, payment_status: "pending" }, session)
-        .select('current_balance bill_number payment payment_status bill_date grand_total');
+        .select('bill_number payment payment_status bill_date grand_total');
     }
     
     await session.commitTransaction();
@@ -54,13 +56,16 @@ router.get("/pending-invoices/:partyId", async (req, res) => {
   }
 });
 
+// only for payment out
 router.post("/make-payment", async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   
   try {
-    const { payment_type, payment_method, party_id, party_name, remarks, bill_number, bill_id, amount, payment_date } = req.body;
+    const {bills, party_id, remarks, payment_type, payment_method, amount, payment_date, payment_out_number} = req.body;
 
+    let payment_amount = amount;
+    
     // Validate required fields
     if (!payment_type || !payment_method || !party_id || !amount) {
       return res.status(400).json({ 
@@ -68,39 +73,68 @@ router.post("/make-payment", async (req, res) => {
       });
     }
 
+    // updating party balance
+    const partyDoc = await Party.findById(party_id).session(session);
+    partyDoc.current_balance += amount;
+
     // Create payment record
-    const payment = new Payment({ payment_type, payment_method, party_id, party_name, remarks, bill_number, bill_id, amount, payment_date });
+    const payment = new Payment({
+      payment_number : payment_out_number,
+      payment_type : "Payment Out", 
+      payment_method, 
+      party_id, 
+      party_name : partyDoc.name,
+      remarks, 
+      amount, 
+      payment_date 
+    });
+
+    // creat party ledger
+    const ledger = new Ledger({
+      party_id, 
+      type: "Payment Out",
+      debit: amount,
+      description: remarks,
+      bill_number: payment_out_number,
+      amount : partyDoc.current_balance
+    });
+
+    await ledger.save({ session });
+
+    // creating party transaction
+    const partyTransaction = new PartyTransaction({
+      party_id,
+      type: "Payment Out",
+      amount,
+      description: remarks,
+      bill_number: payment_out_number,
+      invoice_id: payment._id 
+    });
+    await partyTransaction.save({ session });
+    // updating bills
+    for(const bill of bills){
+      if(payment_amount === 0) break;
+      const billDoc = await PurchaseBill.findById(bill.bill_id).session(session);
+      if(!billDoc){
+        return res.status(400).json({ message: "Bill not found" });
+      }
+      const due_amount = billDoc.grand_total - billDoc.payment.amount_paid;
+      if(due_amount > payment_amount){
+        billDoc.payment.amount_paid += payment_amount;
+        payment_amount = 0;
+      }else{
+        billDoc.payment.amount_paid += due_amount;
+        billDoc.payment_status = "paid";
+        payment_amount -= due_amount;
+      }
+      billDoc.payment_details.push(payment._id);
+      payment.bills.push(bill.bill_id);
+      await billDoc.save({ session });
+    }
+
     await payment.save({ session });
-
-    // Update bill payment status and current balance
-    const Bill = payment_type === 'purchase' ? PurchaseBill : SalesBill;
-    const bill = await Bill.findById(bill_id).session(session);
+    await partyDoc.save({ session });
     
-    if (!bill) {
-      throw new Error('Bill not found');
-    }
-
-    // Update payment details array
-    bill.payment_details.push(payment._id);
-    
-    // Update payment amount based on bill type
-    if (payment_type === 'purchase') {
-      bill.payment.amount_paid = (bill.payment.amount_paid || 0) + amount;
-    } else {
-      bill.payment.amount_received = (bill.payment.amount_received || 0) + amount;
-    }
-
-    // Calculate remaining balance
-    const totalAmount = bill.grand_total;
-    const paidAmount = payment_type === 'purchase' ? 
-      bill.payment.amount_paid : 
-      bill.payment.amount_received;
-    
-    // Update payment status
-    bill.payment_status = paidAmount >= totalAmount ? 'paid' : 'pending';
-
-    await bill.save({ session });
-
     await session.commitTransaction();
     res.status(201).json(payment);
 
@@ -115,6 +149,24 @@ router.post("/make-payment", async (req, res) => {
     session.endSession();
   }
 });
+
+router.get("/details/:paymentId", async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    const payment = await Payment.findById(paymentId).populate("bills").lean();
+    res.status(200).json(payment);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching payment details", error: error.message });
+  }
+});
+
+router.get("/ledger", async (req, res) => {
+  const { party_id } = req.query;
+  const ledger = await Ledger.find({ party_id });
+  res.status(200).json(ledger);
+});
+
+
 
 
 

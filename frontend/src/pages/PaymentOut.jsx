@@ -4,9 +4,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Input } from "../components/ui/input"
 import { MessageSquare, Search, Settings } from "lucide-react"
 import { useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import { fetchPayments } from "../redux/slices/paymentSlice";
+import { useEffect } from "react";
 
 export default function Component() {
   const navigate = useNavigate();
+  const { paymentOut, fetchStatus } = useSelector((state) => state.payment);
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    if (fetchStatus === "idle") {
+      dispatch(fetchPayments("Payment Out"));
+    }
+  }, [dispatch, fetchStatus]);
   
   return (
     <div className="w-full max-w-6xl mx-auto p-4 space-y-4">
@@ -55,12 +66,27 @@ export default function Component() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow>
-              <TableCell>05 Nov 2024</TableCell>
-              <TableCell>1</TableCell>
-              <TableCell>Vivek Pharma</TableCell>
-              <TableCell className="text-right">₹ 2,600</TableCell>
-            </TableRow>
+            {paymentOut.map((payment) => (
+              <TableRow key={payment._id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/purchase/payment-out/${payment._id}`)}>
+                <TableCell>
+                  {new Date(payment.createdAt).toLocaleDateString('en-IN', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                  })}
+                </TableCell>
+                <TableCell>{payment?.payment_number}</TableCell>
+                <TableCell>{payment.party_name}</TableCell>
+                <TableCell className="text-right">₹ {payment.amount.toLocaleString('en-IN')}</TableCell>
+              </TableRow>
+            ))}
+            {paymentOut.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  No payments found
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>

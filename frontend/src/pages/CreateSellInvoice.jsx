@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Checkbox } from "../components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import SelectPartyDialog from "../components/custom/pharmacy/SelectPartyDialog";
-import SelectItemDialog from "../components/custom/pharmacy/SelectItemDialog";
+import SelectSaleItemDialog from "../components/custom/pharmacy/SelectSaleItemDialog";
 import { useDispatch, useSelector } from 'react-redux';
 import { createBill } from '../redux/slices/SellBillSlice';
 import { useNavigate } from 'react-router-dom';
@@ -350,13 +350,13 @@ const CreateSellInvoice = () => {
 
   const handleSaveBill = async () => {
     if (items.length === 0) {
-      toast({ title: 'Error', description: 'Please add at least one item to the bill', variant: 'destructive',});
+      toast({ title: 'Please add at least one item', variant: 'destructive'});
       return;
     }
 
     // Check if either cash customer or party is selected
     if (!isCashCustomer && !selectedParty) {
-      alert('Please select a party or mark as cash customer');
+      toast({ title: 'Please select a party or mark as cash customer', variant: 'destructive'});
       return;
     }
 
@@ -398,10 +398,10 @@ const CreateSellInvoice = () => {
 
     try {
       const resultAction = await dispatch(createBill(billData)).unwrap();
-      toast({variant: 'success',title: 'Success',description: 'Bill created successfully',});
+      toast({variant: 'success',title: 'Bill created successfully',});
       navigate(`/sales/${resultAction._id}`);
     } catch (error) {
-      toast({variant: 'destructive',title: 'Error',description: error.message || 'Failed to create bill',});
+      toast({variant: 'destructive',title: 'Failed to create bill'});
     }
   };
 
@@ -759,11 +759,10 @@ const CreateSellInvoice = () => {
         </DialogContent>
       </Dialog>
       <SelectPartyDialog open={showPartyDialog} onOpenChange={setShowPartyDialog} onSelectParty={handlePartySelect} />
-      <SelectItemDialog 
+      <SelectSaleItemDialog 
         open={showItemDialog} 
         onOpenChange={setShowItemDialog} 
         onSelectItem={handleItemSelect}
-        mode="sale"
       />
     </div>
   );

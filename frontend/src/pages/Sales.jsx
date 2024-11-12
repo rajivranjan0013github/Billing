@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchBills } from "../redux/slices/SellBillSlice";
 import { format } from "date-fns";
-import { Search, Settings, Mail, HelpCircle } from "lucide-react"
+import { Search, Settings, Mail, HelpCircle, PackageX } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Select } from "../components/ui/select"
@@ -143,6 +143,20 @@ export default function Sales() {
           {fetchStatus === 'loading' ? (
             <TableRow>
               <TableCell colSpan={7} className="text-center">Loading...</TableCell>
+            </TableRow>
+          ) : filteredBills.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={7}>
+                <div className="flex flex-col items-center justify-center py-8 text-center text-gray-500">
+                  <PackageX className="h-12 w-12 mb-2" />
+                  <p className="text-lg font-medium">No bills found</p>
+                  <p className="text-sm">
+                    {searchQuery 
+                      ? "Try adjusting your search query" 
+                      : "Start by creating your first sales invoice"}
+                  </p>
+                </div>
+              </TableCell>
             </TableRow>
           ) : filteredBills.map((bill) => (
             <TableRow 

@@ -52,9 +52,7 @@ export const navItems = [
       { name: "Payment Out", path: "/purchase/payment-out" },
     ],
   },
-  { name: "Supplier", icon: Package, path: "/supplier" },
   { name: "Item Master", icon: Package, path: "/items-master" },
-  { name: "Reports", icon: FileText, path: "/reports" },
   { name: "Staffs", icon: UsersIcon, path: "/staff" },
   { name: "Settings", icon: Settings, path: "/settings" },
 ];

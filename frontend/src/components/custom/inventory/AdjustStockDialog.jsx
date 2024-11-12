@@ -1,11 +1,5 @@
 import { Button } from "../../ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "../../ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter} from "../../ui/dialog"
 import { Input } from "../../ui/input"
 import { Label } from "../../ui/label"
 import { RadioGroup, RadioGroupItem } from "../../ui/radio-group"
@@ -16,7 +10,7 @@ import { useDispatch } from "react-redux"
 import { adjustStock } from "../../../redux/slices/inventorySlice"
 import { useToast } from "../../../hooks/use-toast"
 
-export default function AdjustStockDialog({ open, onOpenChange, item }) {
+export default function AdjustStockDialog({ open, onOpenChange, item, onStockAdjusted }) {
   const dispatch = useDispatch();
   const { toast } = useToast();
   const [adjustmentType, setAdjustmentType] = useState("add")
@@ -28,38 +22,24 @@ export default function AdjustStockDialog({ open, onOpenChange, item }) {
     e.preventDefault();
     
     if (!adjustmentQuantity || adjustmentQuantity <= 0) {
-      toast({
-        title: "Invalid quantity",
-        description: "Please enter a valid quantity greater than 0",
-        variant: "destructive",
-      });
+      toast({title: "Please enter a valid quantity", variant: "destructive"});
       return;
     }
-
     setIsSubmitting(true);
-    try {
-      await dispatch(adjustStock({
+    dispatch(adjustStock({
         itemId: item._id,
         adjustmentType,
         quantity: adjustmentQuantity,
         remarks
-      })).unwrap();
-
-      toast({
-        title: "Success",
-        description: "Stock adjusted successfully",
-        variant:"success"
+      })).unwrap().then(() => {
+        toast({title: "Stock Adjusted Successfully", variant:"success"});
+        onStockAdjusted(calculateNewQuantity());
+        onOpenChange(false);
+      }).catch((error) => {
+        toast({title: "Failed to Adjust Stock", variant: "destructive"});
+      }).finally(() => {
+        setIsSubmitting(false);
       });
-      onOpenChange(false);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to adjust stock",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const calculateNewQuantity = () => {

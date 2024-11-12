@@ -1,15 +1,15 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMediaQuery } from "../../../hooks/use-media-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../ui/card";
-import { Button } from "../../ui/button";
+import { useMediaQuery } from "../hooks/use-media-query";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
+import { Button } from "../components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Label } from "recharts";
 import { Pill, DollarSign, Package, Users, Calendar as CalendarIcon, Activity, ChevronRight, BriefcaseMedicalIcon, Download, AlertCircle } from "lucide-react";
 import { PieChart, Pie, Cell } from "recharts";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../../ui/dropdown-menu";
-import { convertFilterToDateRange, DateRangePicker, calculatePercentageChange } from "../../../assets/Data";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
+import { convertFilterToDateRange, DateRangePicker, calculatePercentageChange } from "../assets/Data";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchPharmacyDashboardData, fetchItems } from "../../../redux/slices/pharmacySlice";
+import { fetchPharmacyDashboardData, fetchItems } from "../redux/slices/pharmacySlice";
 import { startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, format, isEqual } from 'date-fns';
 
 const PharmacyDashboard = () => {

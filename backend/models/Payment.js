@@ -6,38 +6,32 @@ const paymentSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
+    payment_number: {
+        type: String,
+    },
     payment_type: { 
         type: String, 
-        enum: ["Income", "Expense"],
-        required: true,
+        enum: ["Payment In", "Payment Out", "Sell Invoice", "Purchase Invoice"],
     },
     payment_method: {
         type: String, 
-        enum: ["Cash", "UPI", "Cheque", "Card", "Bank Transfer"],
-        required: true
+        enum: ["cash", "upi", "cheque", "card", "bank_transfer"],
     },
     party_id: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'Party',
-        required: true,
     },
     party_name: {
         type: String,
-        required: true,
     },
     remarks: {
         type: String,
         trim: true
     },
-    bill_number: {
-        type: String,
-        trim: true,
-    },
-    bill_id: {
-        type: String,
-        trim: true,
-        sparse: true
-    }
+    bills: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'PurchaseBill'
+    }],
 }, {
     timestamps: true
 });

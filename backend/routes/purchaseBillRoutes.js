@@ -6,6 +6,7 @@ import { StockDetail } from "../models/StockDetail.js";
 import { PartyTransaction } from "../models/PartyTransaction.js";
 import { Party } from "../models/Party.js";
 import { Payment } from "../models/Payment.js";
+import { Ledger } from "../models/Ledger.js";
 import mongoose from "mongoose";
 
 const router = express.Router();
@@ -23,7 +24,12 @@ router.post("/", verifyToken, async (req, res) => {
       return res.status(400).json({ message: "Supplier is required for purchase bills" });
     }
 
+    const partyDoc = await Party.findById(supplier).session(session);
+
     const payment_status = payment.amount_paid === grand_total ? "paid" : "pending";
+
+    partyDoc.current_balance = partyDoc.current_balance + (payment.amount_paid - grand_total);
+    await partyDoc.save({ session });
 
     // Create new purchase bill with invoice details
     const newBill = new PurchaseBill({
@@ -52,6 +58,21 @@ router.post("/", verifyToken, async (req, res) => {
       hospital: req.user.hospital
     });
 
+     // Create payment
+    if(payment.amount_paid > 0){
+      const paymentDoc = new Payment({
+        amount: payment.amount_paid,
+        payment_type: "Purchase Invoice",
+        payment_method: payment.payment_method,
+        party_id: supplier,
+        party_name: supplier_name,
+        bill_number: newBill.bill_number,
+        bill_id: newBill._id,
+      });
+      await paymentDoc.save({ session });
+      newBill.payment_details.push(paymentDoc._id);
+    }
+
     const savedBill = await newBill.save({ session });
 
     // Update inventory quantities and create stock details
@@ -66,7 +87,6 @@ router.post("/", verifyToken, async (req, res) => {
         type: "Purchase Invoice",
         bill_number: savedBill.bill_number,
         closing_stock: newQuantity,
-        hospital: req.user.hospital
       }], { session });
 
       await Inventory.findByIdAndUpdate(item._id, { quantity: newQuantity }, { session });
@@ -82,12 +102,21 @@ router.post("/", verifyToken, async (req, res) => {
       amount_paid: payment.amount_paid,
     }], { session });
 
+    // Create ledger entry
+    await Ledger.create([{
+      credit: grand_total,
+      debit: payment.amount_paid,
+      party_id: supplier,
+      type: "Purchase Invoice",
+      bill_number: savedBill.bill_number,
+      bill_id: savedBill._id,
+      balance : partyDoc.current_balance
+    }], { session });
+
+   
     await session.commitTransaction();
 
-    const populatedBill = await PurchaseBill.findById(savedBill._id)
-      .populate('supplier')
-
-    res.status(201).json(populatedBill);
+    res.status(201).json(savedBill);
   } catch (error) {
     await session.abortTransaction();
     console.error('Error creating purchase bill:', error);

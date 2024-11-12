@@ -9,7 +9,7 @@ import {
 import Sales from "./Sales";
 import Purchase from "./Purchase";
 import PharmacyReports from "../components/custom/pharmacy/PharmacyReports";
-import PharmacyDashboard from "../components/custom/pharmacy/PharmacyDashboard";
+import PharmacyDashboard from "./PharmacyDashboard";
 import Supplier from "../components/custom/pharmacy/Supplier";
 import ItemsMaster from "../components/custom/pharmacy/ItemsMaster";
 

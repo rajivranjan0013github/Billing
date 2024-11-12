@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchPurchaseBills } from "../redux/slices/PurchaseBillSlice";
 import { format } from "date-fns";
-import { Search, Settings, Mail, HelpCircle } from "lucide-react"
+import { Search, Settings, Mail, HelpCircle, PackageX } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Select } from "../components/ui/select"
@@ -132,6 +132,16 @@ export default function Purchase() {
           {fetchStatus === 'loading' ? (
             <TableRow>
               <TableCell colSpan={7} className="text-center">Loading...</TableCell>
+            </TableRow>
+          ) : purchaseBills.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={7}>
+                <div className="flex flex-col items-center justify-center py-8 text-gray-500">
+                  <PackageX size={48} className="mb-2" />
+                  <p className="text-lg font-medium">No purchase bills found</p>
+                  <p className="text-sm">Create your first purchase invoice to get started</p>
+                </div>
+              </TableCell>
             </TableRow>
           ) : purchaseBills.map((bill) => (
             <TableRow 

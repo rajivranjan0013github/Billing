@@ -3,7 +3,7 @@ import { Input } from "../components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
 import { Card, CardContent } from "../components/ui/card"
-import { ChevronDown, FileText, Settings, Users, Search } from "lucide-react"
+import { ChevronDown, FileText, Settings, Users, Search, FileQuestion } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { fetchParties } from "../redux/slices/partySlice"
@@ -154,37 +154,53 @@ export default function Party() {
         </div>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[250px]">Party Name</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead>Mobile Number</TableHead>
-            <TableHead>Party type</TableHead>
-            <TableHead className="text-right">Balance</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredParties.map((party) => (
-            <TableRow 
-              key={party._id}
-              className="cursor-pointer hover:bg-gray-50"
-              onClick={() => navigate(`/party-details/${party._id}`)}
-            >
-              <TableCell className="font-medium">{party.name}</TableCell>
-              <TableCell>{party.party_category || '-'}</TableCell>
-              <TableCell>{party.mobile_number || '-'}</TableCell>
-              <TableCell>{party.party_type}</TableCell>
-              <TableCell className="text-right">
-                <span className={party.current_balance > 0 ? "text-green-600" : "text-red-600"}>
-                  {party.current_balance > 0 ? "↓ " : "↑ "}
-                  ₹ {Math.abs(party.current_balance || 0)}
-                </span>
-              </TableCell>
+      {filteredParties.length > 0 ? (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[250px]">Party Name</TableHead>
+              <TableHead>Mobile Number</TableHead>
+              <TableHead>Party type</TableHead>
+              <TableHead className="text-right">Balance</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {filteredParties.map((party) => (
+              <TableRow 
+                key={party._id}
+                className="cursor-pointer hover:bg-gray-50"
+                onClick={() => navigate(`/party-details/${party._id}`)}
+              >
+                <TableCell className="font-medium">{party.name}</TableCell>
+                <TableCell>{party.mobile_number || '-'}</TableCell>
+                <TableCell className="capitalize">{party.party_type}</TableCell>
+                <TableCell className="text-right">
+                  <span className={party.current_balance > 0 ? "text-green-600" : "text-red-600"}>
+                    {party.current_balance > 0 ? "↓ " : "↑ "}
+                    ₹ {Math.abs(party.current_balance || 0)}
+                  </span>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-10 bg-gray-50 rounded-lg">
+          <FileQuestion className="h-16 w-16 text-gray-400 mb-4" />
+          <p className="text-lg font-medium text-gray-500">No parties found</p>
+          <p className="text-sm text-gray-400 mt-1">
+            {searchTerm || filterPartyType !== 'all' || filterBalanceType !== 'all' 
+              ? "Try adjusting your filters or search terms"
+              : "Get started by creating your first party"}
+          </p>
+          <Button 
+            className="mt-4"
+            onClick={() => navigate('/parties/create-party')}
+          >
+            Create Party
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

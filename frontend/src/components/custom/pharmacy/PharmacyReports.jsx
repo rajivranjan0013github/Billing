@@ -27,7 +27,7 @@ import {
   fetchSalesBills,
   fetchItems,
 } from "../../../redux/slices/pharmacySlice";
-import BillsTableWithDialog from "./itemMaster/BillsTableWithDialog";
+import BillsTableWithDialog from "../itemMaster/BillsTableWithDialog";
 import {
   format,
   addMonths,

@@ -25,12 +25,11 @@ export default function CreateParty() {
     pan_number: "",
     drug_license_number: "",
     party_type: "customer",
-    party_category: "",
     billing_address: "",
     shipping_address: "",
     credit_period: 30,
     credit_limit: 0,
-    sameAsBilling: false, // Add this new state
+    sameAsBilling: false,
   });
 
   const handleInputChange = (e) => {
@@ -58,14 +57,12 @@ export default function CreateParty() {
       await dispatch(createParty(partyData)).unwrap();
       toast({
         title: "Party created successfully",
-        description: "The new party has been added to the system.",
         variant:"success"
       });
       navigate('/parties')
     } catch (error) {
       toast({
-        title: "Error creating party",
-        description: error.message || "An error occurred while creating the party.",
+        title: "Party creation failed",
         variant: "destructive",
       });
     }
@@ -133,9 +130,7 @@ export default function CreateParty() {
             <Label htmlFor="gstin">GSTIN</Label>
             <div className="flex space-x-2">
               <Input id="gstin" name="gstin" value={formData.gstin} onChange={handleInputChange} placeholder="ex: 29XXXXX9438X1XX" />
-              <Button variant="secondary">Get Details</Button>
             </div>
-            <p className="text-sm text-gray-500 mt-1">Note: You can auto populate party details from GSTIN</p>
           </div>
           <div>
             <Label htmlFor="panNumber">PAN Number</Label>
@@ -163,18 +158,6 @@ export default function CreateParty() {
               <SelectContent>
                 <SelectItem value="customer">Customer</SelectItem>
                 <SelectItem value="supplier">Supplier</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="partyCategory">Party Category</Label>
-            <Select value={formData.party_category} onValueChange={(value) => handleSelectChange("party_category", value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="category1">Category 1</SelectItem>
-                <SelectItem value="category2">Category 2</SelectItem>
               </SelectContent>
             </Select>
           </div>

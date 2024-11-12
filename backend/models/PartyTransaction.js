@@ -12,7 +12,7 @@ const PartyTransactionSchema = new mongoose.Schema({
   amount_paid : Number,
   type: {
     type: String, 
-    enum: ["Opening Balance", "Purchase Invoice", "Sell Invoice"]
+    enum: ["Opening Balance", "Purchase Invoice", "Sell Invoice", "Payment In", "Payment Out"]
   },
   bill_number: String,
   invoice_id : String,

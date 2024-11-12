@@ -38,25 +38,10 @@ export const fetchPurchaseBills = createLoadingAsyncThunk(
   }
 );
 
-// Fetch a single purchase bill by ID
-export const fetchPurchaseBillById = createLoadingAsyncThunk(
-  'purchaseBill/fetchPurchaseBillById',
-  async (id) => {
-    const response = await fetch(`${Backend_URL}/api/purchase/${id}`, { 
-      credentials: 'include' 
-    });
-    if (!response.ok) {
-      throw new Error('Failed to fetch purchase bill');
-    }
-    return response.json();
-  }, 
-  { useGlobalLoader: true }
-);
 
 const purchaseBillSlice = createSlice({
   name: 'purchaseBill',
   initialState: {
-    currentPurchaseBill: null,
     purchaseBills: [],
     createPurchaseBillStatus: 'idle',
     fetchStatus: 'idle',
@@ -71,7 +56,7 @@ const purchaseBillSlice = createSlice({
       })
       .addCase(createPurchaseBill.fulfilled, (state, action) => {
         state.createPurchaseBillStatus = 'succeeded';
-        state.currentPurchaseBill = action.payload;
+        state.purchaseBills.unshift(action.payload);
       })
       .addCase(createPurchaseBill.rejected, (state, action) => {
         state.createPurchaseBillStatus = 'failed';
@@ -88,17 +73,6 @@ const purchaseBillSlice = createSlice({
         state.fetchStatus = 'failed';
         state.error = action.payload;
       })
-      .addCase(fetchPurchaseBillById.pending, (state) => {
-        state.fetchStatus = 'loading';
-      })
-      .addCase(fetchPurchaseBillById.fulfilled, (state, action) => {
-        state.fetchStatus = 'succeeded';
-        state.currentPurchaseBill = action.payload;
-      })
-      .addCase(fetchPurchaseBillById.rejected, (state, action) => {
-        state.fetchStatus = 'failed';
-        state.error = action.payload;
-      });
   },
 });
 

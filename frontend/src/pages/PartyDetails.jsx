@@ -2,26 +2,13 @@ import { ArrowLeft, FileText, Plus, Printer, Trash2, ArrowUpDown, Calendar, File
 import { useEffect, useState } from "react"
 import { Backend_URL } from "../assets/Data"
 import { Loader2 } from "lucide-react"
-
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../components/ui/dropdown-menu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { useNavigate, useParams } from "react-router-dom";
 import { Badge } from "../components/ui/badge"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../components/ui/table"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table"
 
 export default function PartyDetails() {
     const navigate = useNavigate();
@@ -29,6 +16,7 @@ export default function PartyDetails() {
     const [party, setParty] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [transactions, setTransactions] = useState([]);
+    const [ledger, setLedger] = useState([]);
 
     useEffect(() => {
         const fetchPartyDetails = async () => {
@@ -67,6 +55,24 @@ export default function PartyDetails() {
         }
     }, [partyId]);
 
+    useEffect(() => {
+        const fetchLedger = async () => {
+            try {
+                const response = await fetch(`${Backend_URL}/api/party/ledger/${partyId}`, {
+                    credentials: "include",
+                });
+                const data = await response.json();
+                setLedger(data);
+            } catch (error) {
+                console.error('Error fetching ledger:', error);
+            }
+        };
+        
+        if (partyId) {
+            fetchLedger();
+        }
+    }, [partyId]);
+
     if (isLoading) {
         return (
             <div className="h-screen flex items-center justify-center">
@@ -94,19 +100,33 @@ export default function PartyDetails() {
             unpaidAmount: transaction.amount_paid < transaction.amount 
                 ? `₹ ${(transaction.amount - transaction.amount_paid).toLocaleString()}`
                 : null,
-            status: transaction.amount_paid >= transaction.amount ? "Paid" : "Partial Paid",
+            status: ['Payment In', 'Payment Out'].includes(transaction.type) 
+                ? null 
+                : (transaction.amount_paid >= transaction.amount ? "Paid" : "Partial Paid"),
             invoice_id: transaction.invoice_id
         }));
     };
 
     const handleTransactionClick = (transaction) => {
-        console.log(transaction);
-        
         if(transaction.type === "Sell Invoice"){
             navigate(`/sales/${transaction.invoice_id}`);
-        } else {
+        } else if (transaction.type === "Purchase Invoice") {
             navigate(`/purchase/${transaction.invoice_id}`);
+        } else{
+            navigate(`/purchase/payment-out/${transaction.invoice_id}`);
         }
+    };
+
+    const formatLedger = (ledgerEntries) => {
+        return ledgerEntries.map(entry => ({
+            date: new Date(entry.date).toLocaleDateString(),
+            type: entry.type,
+            number: entry.bill_number || entry.invoice_id || '-',
+            description: entry.description || '-',
+            debit: entry.debit ? `₹ ${entry.debit.toLocaleString()}` : '-',
+            credit: entry.credit ? `₹ ${entry.credit.toLocaleString()}` : '-',
+            balance: entry.balance ? `₹ ${entry.balance.toLocaleString()}` : '-',
+        }));
     };
 
     return (
@@ -117,6 +137,7 @@ export default function PartyDetails() {
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
                     <h1 className="text-xl font-semibold">{party.name}</h1>
+                    <span className="text-sm text-gray-500 capitalize">({party.party_type})</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <DropdownMenu>
@@ -146,12 +167,7 @@ export default function PartyDetails() {
                 <div className="border-b">
                     <div className="px-6">
                         <TabsList className="h-12 p-0 bg-transparent border-b-0">
-                            <TabsTrigger
-                                value="transactions"
-                                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
-                            >
-                                Transactions
-                            </TabsTrigger>
+                           
                             <TabsTrigger
                                 value="profile"
                                 className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
@@ -165,10 +181,10 @@ export default function PartyDetails() {
                                 Ledger (Statement)
                             </TabsTrigger>
                             <TabsTrigger
-                                value="report"
+                                value="transactions"
                                 className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
                             >
-                                Item Wise Report
+                                Transactions
                             </TabsTrigger>
                         </TabsList>
                     </div>
@@ -217,6 +233,10 @@ export default function PartyDetails() {
                                                     ({party.current_balance > 0 ? 'To Collect' : 'To Pay'})
                                                 </span>
                                             </div>
+                                        </div>
+                                        <div>
+                                            <div className="text-sm text-muted-foreground">Customer Type</div>
+                                            <div className="capitalize">{party.party_type}</div>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -337,16 +357,18 @@ export default function PartyDetails() {
                                                     )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge
-                                                        variant="secondary"
-                                                        className={
-                                                            transaction.status === "Paid"
-                                                                ? "bg-green-100 text-green-700 hover:bg-green-100"
-                                                                : "bg-yellow-100 text-yellow-700 hover:bg-yellow-100"
-                                                        }
-                                                    >
-                                                        {transaction.status}
-                                                    </Badge>
+                                                    {transaction.status && (
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className={
+                                                                transaction.status === "Paid"
+                                                                    ? "bg-green-100 text-green-700 hover:bg-green-100"
+                                                                    : "bg-yellow-100 text-yellow-700 hover:bg-yellow-100"
+                                                            }
+                                                        >
+                                                            {transaction.status}
+                                                        </Badge>
+                                                    )}
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -358,6 +380,81 @@ export default function PartyDetails() {
                                 <FileX className="h-12 w-12 mb-4" />
                                 <p className="text-lg font-medium">No transactions found</p>
                                 <p className="text-sm">This party doesn't have any transactions yet.</p>
+                            </div>
+                        )}
+                    </TabsContent>
+                    <TabsContent value="ledger" className="m-0">
+                        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" className="w-full sm:w-auto">
+                                        <Calendar className="mr-2 h-4 w-4" />
+                                        Last 365 Days
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DropdownMenuItem>Last 7 Days</DropdownMenuItem>
+                                    <DropdownMenuItem>Last 30 Days</DropdownMenuItem>
+                                    <DropdownMenuItem>Last 365 Days</DropdownMenuItem>
+                                    <DropdownMenuItem>Custom Range</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+
+                        {ledger.length > 0 ? (
+                            <div className="border rounded-lg">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-muted/50">
+                                            <TableHead className="font-semibold">
+                                                <Button variant="ghost" className="p-0 h-auto font-semibold hover:bg-transparent">
+                                                    Date
+                                                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                                                </Button>
+                                            </TableHead>
+                                            <TableHead className="font-semibold">Type</TableHead>
+                                            <TableHead className="font-semibold">Number</TableHead>
+                                            <TableHead className="font-semibold">Description</TableHead>
+                                            <TableHead className="font-semibold text-right">Debit</TableHead>
+                                            <TableHead className="font-semibold text-right">Credit</TableHead>
+                                            <TableHead className="font-semibold text-right">Balance</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {formatLedger(ledger).map((entry, index) => (
+                                            <TableRow key={index}>
+                                                <TableCell>{entry.date}</TableCell>
+                                                <TableCell>
+                                                    <span className="text-blue-600">{entry.type}</span>
+                                                </TableCell>
+                                                <TableCell>{entry.number}</TableCell>
+                                                <TableCell>{entry.description}</TableCell>
+                                                <TableCell className="text-right">{entry.debit}</TableCell>
+                                                <TableCell className="text-right">{entry.credit}</TableCell>
+                                                <TableCell className="text-right">{entry.balance}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                        <TableRow className="font-medium bg-muted/50">
+                                            <TableCell></TableCell>
+                                            <TableCell colSpan={3}>Closing Balance</TableCell>
+                                            <TableCell className="text-right">
+                                                {`₹ ${ledger.reduce((sum, entry) => sum + (entry.debit || 0), 0).toLocaleString()}`}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                {`₹ ${ledger.reduce((sum, entry) => sum + (entry.credit || 0), 0).toLocaleString()}`}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                {`₹ ${party.current_balance.toLocaleString()}`}
+                                            </TableCell>
+                                        </TableRow>
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                                <FileX className="h-12 w-12 mb-4" />
+                                <p className="text-lg font-medium">No ledger entries found</p>
+                                <p className="text-sm">This party doesn't have any ledger entries yet.</p>
                             </div>
                         )}
                     </TabsContent>

@@ -6,7 +6,7 @@ const purchaseBillSchema = new mongoose.Schema({
   bill_number: {
     type: String,
     required: true,
-    unique: true
+    // unique: true
   },
   invoice_counter: {
     type: Number,
@@ -22,7 +22,6 @@ const purchaseBillSchema = new mongoose.Schema({
   supplier: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Party',
-    required: true
   },
   supplier_name: {
     type: String,
