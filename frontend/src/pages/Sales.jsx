@@ -29,8 +29,8 @@ export default function Sales() {
     if (bills.length > 0) {
       const totals = bills.reduce((acc, bill) => {
         acc.total += bill.grand_total;
-        acc.paid += bill.payment.amount_received;
-        acc.unpaid += (bill.grand_total - bill.payment.amount_received);
+        acc.paid += bill.payment.amount_paid;
+        acc.unpaid += (bill.grand_total - bill.payment.amount_paid);
         return acc;
       }, { total: 0, paid: 0, unpaid: 0 });
 
@@ -173,23 +173,23 @@ export default function Sales() {
               <TableCell>-</TableCell>
               <TableCell>
                 {formatCurrency(bill.grand_total)}
-                {bill.grand_total !== bill.payment.amount_received && (
+                {bill.grand_total !== bill.payment.amount_paid && (
                   <div className="text-sm text-gray-500">
-                    ({formatCurrency(bill.grand_total - bill.payment.amount_received)} unpaid)
+                    ({formatCurrency(bill.grand_total - bill.payment.amount_paid)} unpaid)
                   </div>
                 )}
               </TableCell>
               <TableCell>
                 <span className={`px-2 py-1 rounded-full text-xs ${
-                  bill.payment.amount_received >= bill.grand_total 
+                  bill.payment.amount_paid >= bill.grand_total 
                     ? "bg-green-100 text-green-800"
-                    : bill.payment.amount_received > 0
+                    : bill.payment.amount_paid > 0
                     ? "bg-yellow-100 text-yellow-800"
                     : "bg-red-100 text-red-800"
                 }`}>
-                  {bill.payment.amount_received >= bill.grand_total 
+                  {bill.payment.amount_paid >= bill.grand_total 
                     ? "Paid"
-                    : bill.payment.amount_received > 0
+                    : bill.payment.amount_paid > 0
                     ? "Partially Paid"
                     : "Unpaid"}
                 </span>

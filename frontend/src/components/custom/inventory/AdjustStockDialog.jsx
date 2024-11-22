@@ -9,6 +9,7 @@ import { useState } from "react"
 import { useDispatch } from "react-redux"
 import { adjustStock } from "../../../redux/slices/inventorySlice"
 import { useToast } from "../../../hooks/use-toast"
+import { formatQuantityDisplay, calculateQuantityValue } from "../../../assets/utils"
 
 export default function AdjustStockDialog({ open, onOpenChange, item, onStockAdjusted }) {
   const dispatch = useDispatch();
@@ -29,7 +30,7 @@ export default function AdjustStockDialog({ open, onOpenChange, item, onStockAdj
     dispatch(adjustStock({
         itemId: item._id,
         adjustmentType,
-        quantity: adjustmentQuantity,
+        quantity: calculateQuantityValue(adjustmentQuantity, item.secondary_unit?.conversion_rate),
         remarks
       })).unwrap().then(() => {
         toast({title: "Stock Adjusted Successfully", variant:"success"});
@@ -43,11 +44,15 @@ export default function AdjustStockDialog({ open, onOpenChange, item, onStockAdj
   };
 
   const calculateNewQuantity = () => {
-    if (!adjustmentQuantity) return item.quantity
-    const adjustment = parseInt(adjustmentQuantity) || 0
-    return adjustmentType === "add" 
-      ? item.quantity + adjustment 
-      : item.quantity - adjustment
+    if (!adjustmentQuantity) return item.quantity;
+    const temp = calculateQuantityValue(adjustmentQuantity, item.secondary_unit?.conversion_rate);
+    let newQty;
+    if(adjustmentType === "add") {
+      newQty = parseFloat(item.quantity) + parseFloat(temp);
+    } else {
+      newQty = parseFloat(item.quantity) - parseFloat(temp);
+    }
+    return newQty;
   }
 
   return (
@@ -90,24 +95,23 @@ export default function AdjustStockDialog({ open, onOpenChange, item, onStockAdj
               <div className="grid gap-2">
                 <Label className="font-medium">Current Stock Level</Label>
                 <div className="text-sm text-muted-foreground bg-secondary/30 p-2 rounded-md">
-                  {item.quantity} {item.unit}
+                  {formatQuantityDisplay(item.quantity, item.unit, item.secondary_unit)}
                 </div>
               </div>
 
               <div className="grid gap-2">
                 <Label className="font-medium">Adjust Quantity<span className="text-red-500">*</span></Label>
-                <div className="relative">
-                  <Input 
-                    type="number" 
-                    placeholder="0" 
-                    className="pr-16"
-                    required
-                    value={adjustmentQuantity}
-                    onChange={(e) => setAdjustmentQuantity(e.target.value)}
-                  />
-                  <div className="absolute right-3 top-2.5 text-sm text-muted-foreground">
-                    {item.unit}
+                <div className="flex gap-2">
+                  <div className="relative flex-grow">
+                    <Input 
+                      type="text" 
+                      placeholder="0" 
+                      required
+                      value={adjustmentQuantity}
+                      onChange={(e) => setAdjustmentQuantity(e.target.value)}
+                    />
                   </div>
+                  <p>{item.unit}</p>
                 </div>
               </div>
 
@@ -124,7 +128,7 @@ export default function AdjustStockDialog({ open, onOpenChange, item, onStockAdj
               <div className="grid gap-2">
                 <Label className="font-medium">New Stock Level</Label>
                 <div className="text-sm text-muted-foreground bg-secondary/30 p-2 rounded-md">
-                  {calculateNewQuantity()} {item.unit}
+                  {formatQuantityDisplay(calculateNewQuantity(), item.unit, item.secondary_unit, true)}
                 </div>
               </div>
             </div>
@@ -132,20 +136,8 @@ export default function AdjustStockDialog({ open, onOpenChange, item, onStockAdj
 
           <Separator className="mt-2" />
           <DialogFooter className="px-4 py-2 shrink-0">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit"
-              size="sm"
-              className="bg-primary hover:bg-primary/90"
-              disabled={isSubmitting}
-            >
+            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" size="sm" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>

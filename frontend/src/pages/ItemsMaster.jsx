@@ -13,6 +13,7 @@ import { Badge } from "../components/ui/badge";
 import AddItemDialog from "../components/custom/itemMaster/AddItemDialog";
 import { useToast } from "../hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { formatQuantityDisplay } from "../assets/utils";
 
 export default function ItemsMaster() {
   const dispatch = useDispatch();
@@ -158,7 +159,7 @@ export default function ItemsMaster() {
                             : "success"
                         }
                       >
-                        {item?.quantity}{" "}{item?.unit}
+                        {formatQuantityDisplay(item.quantity, item.unit, item?.secondary_unit, true)}
                       </Badge>
                     </TableCell>
                     <TableCell>{item?.expiry_date ? format(new Date(item?.expiry_date), 'MMM, yyyy') : "-"}</TableCell>

@@ -2,9 +2,22 @@ import { createSlice } from "@reduxjs/toolkit";
 import createLoadingAsyncThunk from "./createLoadingAsyncThunk";
 import { Backend_URL } from "../../assets/Data";
 
-export const fetchPayments = createLoadingAsyncThunk(
-  "payment/fetchPayments",
-  async (payment_type) => {
+export const fetchPaymentsOut = createLoadingAsyncThunk(
+  "payment/fetchPaymentsOut",
+  async () => {
+    const payment_type = "Payment Out";
+    const response = await fetch(
+      `${Backend_URL}/api/payment?payment_type=${payment_type}`,
+      { credentials: "include" }
+    );
+    return response.json();
+  }
+);
+
+export const fetchPaymentsIn = createLoadingAsyncThunk(
+  "payment/fetchPaymentsIn",
+  async () => {
+    const payment_type = "Payment In";
     const response = await fetch(
       `${Backend_URL}/api/payment?payment_type=${payment_type}`,
       { credentials: "include" }
@@ -35,24 +48,36 @@ export const createPayment = createLoadingAsyncThunk(
 const paymentSlice = createSlice({
   name: "payment",
   initialState: {
-    payments: [],
+    paymentIn: [],
     paymentOut: [],
-    fetchStatus: "idle",
+    paymentInStatus: "idle",
+    paymentOutStatus: "idle",
     createStatus: "idle",
     error: null,
   },
   reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(fetchPayments.pending, (state) => {
-        state.fetchStatus = "loading";
+      .addCase(fetchPaymentsOut.pending, (state) => {
+        state.paymentOutStatus = "loading";
       })
-      .addCase(fetchPayments.fulfilled, (state, action) => {
-        state.fetchStatus = "succeeded";
+      .addCase(fetchPaymentsOut.fulfilled, (state, action) => {
+        state.paymentOutStatus = "succeeded";
         state.paymentOut = action.payload;
       })
-      .addCase(fetchPayments.rejected, (state, action) => {
-        state.fetchStatus = "failed";
+      .addCase(fetchPaymentsOut.rejected, (state, action) => {
+        state.paymentOutStatus = "failed";
+        state.error = action.error.message;
+      })
+      .addCase(fetchPaymentsIn.pending, (state) => {
+        state.paymentInStatus = "loading";
+      })
+      .addCase(fetchPaymentsIn.fulfilled, (state, action) => {
+        state.paymentInStatus = "succeeded";
+        state.paymentIn = action.payload;
+      })
+      .addCase(fetchPaymentsIn.rejected, (state, action) => {
+        state.paymentInStatus = "failed";
         state.error = action.error.message;
       })
       .addCase(createPayment.pending, (state) => {
@@ -60,7 +85,11 @@ const paymentSlice = createSlice({
       })
       .addCase(createPayment.fulfilled, (state, action) => {
         state.createStatus = "succeeded";
-        state.paymentOut.unshift(action.payload);
+        if(action.payload.payment_type === "Payment Out") {
+          state.paymentOut.unshift(action.payload);
+        } else {
+          state.paymentIn.unshift(action.payload);
+        }
       })
       .addCase(createPayment.rejected, (state, action) => {
         state.createStatus = "failed";

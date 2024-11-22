@@ -49,6 +49,10 @@ const salesBillSchema = new mongoose.Schema({
       type: Number,
       required: true
     },
+    secondary_unit: {
+      unit: String,
+      conversion_rate: Number,
+    },
     discount_percentage: {
       type: Number,
       default: 0
@@ -68,7 +72,7 @@ const salesBillSchema = new mongoose.Schema({
 
   // Payment Details
   payment: {
-    amount_received: {
+    amount_paid: {
       type: Number,
       required: true
     },

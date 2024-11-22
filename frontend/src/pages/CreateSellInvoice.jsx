@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import { Input } from "../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Checkbox } from "../components/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import SelectPartyDialog from "../components/custom/pharmacy/SelectPartyDialog";
 import SelectSaleItemDialog from "../components/custom/pharmacy/SelectSaleItemDialog";
 import { useDispatch, useSelector } from 'react-redux';
@@ -13,32 +12,7 @@ import { createBill } from '../redux/slices/SellBillSlice';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../hooks/use-toast';
 import { Backend_URL } from "../assets/Data";
-
-const DiscountInputs = ({ billDiscountPercent, billDiscountAmount, handleBillDiscountChange, handleRemoveDiscount}) => (
-  <div className="flex items-center gap-2">
-    <div className="flex items-center">
-      <span className="bg-gray-100 border border-r-0 border-gray-200 rounded-l h-7 w-8 text-sm flex items-center justify-center">%</span>
-      <Input
-        type="number"
-        value={billDiscountPercent === 0 ? "" : billDiscountPercent}
-        onChange={(e) => handleBillDiscountChange("percent", e.target.value)}
-        className="w-16 h-7 rounded-l-none text-sm"
-        placeholder="0"
-      />
-    </div>
-    <div className="flex items-center">
-      <span className="bg-gray-100 border border-r-0 border-gray-200 rounded-l h-7 w-8 text-sm flex items-center justify-center">₹</span>
-      <Input
-        type="number"
-        value={billDiscountAmount === 0 ? "" : billDiscountAmount}
-        onChange={(e) => handleBillDiscountChange("amount", e.target.value)}
-        className="w-20 h-7 rounded-l-none text-sm"
-        placeholder="0"
-      />
-    </div>
-    <X size={18} className="cursor-pointer text-gray-500 hover:text-gray-700" onClick={handleRemoveDiscount} />
-  </div>
-);
+import { calculateQuantityValue } from "../assets/utils";
 
 const CreateSellInvoice = () => {
   const [items, setItems] = useState([]);
@@ -46,16 +20,11 @@ const CreateSellInvoice = () => {
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [isFullyPaid, setIsFullyPaid] = useState(false);
   const [isRoundOff, setIsRoundOff] = useState(false);
-  const [showBillDiscount, setShowBillDiscount] = useState(false);
-  const [billDiscountPercent, setBillDiscountPercent] = useState(0);
-  const [billDiscountAmount, setBillDiscountAmount] = useState(0);
   const [isCashCustomer, setIsCashCustomer] = useState(false);
   const [showPartyDialog, setShowPartyDialog] = useState(false);
   const [selectedParty, setSelectedParty] = useState(null);
   const [showItemDialog, setShowItemDialog] = useState(false);
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [pendingDiscountType, setPendingDiscountType] = useState(null);
-  const {toast} = useToast();
+  const { toast } = useToast();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { createBillStatus } = useSelector((state) => state.bill);
@@ -80,83 +49,49 @@ const CreateSellInvoice = () => {
       prevItems.map((item) => {
         if (item.id === id) {
           const updatedItem = { ...item, [field]: value };
-          // Ensure we're working with numbers
-          const qty = parseFloat(updatedItem.qty) || 0;
           const price = parseFloat(updatedItem.pricePerItem) || 0;
-          const subtotal = qty * price;
-          // Calculate discount
-          if (field === "discountAmount") {
-            updatedItem.discount = subtotal > 0 ? (value / subtotal) * 100 : 0;
-          } else if (field === "discount") {
-            updatedItem.discountAmount = (subtotal * value) / 100;
-          }
-          // Calculate final amount
-          const discountAmount = parseFloat(updatedItem.discountAmount) || 0;
-          const afterDiscount = subtotal - discountAmount;
+          const subtotal = Number(calculateQuantityValue(updatedItem.qty, item.secondary_unit?.conversion_rate) * price).toFixed(2);
+          
+          const discountPercent = parseFloat(updatedItem.discount) || 0;
+          const afterDiscount = Number((subtotal * (1 - discountPercent/100)).toFixed(2));
+          
           const tax = parseFloat(updatedItem.tax) || 0;
-          const taxAmount = (afterDiscount * tax) / 100;
-          updatedItem.amount = afterDiscount + taxAmount;
+          const taxAmount = Number(((afterDiscount * tax) / 100).toFixed(2));
+          updatedItem.amount = Number((afterDiscount + taxAmount)).toFixed(2);
           return updatedItem;
         }
         return item;
-      })
+      })  
     );
   };
 
-  // Update the calculateTotals function
+
+
   const calculateTotals = () => {
-    // First calculate item-level totals
-    const itemTotals = items.reduce(
+    return items.reduce(
       (acc, item) => {
-        const qty = parseFloat(item.qty) || 0;
-        // Skip calculations if quantity is zero or undefined
-        if (qty <= 0) return acc;
+        const qty = item.qty || "0";
+        if (qty === "0") return acc;
         
         const rate = parseFloat(item.pricePerItem) || 0;
-        const subtotal = qty * rate;
-        
-        // Calculate item discount
+        const subtotal = Number(calculateQuantityValue(qty, item?.secondary_unit?.conversion_rate) * rate).toFixed(2);
         const discountPercent = parseFloat(item.discount) || 0;
-        const itemDiscountAmount = (subtotal * discountPercent) / 100;
+        const discountAmount = Number(((subtotal * discountPercent) / 100).toFixed(2));
+        const afterDiscount = Number((subtotal - discountAmount).toFixed(2));
         
-        // Calculate amount after item discount
-        const afterItemDiscount = subtotal - itemDiscountAmount;
-        
-        // Calculate tax
         const taxPercent = parseFloat(item.tax) || 0;
-        const taxAmount = (afterItemDiscount * taxPercent) / 100;
+        const taxAmount = Number(((afterDiscount * taxPercent) / 100).toFixed(2));
         
-        // Calculate item total
-        const itemTotal = afterItemDiscount + taxAmount;
-
         return {
-          subtotal: acc.subtotal + subtotal,
-          discount: acc.discount + itemDiscountAmount,
-          taxableAmount: acc.taxableAmount + afterItemDiscount,
-          tax: acc.tax + taxAmount,
-          total: acc.total + itemTotal
+          subtotal: Number((Number(acc.subtotal) + Number(subtotal))).toFixed(2),
+          discount: Number((Number(acc.discount) + discountAmount)).toFixed(2),
+          taxableAmount: Number((Number(acc.taxableAmount) + afterDiscount)).toFixed(2),
+          tax: Number((Number(acc.tax) + taxAmount)).toFixed(2),
+          total: Number((Number(acc.total) + afterDiscount + taxAmount)).toFixed(2)
         };
       },
       { subtotal: 0, discount: 0, taxableAmount: 0, tax: 0, total: 0 }
     );
-
-    // Then apply bill-level discount if it exists
-    if (showBillDiscount && billDiscountAmount > 0) {
-      const afterBillDiscount = itemTotals.subtotal - billDiscountAmount;
-      const totalTaxRate = 0.12; // 12% (CGST 6% + SGST 6%)
-      const totalTaxAmount = afterBillDiscount * totalTaxRate;
-
-      return {
-        ...itemTotals,
-        billDiscount: billDiscountAmount,
-        taxableAmount: afterBillDiscount,
-        tax: totalTaxAmount,
-        total: afterBillDiscount + totalTaxAmount
-      };
-    }
-
-    // If no bill discount, return item totals as is
-    return {...itemTotals, billDiscount: 0};
   };
 
   const handleFullyPaidChange = (checked) => {
@@ -171,120 +106,65 @@ const CreateSellInvoice = () => {
     return Math.round(total);
   };
 
-  const handleBillDiscountChange = (type, value) => {
-    const subtotal = calculateTotals().subtotal;
-    const numValue = value === "" ? 0 : parseFloat(value);
-
-    if (type === "percent") {
-      setBillDiscountPercent(value); // Keep the raw value for empty input
-      setBillDiscountAmount((subtotal * numValue) / 100 || 0);
-    } else {
-      setBillDiscountAmount(value); // Keep the raw value for empty input
-      setBillDiscountPercent((numValue / subtotal) * 100 || 0);
-    }
-  };
-
-  const handleRemoveDiscount = () => {
-    setShowBillDiscount(false);
-    setBillDiscountPercent(0);
-    setBillDiscountAmount(0);
-  };
-
-  // Add this function to check if any items have discounts
-  const hasItemDiscounts = () => {
-    return items.some((item) => item.discount > 0 || item.discountAmount > 0);
-  };
-
-  // Modify handleAddDiscount to handle the logic
-  const handleAddDiscount = () => {
-    if (hasItemDiscounts()) {
-      // Show warning that adding additional discount will clear item discounts
-      setPendingDiscountType("beforeTax");
-      setShowConfirmDialog(true);
-    } else {
-      setShowBillDiscount(true);
-    }
-  };
-
-  // Add function to clear all item discounts
-  const clearItemDiscounts = () => {
-    setItems((prevItems) =>
-      prevItems.map((item) => ({
-        ...item,
-        discount: 0,
-        discountAmount: 0,
-        amount: item.qty * item.pricePerItem * (1 + item.tax / 100), // Recalculate amount without discount
-      }))
-    );
-  };
-
-  // Add this function to handle confirmation
-  const handleConfirmDiscountChange = () => {
-    if (pendingDiscountType) {
-      clearItemDiscounts();
-      setShowBillDiscount(true);
-      setPendingDiscountType(null);
-    }
-    setShowConfirmDialog(false);
-  };
-
-  // Add this effect to distribute bill discount to items when before-tax discount is applied
-  useEffect(() => {
-    if (
-      showBillDiscount &&
-      billDiscountPercent > 0
-    ) {
-      // Distribute the discount proportionally to all items
-      setItems((prevItems) =>
-        prevItems.map((item) => {
-          const itemSubtotal = item.qty * item.pricePerItem;
-          const itemDiscountAmount = (itemSubtotal * billDiscountPercent) / 100;
-          return {
-            ...item,
-            discount: billDiscountPercent,
-            discountAmount: itemDiscountAmount,
-            amount: (itemSubtotal - itemDiscountAmount) * (1 + item.tax / 100),
-          };
-        })
-      );
-    }
-  }, [billDiscountPercent, showBillDiscount]);
-
   const handlePartySelect = (party) => {
     setSelectedParty(party);
     setShowPartyDialog(false);
   };
 
   const handleItemSelect = (selectedItems) => {
-    // If it's an array, process all items
     if (Array.isArray(selectedItems)) {
       setItems(prevItems => {
         const updatedItems = [...prevItems];
         
         selectedItems.forEach(selectedItem => {
-          // Check if item already exists in the list
           const existingItemIndex = updatedItems.findIndex(item => item._id === selectedItem._id);
           
           if (existingItemIndex !== -1) {
             // If item exists, update its quantity
-            updatedItems[existingItemIndex] = {
-              ...updatedItems[existingItemIndex],
-              qty: (updatedItems[existingItemIndex].qty || 0) + (selectedItem.qty || 1)
-            };
+            const newQty = selectedItem.qty.split(':').map(Number);
+            const oldQty = updatedItems[existingItemIndex].qty.split(':').map(Number);
+            if(!newQty.length) {
+              return updatedItems;
+            } else if(newQty.length === 1 && oldQty.length === 1) {
+              updatedItems[existingItemIndex].qty = (oldQty[0] + newQty[0]).toString();
+            } else {
+              let arr = [0,0];
+              const sum = (oldQty[1] || 0) + (newQty[1] || 0);
+              arr[1] = sum % selectedItem.secondary_unit?.conversion_rate;
+              arr[0] = (oldQty[0] || 0) + (newQty[0] || 0) + parseInt(sum / selectedItem.secondary_unit?.conversion_rate);
+              updatedItems[existingItemIndex].qty = arr.join(':');
+              // update the amount
+              const subtotal = calculateQuantityValue(updatedItems[existingItemIndex].qty, selectedItem.secondary_unit?.conversion_rate) * parseFloat(updatedItems[existingItemIndex].pricePerItem);
+              const discountPercent = parseFloat(updatedItems[existingItemIndex].discount) || 0;
+              const discountAmount = Number(((subtotal * discountPercent) / 100).toFixed(2));
+              const afterDiscount = Number((subtotal - discountAmount).toFixed(2));
+              const tax = parseFloat(updatedItems[existingItemIndex].tax) || 0;
+              const taxAmount = Number(((afterDiscount * tax) / 100).toFixed(2));
+              updatedItems[existingItemIndex].amount = Number((afterDiscount + taxAmount)).toFixed(2);
+            }
           } else {
             // If item doesn't exist, add it as new
+            let rate = selectedItem.sales_info?.price_per_unit || 0;
+            let gst = selectedItem.gst_percentage || 0;
+            if(selectedItem.sales_info?.is_tax_included) {
+              rate = rate / (1 + gst/100);
+            }
+         
             updatedItems.push({
               id: updatedItems.length + 1,
               itemName: selectedItem.name,
+              pack: selectedItem.pack,
               hsn: selectedItem.hsn_code,
               batchNo: "",
               expDate: "",
-              qty: selectedItem.qty || 1,
-              pricePerItem: selectedItem.sales_info?.price_per_unit || 0,
+              qty: selectedItem.qty || "",
+              pricePerItem: rate.toFixed(2),
+              mrp: selectedItem.mrp || 0,
+              secondary_unit: selectedItem.secondary_unit,
               discount: 0,
               discountAmount: 0,
               tax: selectedItem.gst_percentage || 0,
-              amount: (selectedItem.sales_info?.price_per_unit || 0) * (selectedItem.qty || 1) * (1 + (selectedItem.gst_percentage || 0) / 100),
+              amount: (calculateQuantityValue(selectedItem.qty, selectedItem?.secondary_unit?.conversion_rate) * rate * (1 + (selectedItem.gst_percentage || 0) / 100)).toFixed(2),
               unit: selectedItem.unit,
               _id: selectedItem._id
             });
@@ -348,6 +228,7 @@ const CreateSellInvoice = () => {
     setIsCashCustomer(checked);
   };
 
+  // save bill to database
   const handleSaveBill = async () => {
     if (items.length === 0) {
       toast({ title: 'Please add at least one item', variant: 'destructive'});
@@ -372,20 +253,19 @@ const CreateSellInvoice = () => {
         _id: item._id,
         batchNo: item.batchNo,
         expDate: item.expDate,
-        qty: parseFloat(item.qty),
+        qty: calculateQuantityValue(item.qty, item.secondary_unit?.conversion_rate),
         unit: item.unit,
+        mrp: parseFloat(item.mrp),
+        secondary_unit: item.secondary_unit,
         pricePerItem: parseFloat(item.pricePerItem),
         discount: parseFloat(item.discount) || 0,
         tax: parseFloat(item.tax) || 0,
         hsn: item.hsn
       })),
-
-      // Bill discounts and totals
-      bill_discount: parseFloat(billDiscountAmount) || 0,
       
       // Payment details
       payment: {
-        amount_received: parseFloat(amountReceived) || 0,
+        amount_paid: parseFloat(amountReceived) || 0,
         payment_method: paymentMethod
       },
 
@@ -395,6 +275,7 @@ const CreateSellInvoice = () => {
       tax_summary: calculateTaxSummary(),
       invoice_date: invoiceDate,
     };
+    console.log(billData);
 
     try {
       const resultAction = await dispatch(createBill(billData)).unwrap();
@@ -524,7 +405,15 @@ const CreateSellInvoice = () => {
                     <td className="border border-gray-200 p-2 text-sm">{item.batchNo}</td>
                     <td className="border border-gray-200 p-2 text-sm">{item.expDate}</td>
                     <td className="border border-gray-200 p-2 text-sm">
-                      <Input type="number" value={item.qty}  onChange={(e) =>  handleInputChange(item.id, "qty",  parseFloat(e.target.value)) }  className="w-16 h-7 px-2" />
+                      <div className="flex items-center gap-1">
+                        <Input 
+                          type="text" 
+                          value={item.qty}  
+                          onChange={(e) => handleInputChange(item.id, "qty", e.target.value)}  
+                          className="w-16 h-7 px-2" 
+                        />
+                        <span className="text-gray-600 text-xs">{item.unit}</span>
+                      </div>
                     </td>
                     <td className="border border-gray-200 p-2 text-sm">
                       <Input
@@ -542,50 +431,24 @@ const CreateSellInvoice = () => {
                       />
                     </td>
                     <td className="border border-gray-200 p-2 text-sm">
-                      ₹{((item.qty || 0) * (item.pricePerItem || 0)).toLocaleString("en-IN", {
-                        minimumFractionDigits: 2,
-                      })}
+                      ₹{(calculateQuantityValue(item.qty, item.secondary_unit?.conversion_rate) * (item.pricePerItem || 0)).toFixed(2)}
                     </td>
                     <td className="border border-gray-200 p-2 text-sm">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center">
-                          <span className="bg-gray-100 border border-r-0 border-gray-200 rounded-l h-6 w-8 text-sm text-center"> %</span>
-                          <Input
-                            type="number"
-                            value={item.discount}
-                            onChange={(e) =>
-                              handleInputChange(
-                                item.id,
-                                "discount",
-                                parseFloat(e.target.value)
-                              )
-                            }
-                            className="w-16 h-6 px-2 rounded-l-none"
-                            placeholder="0"
-                            disabled={
-                              showBillDiscount && billDiscountPercent > 0
-                            }
-                          />
-                        </div>
-                        <div className="flex items-center">
-                          <span className="bg-gray-100 border border-r-0 border-gray-200 rounded-l h-6 w-8 text-sm text-center">₹</span>
-                          <Input
-                            type="number"
-                            value={item.discountAmount}
-                            onChange={(e) =>
-                              handleInputChange(
-                                item.id,
-                                "discountAmount",
-                                parseFloat(e.target.value)
-                              )
-                            }
-                            className="w-16 h-6 px-2 rounded-l-none"
-                            placeholder="0"
-                            disabled={
-                              showBillDiscount && billDiscountPercent > 0
-                            }
-                          />
-                        </div>
+                      <div className="flex items-center">
+                        <span className="bg-gray-100 border border-r-0 border-gray-200 rounded-l h-6 w-8 text-sm text-center">%</span>
+                        <Input
+                          type="number"
+                          value={item.discount}
+                          onChange={(e) =>
+                            handleInputChange(
+                              item.id,
+                              "discount",
+                              parseFloat(e.target.value)
+                            )
+                          }
+                          className="w-16 h-6 px-2 rounded-l-none"
+                          placeholder="0"
+                        />
                       </div>
                     </td>
                     <td className="border border-gray-200 p-2 text-sm">
@@ -667,32 +530,6 @@ const CreateSellInvoice = () => {
               </table>
             </div>
             <div className="w-full py-4">
-              <div className="px-8 space-y-2">
-                {/* Discount Section - Always at Top */}
-                {!showBillDiscount ? (
-                  <div className="flex justify-between items-center">
-                    <div className="cursor-pointer text-sm text-primary" onClick={handleAddDiscount}>+Add Discount</div>
-                    <div>-₹ 0</div>
-                  </div>
-                ) : (
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">Additional Discount</span>
-                    </div>
-                    <DiscountInputs
-                      billDiscountPercent={billDiscountPercent}
-                      billDiscountAmount={billDiscountAmount}
-                      handleBillDiscountChange={handleBillDiscountChange}
-                      handleRemoveDiscount={handleRemoveDiscount}
-                    />
-                  </div>
-                )}
-
-                <div className="flex justify-between">
-                  <div className="cursor-pointer text-sm text-primary">+Add Additional Charges</div>
-                  <div>-₹ 0</div>
-                </div>
-              </div>
               <div className="px-8 flex flex-col gap-2 border-t border-gray-200 pt-2 mt-2">
                 <div className="flex items-center gap-1">
                   <Checkbox checked={isRoundOff} onCheckedChange={setIsRoundOff} id="round-off" />
@@ -743,21 +580,6 @@ const CreateSellInvoice = () => {
           </div>
         </div>
       </div>
-      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Additional Discount</DialogTitle>
-            <DialogDescription>
-              Applying additional discount will clear all item-level discounts.
-              Do you want to continue?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>Cancel</Button>
-            <Button onClick={handleConfirmDiscountChange}>Continue</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       <SelectPartyDialog open={showPartyDialog} onOpenChange={setShowPartyDialog} onSelectParty={handlePartySelect} />
       <SelectSaleItemDialog 
         open={showItemDialog} 

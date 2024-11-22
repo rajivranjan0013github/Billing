@@ -1,13 +1,14 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter} from "../../ui/dialog";
 import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
-import { Search, Plus, Minus } from "lucide-react";
+import { Search } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "../../ui/table";
 import { Separator } from "../../ui/separator";
 import { Checkbox } from "../../ui/checkbox";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchItems } from "../../../redux/slices/inventorySlice";
+import { formatQuantityDisplay, calculateQuantityValue } from "../../../assets/utils";
 import AddItemDialog from "../itemMaster/AddItemDialog";
 
 const SelectSaleItemDialog = ({ open, onOpenChange, onSelectItem }) => {
@@ -20,8 +21,6 @@ const SelectSaleItemDialog = ({ open, onOpenChange, onSelectItem }) => {
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
 
-  const quantityInputRefs = useRef({});
-
   useEffect(() => {
     if (itemsStatus === "idle") {
       dispatch(fetchItems());
@@ -29,20 +28,13 @@ const SelectSaleItemDialog = ({ open, onOpenChange, onSelectItem }) => {
   }, [dispatch, itemsStatus]);
 
   useEffect(() => {
-    setFilteredItems(items);
-  }, [items]);
-
-  const handleSearch = (query) => {
-    setSearchQuery(query);
     const filtered = items.filter((item) =>
-      item.name.toLowerCase().includes(query.toLowerCase())
+      item.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
     setFilteredItems(filtered);
-  };
+  }, [items, searchQuery]);
 
   const handleItemSelect = (item) => {
-    if (item.quantity <= 0) return; // Prevent selecting out-of-stock items
-
     setSelectedItems((prev) => {
       const isSelected = prev.find((i) => i._id === item._id);
       if (isSelected) {
@@ -51,74 +43,48 @@ const SelectSaleItemDialog = ({ open, onOpenChange, onSelectItem }) => {
           return rest;
         });
         return prev.filter((i) => i._id !== item._id);
-      } else {
-        setQuantities(prev => ({
-          ...prev,
-          [item._id]: 1
-        }));
-        setTimeout(() => {
-          quantityInputRefs.current[item._id]?.focus();
-        }, 0);
-        return [...prev, item];
       }
+      setQuantities(prev => ({
+        ...prev,
+        [item._id]: ''
+      }));
+      return [...prev, item];
     });
   };
 
   const handleQuantityChange = (itemId, value) => {
-    const item = filteredItems.find(item => item._id === itemId);
-    const numValue = parseInt(value) || 1;
-    const maxStock = item?.quantity || 0;
-    
     setQuantities(prev => ({
       ...prev,
-      [itemId]: Math.max(1, Math.min(numValue, maxStock))
-    }));
-  };
-
-  const incrementQuantity = (itemId) => {
-    const item = filteredItems.find(item => item._id === itemId);
-    const maxStock = item?.quantity || 0;
-    
-    setQuantities(prev => ({
-      ...prev,
-      [itemId]: Math.min((prev[itemId] || 1) + 1, maxStock)
-    }));
-  };
-
-  const decrementQuantity = (itemId) => {
-    setQuantities(prev => ({
-      ...prev,
-      [itemId]: Math.max((prev[itemId] || 1) - 1, 1)
+      [itemId]: value
     }));
   };
 
   const handleDone = () => {
     const itemsWithQuantities = selectedItems.map(item => ({
       ...item,
-      qty: quantities[item._id] || 1
+      qty: quantities[item._id]?.toString() || "1"
     }));
+    
     onSelectItem(itemsWithQuantities);
     setSelectedItems([]);
     setQuantities({});
     onOpenChange(false);
   };
 
-  const calculateTotalAmount = () => {
-    return selectedItems.reduce((total, item) => {
-      const quantity = quantities[item._id] || 1;
-      const price = item.sales_info?.price_per_unit || 0;
-      return total + (quantity * price);
+  const calculateTotalAmount = () => 
+    selectedItems.reduce((total, item) => {
+      let value = 0;
+      let price = item.sales_info?.price_per_unit || item.mrp || 0;
+      if(quantities[item._id]){
+        value = calculateQuantityValue(quantities[item._id], item.secondary_unit?.conversion_rate) * price;
+      }
+      return total + value;
     }, 0);
-  };
 
-  const getDisplayItems = () => {
-    if (showSelectedOnly) {
-      return filteredItems.filter(item => 
-        selectedItems.some(selected => selected._id === item._id)
-      );
-    }
-    return filteredItems;
-  };
+  const getDisplayItems = () => 
+    showSelectedOnly 
+      ? filteredItems.filter(item => selectedItems.some(selected => selected._id === item._id))
+      : filteredItems;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -135,13 +101,13 @@ const SelectSaleItemDialog = ({ open, onOpenChange, onSelectItem }) => {
               <Input
                 placeholder="Search items..."
                 value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-8"
               />
             </div>
             <Button 
-              size="sm"
-              className="shrink-0"
+              size="sm" 
+              className="shrink-0" 
               onClick={() => setShowAddItemDialog(true)}
             >
               Create New Item
@@ -154,7 +120,8 @@ const SelectSaleItemDialog = ({ open, onOpenChange, onSelectItem }) => {
                 <TableRow>
                   <TableHead className="w-12"></TableHead>
                   <TableHead>Name</TableHead>
-                  <TableHead>Manufacturer</TableHead>
+                  <TableHead>Pack</TableHead>
+                  <TableHead>MRP</TableHead>
                   <TableHead>Sale Price</TableHead>
                   <TableHead>Current Stock</TableHead>
                   <TableHead className="w-[180px]">Quantity</TableHead>
@@ -163,83 +130,51 @@ const SelectSaleItemDialog = ({ open, onOpenChange, onSelectItem }) => {
               <TableBody>
                 {getDisplayItems().map((item) => {
                   const isSelected = selectedItems.some((i) => i._id === item._id);
-                  const salePrice = item.sales_info?.price_per_unit || 0;
-                  const isOutOfStock = item.quantity <= 0;
+                  const salePrice = item.sales_info?.price_per_unit || item.mrp || 0;
+                  const taxIncluded = item.sales_info?.is_tax_included || false;
                   
                   return (
                     <TableRow 
-                      key={item._id}
-                      className={`cursor-pointer hover:bg-gray-50 ${isOutOfStock ? 'opacity-50' : ''}`}
-                      onClick={() => !isOutOfStock && handleItemSelect(item)}
+                      key={item._id}  
+                      className={`cursor-pointer hover:bg-gray-50 ${item.quantity <= 0 ? 'opacity-50' : ''}`}
+                      onClick={() => item.quantity > 0 && handleItemSelect(item)}
                     >
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={isSelected}
-                          onCheckedChange={() => !isOutOfStock && handleItemSelect(item)}
-                          disabled={isOutOfStock}
+                          onCheckedChange={() => item.quantity > 0 && handleItemSelect(item)}
+                          disabled={item.quantity <= 0}
                         />
                       </TableCell>
-                      <TableCell className="font-medium">
-                        {item.name}
-                        {isOutOfStock && (
-                          <span className="text-xs text-red-500 ml-2">(Out of Stock)</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{item?.manufacturer_name || "_"}</TableCell>
-                      <TableCell>₹{salePrice}</TableCell>
-                      <TableCell>{item.quantity || 0} {item.unit}</TableCell>
+                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell>{item?.pack || "_"}</TableCell>
+                      <TableCell>₹{item.mrp}</TableCell>
+                      <TableCell>₹{salePrice} {taxIncluded ? "(GST Incl.)" : ""}</TableCell>
+                      <TableCell>{formatQuantityDisplay(item.quantity, item.unit, item?.secondary_unit, true)}</TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         {isSelected ? (
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                decrementQuantity(item._id);
-                              }}
-                              disabled={quantities[item._id] <= 1}
-                            >
-                              <Minus className="h-4 w-4" />
-                            </Button>
-                            <Input
-                              ref={el => quantityInputRefs.current[item._id] = el}
-                              type="number"
-                              min="1"
-                              max={item.quantity}
-                              value={quantities[item._id] || 1}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                handleQuantityChange(item._id, e.target.value);
-                              }}
-                              onFocus={(e) => e.target.select()}
-                              className="w-16 h-8 text-center"
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                incrementQuantity(item._id);
-                              }}
-                              disabled={quantities[item._id] >= item.quantity}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
+                         <div className="flex items-center gap-2">
+                           <Input
+                            type="text"
+                            value={quantities[item._id] || ""}
+                            onChange={(e) => handleQuantityChange(item._id, e.target.value)}
+                            className="w-20 text-center"
+                            min="1"
+                            step="1"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <p>{item.unit}</p>
+                         </div>
                         ) : (
                           <Button 
                             size="sm"
                             variant="outline"
                             className="h-8"
+                            disabled={item.quantity <= 0}
                             onClick={(e) => {
                               e.stopPropagation();
-                              !isOutOfStock && handleItemSelect(item);
+                              item.quantity > 0 && handleItemSelect(item);
                             }}
-                            disabled={isOutOfStock}
                           >
                             Select
                           </Button>
@@ -276,29 +211,13 @@ const SelectSaleItemDialog = ({ open, onOpenChange, onSelectItem }) => {
               )}
             </div>
             <div className="space-x-2">
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              <Button 
-                size="sm"
-                onClick={handleDone}
-                disabled={selectedItems.length === 0}
-              >
-                Done
-              </Button>
+              <Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button size="sm"  onClick={handleDone} disabled={selectedItems.length === 0}>Done</Button>
             </div>
           </div>
         </DialogFooter>
       </DialogContent>
-
-      <AddItemDialog 
-        isOpen={showAddItemDialog} 
-        onClose={() => setShowAddItemDialog(false)} 
-      />
+      <AddItemDialog isOpen={showAddItemDialog} onClose={() => setShowAddItemDialog(false)} />
     </Dialog>
   );
 };

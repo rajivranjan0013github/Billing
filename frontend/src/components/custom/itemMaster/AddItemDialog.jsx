@@ -43,6 +43,7 @@ export default function AddItemDialog({ isOpen, onClose }) {
   const [secondaryUnit, setSecondaryUnit] = useState("");
   const [conversionRate, setConversionRate] = useState("");
   const [showSecondaryUnit, setShowSecondaryUnit] = useState(false);
+  const [pack, setPack] = useState("");
 
   const handleAddItem = () => {
     const itemData = {
@@ -68,6 +69,7 @@ export default function AddItemDialog({ isOpen, onClose }) {
         expiry_date: expiryDate,
         mrp: parseFloat(MRP),
         hsn_code: hsnCode,
+        pack,
       }
     };
     dispatch(createInventoryItem(itemData)).unwrap()
@@ -104,6 +106,7 @@ export default function AddItemDialog({ isOpen, onClose }) {
     setSecondaryUnit("");
     setConversionRate("");
     setShowSecondaryUnit(false);
+    setPack("");
   };
 
   return (
@@ -133,6 +136,15 @@ export default function AddItemDialog({ isOpen, onClose }) {
                       placeholder="eg: ABC Pharmaceuticals" 
                       value={manufactureName} 
                       onChange={(e) => setManufactureName(e.target.value)} 
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <Label htmlFor="pack">Pack</Label>
+                    <Input 
+                      id="pack" 
+                      placeholder="eg: 10x10" 
+                      value={pack} 
+                      onChange={(e) => setPack(e.target.value)} 
                     />
                   </div>
                   <div className="col-span-1">

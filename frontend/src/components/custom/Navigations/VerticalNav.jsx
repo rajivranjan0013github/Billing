@@ -42,7 +42,12 @@ export const navItems = [
   { name: "Dashboard", icon: Home, path: "/" },
   { name: "Parties", icon: Users, path: "/parties" },
   { name: "Expenses", icon: IndianRupee, path: "/expenses" },
-  { name: "Sales", icon: ShoppingCart, path: "/sales" },
+  { name: "Sales", icon: ShoppingCart, path: "/sales",
+    submenu: [
+      { name: "Sales List", path: "/sales" },
+      { name: "Payment In", path: "/sales/payment-in" },
+    ],
+   },
   {
     name: "Purchase",
     icon: Truck,

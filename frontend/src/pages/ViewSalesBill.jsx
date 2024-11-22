@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from "react"
 import { useParams } from "react-router-dom"
 import { useReactToPrint } from 'react-to-print';
 import { Loader2 } from "lucide-react";
+import { formatQuantityDisplay } from "../assets/utils";
 
 export default function ViewSalesBill() {
     const { billId } = useParams();
@@ -110,7 +111,7 @@ export default function ViewSalesBill() {
                         </div>
                     </div>
 
-                    {/* Table Section */}
+                    {/* Updated Table Section */}
                     <div className="w-full overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
@@ -118,28 +119,38 @@ export default function ViewSalesBill() {
                                     <th className="p-2 border text-left">S.NO.</th>
                                     <th className="p-2 border text-left">ITEMS</th>
                                     <th className="p-2 border text-left">HSN</th>
-                                    <th className="p-2 border text-left">QTY.</th>
+                                    <th className="p-2 border text-left">BATCH</th>
+                                    <th className="p-2 border text-left">EXPIRY</th>
+                                    <th className="p-2 border text-left">QTY</th>
                                     <th className="p-2 border text-left">RATE</th>
+                                    <th className="p-2 border text-left">AMOUNT</th>
                                     <th className="p-2 border text-left">DISC.</th>
                                     <th className="p-2 border text-left">GST</th>
-                                    <th className="p-2 border text-left">AMOUNT</th>
+                                    <th className="p-2 border text-left">TOTAL</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {billData?.items?.map((item, index) => {
                                     const subtotal = (item?.quantity || 0) * (item?.price_per_unit || 0);
-                                    const discountAmount = (subtotal * (item?.discount_percentage || 0)) / 100;
-                                    const taxableAmount = subtotal - discountAmount;
-                                    const taxAmount = (taxableAmount * (item?.gst_percentage || 0)) / 100;
-                                    const totalAmount = taxableAmount + taxAmount;
-
+                                    const discountPercent = (item?.discount_percentage || 0);
+                                    const discountAmount = (subtotal * discountPercent) / 100;
+                                    const afterDiscount = subtotal - discountAmount;
+                                    const gstPercent = (item?.gst_percentage || 0);
+                                    const taxAmount = (afterDiscount * gstPercent) / 100;
+                                    const totalAmount = afterDiscount + taxAmount;
+                                    
                                     return (
                                         <tr key={index}>
                                             <td className="p-2 border">{index + 1}</td>
                                             <td className="p-2 border">{item?.item?.name}</td>
                                             <td className="p-2 border">{item?.hsn_code}</td>
-                                            <td className="p-2 border">{item?.quantity} {item?.unit}</td>
+                                            <td className="p-2 border">{item?.batch_number || '-'}</td>
+                                            <td className="p-2 border">
+                                                {item?.expiry_date ? new Date(item.expiry_date).toLocaleDateString() : '-'}
+                                            </td>
+                                            <td className="p-2 border">{formatQuantityDisplay(item?.quantity, item?.unit, item?.secondary_unit, true)}</td>
                                             <td className="p-2 border">{formatCurrency(item?.price_per_unit)}</td>
+                                            <td className="p-2 border">{formatCurrency(subtotal)}</td>
                                             <td className="p-2 border">{formatCurrency(discountAmount)} ({item?.discount_percentage}%)</td>
                                             <td className="p-2 border">{formatCurrency(taxAmount)} ({item?.gst_percentage}%)</td>
                                             <td className="p-2 border">{formatCurrency(totalAmount)}</td>
@@ -147,24 +158,58 @@ export default function ViewSalesBill() {
                                     );
                                 })}
                                 <tr className="bg-gray-50 font-bold">
-                                    <td className="p-2 border" colSpan="3">TOTAL</td>
+                                    <td className="p-2 border" colSpan="5">TOTAL</td>
                                     <td className="p-2 border">{billData?.items?.reduce((acc, item) => acc + (item.quantity || 0), 0)}</td>
                                     <td className="p-2 border"></td>
-                                    <td className="p-2 border">{formatCurrency(billData?.tax_summary?.[0]?.taxableAmount)}</td>
-                                    <td className="p-2 border">{formatCurrency((billData?.tax_summary?.[0]?.sgst || 0) + (billData?.tax_summary?.[0]?.cgst || 0))}</td>
+                                    <td className="p-2 border">
+                                        {formatCurrency(billData?.items?.reduce((acc, item) => {
+                                            const subtotal = (item?.quantity || 0) * (item?.price_per_unit || 0);
+                                            return acc + subtotal;
+                                        }, 0))}
+                                    </td>
+                                    <td className="p-2 border">
+                                        {formatCurrency(billData?.items?.reduce((acc, item) => {
+                                            const subtotal = (item?.quantity || 0) * (item?.price_per_unit || 0);
+                                            const discountAmount = (subtotal * (item?.discount_percentage || 0)) / 100;
+                                            return acc + discountAmount;
+                                        }, 0))}
+                                    </td>
+                                    <td className="p-2 border">
+                                        {formatCurrency(billData?.items?.reduce((acc, item) => {
+                                            const subtotal = (item?.quantity || 0) * (item?.price_per_unit || 0);
+                                            const discountAmount = (subtotal * (item?.discount_percentage || 0)) / 100;
+                                            const afterDiscount = subtotal - discountAmount;
+                                            const taxAmount = (afterDiscount * (item?.gst_percentage || 0)) / 100;
+                                            return acc + taxAmount;
+                                        }, 0))}
+                                    </td>
                                     <td className="p-2 border">{formatCurrency(billData?.grand_total)}</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
 
-                    {/* Payment Details */}
+                    {/* Updated Payment Details */}
                     <div className="grid grid-cols-2 border-t border-gray-300">
                         <div className="p-4">
-                            <p className="text-sm">Paid Amount: {formatCurrency(billData?.payment?.amount_received)}</p>
+                            <p className="text-sm">
+                                Paid Amount ({billData?.payment?.payment_method}): 
+                                <span className="font-semibold text-green-600">
+                                    {formatCurrency(billData?.payment?.amount_paid)}
+                                </span>
+                            </p>
                         </div>
                         <div className="p-4">
-                            <p className="text-sm">Balance Amount: {formatCurrency((billData?.grand_total || 0) - (billData?.payment?.amount_received || 0))}</p>
+                            <p className="text-sm">
+                                Due Amount: 
+                                <span className={`font-semibold ${
+                                    (billData?.grand_total || 0) - (billData?.payment?.amount_paid || 0) > 0 
+                                        ? 'text-red-600' 
+                                        : 'text-green-600'
+                                }`}>
+                                    {formatCurrency((billData?.grand_total || 0) - (billData?.payment?.amount_paid || 0))}
+                                </span>
+                            </p>
                         </div>
                     </div>
 

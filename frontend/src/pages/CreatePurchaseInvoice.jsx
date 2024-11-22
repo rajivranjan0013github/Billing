@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../hooks/use-toast';
 import { Backend_URL } from "../assets/Data";
 import { fetchParties } from "../redux/slices/partySlice";
-
+import { calculateQuantityValue } from "../assets/utils";
 const CreatePurchaseInvoice = () => {
   const [items, setItems] = useState([]);
   const [amountReceived, setAmountReceived] = useState(0);
@@ -31,6 +31,7 @@ const CreatePurchaseInvoice = () => {
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [originalBillNumber, setOriginalBillNumber] = useState("");
 
+  // fetch next bill number
   useEffect(() => {
     const fetchNextBillNumber = async () => {
       try {
@@ -67,31 +68,30 @@ const CreatePurchaseInvoice = () => {
       prevItems.map((item) => {
         if (item.id === id) {
           const updatedItem = { ...item, [field]: value };
-          const qty = parseFloat(updatedItem.qty) || 0;
           const price = parseFloat(updatedItem.pricePerItem) || 0;
-          const subtotal = Number((qty * price).toFixed(2));
+          const subtotal = Number(calculateQuantityValue(updatedItem.qty, item.secondary_unit?.conversion_rate) * price).toFixed(2);
           
           const discountPercent = parseFloat(updatedItem.discount) || 0;
           const afterDiscount = Number((subtotal * (1 - discountPercent/100)).toFixed(2));
           
           const tax = parseFloat(updatedItem.tax) || 0;
           const taxAmount = Number(((afterDiscount * tax) / 100).toFixed(2));
-          updatedItem.amount = Number((afterDiscount + taxAmount).toFixed(2));
+          updatedItem.amount = Number((afterDiscount + taxAmount)).toFixed(2);
           return updatedItem;
         }
         return item;
-      })
+      })  
     );
   };
 
   const calculateTotals = () => {
     return items.reduce(
       (acc, item) => {
-        const qty = parseFloat(item.qty) || 0;
-        if (qty <= 0) return acc;
+        const qty = item.qty || "0";
+        if (qty === "0") return acc;
         
         const rate = parseFloat(item.pricePerItem) || 0;
-        const subtotal = Number((qty * rate).toFixed(2));
+        const subtotal = Number(calculateQuantityValue(qty, item.secondary_unit?.conversion_rate) * rate).toFixed(2);
         
         const discountPercent = parseFloat(item.discount) || 0;
         const discountAmount = Number(((subtotal * discountPercent) / 100).toFixed(2));
@@ -101,11 +101,11 @@ const CreatePurchaseInvoice = () => {
         const taxAmount = Number(((afterDiscount * taxPercent) / 100).toFixed(2));
         
         return {
-          subtotal: Number((acc.subtotal + subtotal).toFixed(2)),
-          discount: Number((acc.discount + discountAmount).toFixed(2)),
-          taxableAmount: Number((acc.taxableAmount + afterDiscount).toFixed(2)),
-          tax: Number((acc.tax + taxAmount).toFixed(2)),
-          total: Number((acc.total + afterDiscount + taxAmount).toFixed(2))
+          subtotal: Number((Number(acc.subtotal) + Number(subtotal))).toFixed(2),
+          discount: Number((Number(acc.discount) + discountAmount)).toFixed(2),
+          taxableAmount: Number((Number(acc.taxableAmount) + afterDiscount)).toFixed(2),
+          tax: Number((Number(acc.tax) + taxAmount)).toFixed(2),
+          total: Number((Number(acc.total) + afterDiscount + taxAmount)).toFixed(2)
         };
       },
       { subtotal: 0, discount: 0, taxableAmount: 0, tax: 0, total: 0 }
@@ -124,31 +124,45 @@ const CreatePurchaseInvoice = () => {
     return Math.round(total);
   };
 
-
   const handlePartySelect = (party) => {
     setSelectedParty(party);
     setShowPartyDialog(false);
   };
 
   const handleItemSelect = (selectedItems) => {
-    // If it's an array, process all items
     if (Array.isArray(selectedItems)) {
       setItems(prevItems => {
         const updatedItems = [...prevItems];
         
         selectedItems.forEach(selectedItem => {
-          // Check if item already exists in the list
           const existingItemIndex = updatedItems.findIndex(item => item._id === selectedItem._id);
           
           if (existingItemIndex !== -1) {
             // If item exists, update its quantity
-            updatedItems[existingItemIndex] = {
-              ...updatedItems[existingItemIndex],
-              qty: (updatedItems[existingItemIndex].qty || 0) + (selectedItem.qty || 1)
-            };
+            const newQty = selectedItem.qty.split(':').map(Number);
+            const oldQty = updatedItems[existingItemIndex].qty.split(':').map(Number);
+            if(!newQty.length) {
+              return updatedItems;
+            } else if(newQty.length === 1 && oldQty.length === 1) {
+              updatedItems[existingItemIndex].qty = (oldQty[0] + newQty[0]).toString();
+            } else {
+              let arr = [0,0];
+              const sum = (oldQty[1] || 0) + (newQty[1] || 0);
+              arr[1] = sum % selectedItem.secondary_unit?.conversion_rate;
+              arr[0] = (oldQty[0] || 0) + (newQty[0] || 0) + parseInt(sum / selectedItem.secondary_unit?.conversion_rate);
+              updatedItems[existingItemIndex].qty = arr.join(':');
+              // update the amount
+              const subtotal = calculateQuantityValue(updatedItems[existingItemIndex].qty, selectedItem.secondary_unit?.conversion_rate) * parseFloat(updatedItems[existingItemIndex].pricePerItem);
+              const discountPercent = parseFloat(updatedItems[existingItemIndex].discount) || 0;
+              const discountAmount = Number(((subtotal * discountPercent) / 100).toFixed(2));
+              const afterDiscount = Number((subtotal - discountAmount).toFixed(2));
+              const tax = parseFloat(updatedItems[existingItemIndex].tax) || 0;
+              const taxAmount = Number(((afterDiscount * tax) / 100).toFixed(2));
+              updatedItems[existingItemIndex].amount = Number((afterDiscount + taxAmount)).toFixed(2);
+            }
           } else {
             // If item doesn't exist, add it as new
-            let rate=0
+            let rate = 0;
             let tempRate = selectedItem.purchase_info.price_per_unit;
             let gst = selectedItem.gst_percentage;
             if(selectedItem.purchase_info.is_tax_included) {
@@ -160,15 +174,18 @@ const CreatePurchaseInvoice = () => {
             updatedItems.push({
               id: updatedItems.length + 1,
               itemName: selectedItem.name,
+              pack: selectedItem.pack,
               hsn: selectedItem.hsn_code,
               batchNo: "",
               expDate: "",
-              qty: selectedItem.qty || 1,
+              qty: selectedItem.qty || "",
               pricePerItem: rate.toFixed(2),
+              mrp: selectedItem.mrp || 0,
+              secondary_unit: selectedItem.secondary_unit,
               discount: 0,
               discountAmount: 0,
               tax: selectedItem.gst_percentage || 0,
-              amount: rate * (selectedItem.qty || 1) * (1 + (selectedItem.gst_percentage || 0) / 100),
+              amount: (calculateQuantityValue(selectedItem.qty, selectedItem.secondary_unit?.conversion_rate) * rate * (1 + (selectedItem.gst_percentage || 0) / 100)).toFixed(2),
               unit: selectedItem.unit,
               _id: selectedItem._id
             });
@@ -182,13 +199,13 @@ const CreatePurchaseInvoice = () => {
 
   const calculateTaxSummary = () => {
     const taxGroups = items.reduce((acc, item) => {
-      const qty = parseFloat(item.qty) || 0;
-      if (qty <= 0) return acc;
+      const qty = item.qty || "0";
+      if (qty === "0") return acc;
 
       const tax = parseFloat(item.tax) || 0;
       const rate = parseFloat(item.pricePerItem) || 0;
-      const subtotal = Number((qty * rate).toFixed(2));
-      
+      const subtotal = Number(calculateQuantityValue(qty, item.secondary_unit?.conversion_rate || 1) * rate).toFixed(2);
+
       const discountPercent = parseFloat(item.discount) || 0;
       const taxableAmount = Number((subtotal * (1 - discountPercent/100)).toFixed(2));
       const sgst = Number((taxableAmount * (tax / 2) / 100).toFixed(2));
@@ -245,7 +262,8 @@ const CreatePurchaseInvoice = () => {
         _id: item._id,
         batchNo: item.batchNo,
         expDate: item.expDate,
-        qty: parseFloat(item.qty),
+        qty: calculateQuantityValue(item.qty, item.secondary_unit?.conversion_rate),
+        secondary_unit: item.secondary_unit,
         unit: item.unit,
         mrp: parseFloat(item.mrp),
         purchasePrice: parseFloat(item.pricePerItem),
@@ -379,10 +397,12 @@ const CreatePurchaseInvoice = () => {
                 <tr className="bg-gray-50">
                   <th className="border border-gray-200 p-2 text-left text-sm w-12">No.</th>
                   <th className="border border-gray-200 p-2 text-left text-sm w-48">Item Name</th>
+                  <th className="border border-gray-200 p-2 text-left text-sm w-24">Pack</th>
                   <th className="border border-gray-200 p-2 text-left text-sm w-24">HSN</th>
+                  <th className="border border-gray-200 p-2 text-left text-sm w-24">MRP</th>
                   <th className="border border-gray-200 p-2 text-left text-sm w-24">Batch No</th>
                   <th className="border border-gray-200 p-2 text-left text-sm w-24">Expiry</th>
-                  <th className="border border-gray-200 p-2 text-left text-sm w-20">Qty</th>
+                  <th className="border border-gray-200 p-2 text-left text-sm w-28">Qty(Unit)</th>
                   <th className="border border-gray-200 p-2 text-left text-sm w-28">Rate(₹)</th>
                   <th className="border border-gray-200 p-2 text-left text-sm w-28">Amount(₹)</th>
                   <th className="border border-gray-200 p-2 text-left text-sm w-24">Discount</th>
@@ -396,11 +416,35 @@ const CreatePurchaseInvoice = () => {
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="border border-gray-200 p-2 text-sm">{item.id}</td>
                     <td className="border border-gray-200 p-2 text-sm">{item.itemName}</td>
+                    <td className="border border-gray-200 p-2 text-sm">{item.pack || "_"}</td>
                     <td className="border border-gray-200 p-2 text-sm">{item.hsn}</td>
+                    <td className="border border-gray-200 p-2 text-sm">
+                      <Input
+                        type="number"
+                        value={item.mrp}
+                        onChange={(e) =>
+                          handleInputChange(
+                            item.id,
+                            "mrp",
+                            parseFloat(e.target.value)
+                          )
+                        }
+                        className="w-20 h-7 px-2"
+                        placeholder="0"
+                      />
+                    </td>
                     <td className="border border-gray-200 p-2 text-sm">{item.batchNo}</td>
                     <td className="border border-gray-200 p-2 text-sm">{item.expDate}</td>
                     <td className="border border-gray-200 p-2 text-sm">
-                      <Input type="number" value={item.qty}  onChange={(e) =>  handleInputChange(item.id, "qty",  parseFloat(e.target.value)) }  className="w-16 h-7 px-2" />
+                      <div className="flex items-center gap-1">
+                        <Input 
+                          type="text" 
+                          value={item.qty}  
+                          onChange={(e) => handleInputChange(item.id, "qty", e.target.value)}  
+                          className="w-16 h-7 px-2" 
+                        />
+                        <span className="text-gray-600 text-xs">{item.unit}</span>
+                      </div>
                     </td>
                     <td className="border border-gray-200 p-2 text-sm">
                       <Input
@@ -418,7 +462,7 @@ const CreatePurchaseInvoice = () => {
                       />
                     </td>
                     <td className="border border-gray-200 p-2 text-sm">
-                      ₹{((item.qty || 0) * (item.pricePerItem || 0)).toLocaleString("en-IN", {minimumFractionDigits: 2})}
+                      ₹{(calculateQuantityValue(item.qty, item.secondary_unit?.conversion_rate) * (item.pricePerItem || 0)).toFixed(2)}
                     </td>
                     <td className="border border-gray-200 p-2 text-sm">
                       <div className="flex items-center">
@@ -466,7 +510,7 @@ const CreatePurchaseInvoice = () => {
               </tbody>
               <tfoot>
                 <tr className="bg-gray-50">
-                  <td colSpan={7} className="border border-gray-200 px-4 py-2 text-sm">
+                  <td colSpan={9} className="border border-gray-200 px-4 py-2 text-sm">
                     <Button variant="outline" size="sm" className="flex items-center gap-2" onClick={() => setShowItemDialog(true)}>
                       <CirclePlus size={16} /> Add Item
                     </Button>

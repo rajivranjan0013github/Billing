@@ -23,6 +23,7 @@ import { Backend_URL } from "../assets/Data"
 import { useParams } from "react-router-dom"
 import { Badge } from "../components/ui/badge"
 import AdjustStockDialog from "../components/custom/inventory/AdjustStockDialog"
+import { formatQuantityDisplay } from "../assets/utils"
 
 export default function ItemDetails() {
   const navigate = useNavigate();
@@ -65,7 +66,7 @@ export default function ItemDetails() {
     if (itemId && activeTab === "stock") {
       fetchStockHistory();
     }
-  }, [itemId, activeTab]);
+  }, [itemId, activeTab, item]  );
 
   const handleStockAdjusted = (newQuantity) => {
     setItem(prevItem => ({
@@ -166,7 +167,7 @@ export default function ItemDetails() {
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground mb-1">Current Stock</div>
-                    <div>{item.quantity} {item.unit}</div>
+                    <div>{formatQuantityDisplay(item.quantity, item.unit, item?.secondary_unit, true)}</div>
                   </div>
                   {item.secondary_unit?.unit && (
                     <div>
@@ -317,9 +318,9 @@ export default function ItemDetails() {
                     }>
                       {transaction.type}
                     </TableCell>
-                    <TableCell>{transaction.quantity} {item.unit}</TableCell>
+                    <TableCell>{formatQuantityDisplay(transaction.quantity, item.unit, item?.secondary_unit, true)}</TableCell>
                     <TableCell>{transaction.bill_number || '-'}</TableCell>
-                    <TableCell>{transaction.closing_stock} {item.unit}</TableCell>
+                    <TableCell>{formatQuantityDisplay(transaction.closing_stock, item.unit, item?.secondary_unit, true)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

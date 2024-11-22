@@ -64,6 +64,10 @@ const purchaseBillSchema = new mongoose.Schema({
       type: Number,
       default: 0
     },
+    secondary_unit: {
+      unit: String,
+      conversion_rate: Number,
+    },
     hsn_code: String
   }],
 

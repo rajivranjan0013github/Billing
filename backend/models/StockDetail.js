@@ -15,6 +15,11 @@ const stockDetailSchema = new mongoose.Schema({
   },
   bill_number: String,
   closing_stock: Number,
+  unit: String,
+  secondary_unit: {
+    unit: String,
+    conversion_rate: Number,
+  },
   remarks: String
 });
 

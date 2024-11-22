@@ -43,6 +43,7 @@ router.post("/", verifyToken, async (req, res) => {
         expiry_date: item.expDate,
         quantity: item.qty,
         unit: item.unit,
+        secondary_unit: item.secondary_unit,
         mrp: item.mrp,
         purchase_price: item.purchasePrice,
         discount_percentage: item.discount,
@@ -78,12 +79,14 @@ router.post("/", verifyToken, async (req, res) => {
     // Update inventory quantities and create stock details
     for (const item of items) {
       const inventory = await Inventory.findById(item._id);
-      const newQuantity = inventory.quantity + item.qty;
+      const newQuantity = Number(inventory.quantity) + Number(item.qty);
       
       // Create stock detail entry
       await StockDetail.create([{
         inventory_id: item._id,
         quantity: item.qty,
+        unit: item.unit,
+        secondary_unit: item.secondary_unit,
         type: "Purchase Invoice",
         bill_number: savedBill.bill_number,
         closing_stock: newQuantity,

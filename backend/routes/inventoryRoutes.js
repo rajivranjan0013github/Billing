@@ -72,18 +72,18 @@ router.post('/:itemId/adjust-stock', verifyToken, async (req, res) => {
         }
 
         // Calculate new quantity
-        const adjustmentAmount = parseInt(quantity);
+        const adjustmentAmount = parseFloat(quantity);
         const newQuantity = adjustmentType === 'add' 
-            ? item.quantity + adjustmentAmount 
-            : item.quantity - adjustmentAmount;
+            ? item.quantity + parseFloat(adjustmentAmount) 
+            : item.quantity - parseFloat(adjustmentAmount);
 
         // Create stock detail record
         const stockDetail = new StockDetail({
             inventory_id: itemId,
             date: new Date(),
-            quantity: adjustmentAmount,
+            quantity: parseFloat(adjustmentAmount),
             type: adjustmentType === 'add' ? 'Add Stock' : 'Remove Stock',
-            closing_stock: newQuantity,
+            closing_stock: parseFloat(newQuantity),
             remarks: remarks
         });
         await stockDetail.save({ session });

@@ -1,9 +1,7 @@
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
-import { Checkbox } from "../components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "../components/ui/table";
 import { ArrowLeft, Calendar, MessageSquare, Search, Settings, Store } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { useNavigate } from "react-router-dom";
@@ -14,90 +12,7 @@ import { SearchSuggestion } from "../components/custom/custom-fields/CustomSearc
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
 import { createPayment } from "../redux/slices/paymentSlice";
-
-// First, let's create a TableContent component for better organization
-export const TableContent = ({ isLoadingBills, pendingInvoices, selectedBills, onBillSelection }) => {
-  if (isLoadingBills) {
-    return (
-      <div className="border rounded-md">
-        <div className="h-[400px] flex flex-col items-center justify-center text-muted-foreground">
-          <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-[#6366F1]"></div>
-          <span className="mt-2">Loading invoices...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (pendingInvoices.length === 0) {
-    return (
-      <div className="border rounded-md">
-        <div className="h-[400px] flex flex-col items-center justify-center text-muted-foreground">
-          <Store className="h-12 w-12 mb-4" />
-          <p className="text-lg">No pending invoices found</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-12">
-            <Checkbox 
-              checked={selectedBills.length === pendingInvoices.length && pendingInvoices.length > 0}
-              onCheckedChange={(checked) => {
-                if (checked) {
-                  pendingInvoices.forEach(invoice => onBillSelection(invoice, true));
-                } else {
-                  pendingInvoices.forEach(invoice => onBillSelection(invoice, false));
-                }
-              }}
-            />
-          </TableHead>
-          <TableHead>Date</TableHead>
-          <TableHead>Due Date</TableHead>
-          <TableHead>Invoice Number</TableHead>
-          <TableHead className="text-right">Invoice Amount</TableHead>
-          <TableHead className="text-right">Amount Settled</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {pendingInvoices.map((invoice) => (
-          <TableRow key={invoice._id}>
-            <TableCell>
-              <Checkbox 
-                checked={selectedBills.some(bill => bill._id === invoice._id)}
-                onCheckedChange={(checked) => onBillSelection(invoice, checked)}
-              />
-            </TableCell>
-            <TableCell>{new Date(invoice.bill_date).toLocaleDateString()}</TableCell>
-            <TableCell>-</TableCell>
-            <TableCell>{invoice.bill_number}</TableCell>
-            <TableCell className="text-right">
-              ₹{invoice.grand_total.toLocaleString()}{" "}
-              <span className="text-red-500 ml-1">
-                (₹{(invoice.grand_total - invoice.payment.amount_paid).toLocaleString()} pending)
-              </span>
-            </TableCell>
-            <TableCell className="text-right">₹{invoice.payment.amount_paid.toLocaleString()}</TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-      <TableFooter>
-        <TableRow>
-          <TableCell colSpan={4}>Total</TableCell>
-          <TableCell className="text-right">
-            ₹{pendingInvoices.reduce((total, invoice) => total + invoice.grand_total, 0).toLocaleString()}
-          </TableCell>
-          <TableCell className="text-right">
-            ₹{pendingInvoices.reduce((total, invoice) => total + invoice.payment.amount_paid, 0).toLocaleString()}
-          </TableCell>
-        </TableRow>
-      </TableFooter>
-    </Table>
-  );
-};
+import { TableContent } from "./CreatePaymentOut";
 
 export default function Component() {
   const navigate = useNavigate();
@@ -133,8 +48,9 @@ export default function Component() {
   const handleFetchPendingInvoices = async(partyId) => {
     setIsLoadingBills(true);
     try {
-      const response = await fetch(`${Backend_URL}/api/payment/pending-invoices/${partyId}?bill_type=purchase`, {credentials: "include"});
+      const response = await fetch(`${Backend_URL}/api/payment/pending-invoices/${partyId}?bill_type=sales`, {credentials: "include"});
       const data = await response.json();
+      // console.log('data', data);
       setPendingInvoices(data);
     } catch (error) {
       console.log(error);
@@ -180,12 +96,12 @@ export default function Component() {
     }
 
     if (!paymentOutNumber) {
-      toast({ title: 'Please enter a payment out number', variant: 'destructive',});
+      toast({ title: 'Please enter a payment in number', variant: 'destructive',});
       return;
     }
 
     const paymentData = {
-      payment_type: "Payment Out",
+      payment_type: "Payment In",
       party_id: selectedParty._id,
       payment_date: paymentDate,
       payment_method: paymentMode,
@@ -202,7 +118,7 @@ export default function Component() {
     dispatch(createPayment(paymentData)).unwrap().then(() => {
         toast({title: "Payment added successfully", variant: "success",});
         dispatch(fetchParties());
-        navigate('/purchase/payment-out');
+        navigate('/sales/payment-in');
       })
       .catch((error) => {
         toast({title: "Failed to create payment", variant: "destructive",});
@@ -216,7 +132,7 @@ export default function Component() {
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-semibold">Record Payment Out</h1>
+          <h1 className="text-xl font-semibold">Record Payment In</h1>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon">
@@ -311,7 +227,7 @@ export default function Component() {
             </div>
             <div className="space-y-2">
             <label className="text-sm text-muted-foreground">
-              Payment Out Number
+              Payment In Number
             </label>
             <Input 
               value={paymentOutNumber}

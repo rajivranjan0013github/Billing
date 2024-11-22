@@ -33,6 +33,9 @@ import PartyDetails from "./pages/PartyDetails";
 import PaymentOut from "./pages/PaymentOut";
 import CreatePaymentOut from "./pages/CreatePaymentOut";
 import PaymentDetails from "./pages/PaymentDetails";
+import PaymentIn from "./pages/PaymentIn";
+import CreatePaymentIn from "./pages/createPaymentIn";
+import PaymentDetailsIn from "./pages/PaymentDetailsIn";
 
 const AppContent = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -109,6 +112,9 @@ const AppContent = () => {
               <Route path="/purchase/payment-out" element={<PaymentOut />} />
               <Route path="/purchase/payment-out/:paymentId" element={<PaymentDetails />} />
               <Route path="/purchase/create-payment-out" element={<CreatePaymentOut />} />
+              <Route path="/sales/payment-in" element={<PaymentIn />} />
+              <Route path="/sales/create-payment-in" element={<CreatePaymentIn />} />
+              <Route path="/sales/payment-in/:paymentId" element={<PaymentDetailsIn />} />
             </>
           )}
         </Routes>

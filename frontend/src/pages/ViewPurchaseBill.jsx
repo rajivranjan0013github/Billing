@@ -1,12 +1,10 @@
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table"
 import { Backend_URL, numberToWords } from "../assets/Data"
 import { useEffect, useState, useRef } from "react"
 import { useParams } from "react-router-dom"
 import { useReactToPrint } from 'react-to-print';
 import { Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom"
-
+import { formatQuantityDisplay } from "../assets/utils";
 export default function ViewPurchaseBill() {
     const { billId } = useParams();
     const [billData, setBillData] = useState(null);
@@ -64,18 +62,11 @@ export default function ViewPurchaseBill() {
 
     return (
         <div className="relative">
-            <button 
-                onClick={handlePrint}
-                className="fixed top-4 right-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 print:hidden"
-            >
+            <button onClick={handlePrint} className="fixed top-4 right-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 print:hidden">
                 Print Invoice
             </button>
             
-            
-            <div 
-                ref={componentRef}
-                className="max-w-4xl mx-auto p-6 bg-white my-8"
-            >
+            <div ref={componentRef} className="max-w-4xl mx-auto p-6 bg-white my-8">
                 <h1 className="text-xl font-bold mb-4">PURCHASE INVOICE</h1>
                 
                 <div className="border border-gray-300">
@@ -127,19 +118,22 @@ export default function ViewPurchaseBill() {
                                     <th className="p-2 border text-left">QTY</th>
                                     <th className="p-2 border text-left">MRP</th>
                                     <th className="p-2 border text-left">RATE</th>
+                                    <th className="p-2 border text-left">AMOUNT</th>
                                     <th className="p-2 border text-left">DISC.</th>
                                     <th className="p-2 border text-left">GST</th>
-                                    <th className="p-2 border text-left">AMOUNT</th>
+                                    <th className="p-2 border text-left">TOTAL</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {billData?.items?.map((item, index) => {
                                     const subtotal = (item?.quantity || 0) * (item?.purchase_price || 0);
-                                    const discountAmount = (subtotal * (item?.discount_percentage || 0)) / 100;
-                                    const taxableAmount = subtotal - discountAmount;
-                                    const taxAmount = (taxableAmount * (item?.gst_percentage || 0)) / 100;
-                                    const totalAmount = taxableAmount + taxAmount;
-
+                                    const discountPercent = (item?.discount_percentage || 0);
+                                    const discountAmount = (subtotal * discountPercent) / 100;
+                                    const afterDiscount = subtotal - discountAmount;
+                                    const gstPercent = (item?.gst_percentage || 0);
+                                    const taxAmount = (afterDiscount * gstPercent) / 100;
+                                    const totalAmount = afterDiscount + taxAmount;
+                                    
                                     return (
                                         <tr key={index}>
                                             <td className="p-2 border">{index + 1}</td>
@@ -149,9 +143,10 @@ export default function ViewPurchaseBill() {
                                             <td className="p-2 border">
                                                 {item?.expiry_date ? new Date(item.expiry_date).toLocaleDateString() : '-'}
                                             </td>
-                                            <td className="p-2 border">{item?.quantity} {item?.unit}</td>
+                                            <td className="p-2 border">{formatQuantityDisplay(item?.quantity, item?.unit, item?.secondary_unit, true)}</td>
                                             <td className="p-2 border">{formatCurrency(item?.mrp || 0)}</td>
                                             <td className="p-2 border">{formatCurrency(item?.purchase_price)}</td>
+                                            <td className="p-2 border">{formatCurrency(subtotal)}</td>
                                             <td className="p-2 border">{formatCurrency(discountAmount)} ({item?.discount_percentage}%)</td>
                                             <td className="p-2 border">{formatCurrency(taxAmount)} ({item?.gst_percentage}%)</td>
                                             <td className="p-2 border">{formatCurrency(totalAmount)}</td>
@@ -162,8 +157,28 @@ export default function ViewPurchaseBill() {
                                     <td className="p-2 border" colSpan="5">TOTAL</td>
                                     <td className="p-2 border">{billData?.items?.reduce((acc, item) => acc + (item.quantity || 0), 0)}</td>
                                     <td className="p-2 border" colSpan="2"></td>
-                                    <td className="p-2 border">{formatCurrency(billData?.tax_summary?.[0]?.taxableAmount)}</td>
-                                    <td className="p-2 border">{formatCurrency((billData?.tax_summary?.[0]?.sgst || 0) + (billData?.tax_summary?.[0]?.cgst || 0))}</td>
+                                    <td className="p-2 border">
+                                        {formatCurrency(billData?.items?.reduce((acc, item) => {
+                                            const subtotal = (item?.quantity || 0) * (item?.purchase_price || 0);
+                                            return acc + subtotal;
+                                        }, 0))}
+                                    </td>
+                                    <td className="p-2 border">
+                                        {formatCurrency(billData?.items?.reduce((acc, item) => {
+                                            const subtotal = (item?.quantity || 0) * (item?.purchase_price || 0);
+                                            const discountAmount = (subtotal * (item?.discount_percentage || 0)) / 100;
+                                            return acc + discountAmount;
+                                        }, 0))}
+                                    </td>
+                                    <td className="p-2 border">
+                                        {formatCurrency(billData?.items?.reduce((acc, item) => {
+                                            const subtotal = (item?.quantity || 0) * (item?.purchase_price || 0);
+                                            const discountAmount = (subtotal * (item?.discount_percentage || 0)) / 100;
+                                            const afterDiscount = subtotal - discountAmount;
+                                            const taxAmount = (afterDiscount * (item?.gst_percentage || 0)) / 100;
+                                            return acc + taxAmount;
+                                        }, 0))}
+                                    </td>
                                     <td className="p-2 border">{formatCurrency(billData?.grand_total)}</td>
                                 </tr>
                             </tbody>

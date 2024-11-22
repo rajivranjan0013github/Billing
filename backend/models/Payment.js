@@ -32,6 +32,10 @@ const paymentSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'PurchaseBill'
     }],
+    sales_bills: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'SalesBill'
+    }]
 }, {
     timestamps: true
 });

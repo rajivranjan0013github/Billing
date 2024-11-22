@@ -5,24 +5,24 @@ import { Input } from "../components/ui/input"
 import { MessageSquare, Search, Settings } from "lucide-react"
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { fetchPaymentsOut } from "../redux/slices/paymentSlice";
+import { fetchPaymentsIn } from "../redux/slices/paymentSlice";
 import { useEffect } from "react";
 
-export default function Component() {
+export default function PaymentIn() {
   const navigate = useNavigate();
-  const { paymentOut, paymentOutStatus } = useSelector((state) => state.payment);
+  const { paymentIn, paymentInStatus } = useSelector((state) => state.payment);
   const dispatch = useDispatch();
 
   useEffect(() => {
-    if (paymentOutStatus === "idle") {
-      dispatch(fetchPaymentsOut());
+    if (paymentInStatus === "idle") {
+      dispatch(fetchPaymentsIn());
     }
-  }, [dispatch, paymentOutStatus]);
+  }, [dispatch, paymentInStatus]);
   
   return (
     <div className="w-full max-w-6xl mx-auto p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Payment Out</h1>
+        <h1 className="text-xl font-semibold">Payment In</h1>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon">
             <Settings className="h-5 w-5" />
@@ -50,8 +50,8 @@ export default function Component() {
             </SelectContent>
           </Select>
         </div>
-        <Button className="bg-[#6366F1] hover:bg-[#5558DD]" onClick={() => navigate("/purchase/create-payment-out")}>
-          Create Payment Out
+        <Button className="bg-[#6366F1] hover:bg-[#5558DD]" onClick={() => navigate("/sales/create-payment-in")}>
+          Create Payment In
         </Button>
       </div>
 
@@ -66,8 +66,8 @@ export default function Component() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paymentOut.map((payment) => (
-              <TableRow key={payment._id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/purchase/payment-out/${payment._id}`)}>
+            {paymentIn.map((payment) => (
+              <TableRow key={payment._id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/sales/payment-in/${payment._id}`)}>
                 <TableCell>
                   {new Date(payment.createdAt).toLocaleDateString('en-IN', {
                     day: '2-digit',
@@ -80,7 +80,7 @@ export default function Component() {
                 <TableCell className="text-right">₹ {payment.amount.toLocaleString('en-IN')}</TableCell>
               </TableRow>
             ))}
-            {paymentOut.length === 0 && (
+            {paymentIn.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} className="text-center text-muted-foreground">
                   No payments found
