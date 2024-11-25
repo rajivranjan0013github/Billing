@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -9,7 +9,6 @@ import {
   ShoppingCart,
   Truck,
   Package,
-  FileText,
   Menu,
   ChevronDown,
   LogOut,
@@ -25,7 +24,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../../ui/tooltip";
-import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
+import { Avatar, AvatarFallback } from "../../ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -45,6 +44,7 @@ export const navItems = [
   { name: "Sales", icon: ShoppingCart, path: "/sales",
     submenu: [
       { name: "Sales List", path: "/sales" },
+      { name: "Sales Return", path: "/sales/return" },
       { name: "Payment In", path: "/sales/payment-in" },
     ],
    },
@@ -54,6 +54,7 @@ export const navItems = [
     path: "/purchase",
     submenu: [
       { name: "Purchase List", path: "/purchase" },
+      { name: "Purchase Return", path: "/purchase/return" },
       { name: "Payment Out", path: "/purchase/payment-out" },
     ],
   },
@@ -240,26 +241,33 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
                 </Tooltip>
               </TooltipProvider>
               
-              {/* Submenu items */}
-              {!isCollapsed && item.submenu && expandedItems.includes(item.name) && (
-                <ul className="ml-6 mt-1 space-y-1">
-                  {item.submenu.map((subItem) => (
-                    <li key={subItem.name}>
-                      <Button
-                        variant="ghost"
-                        className={cn(
-                          "w-full justify-start pl-7",
-                          isActive(subItem.path)
-                            ? "bg-blue-100 text-blue-900"
-                            : "text-gray-600 hover:bg-blue-50 hover:text-blue-900"
-                        )}
-                        onClick={() => navigate(subItem.path)}
-                      >
-                        <span>{subItem.name}</span>
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
+              {/* Submenu items - Updated with animation */}
+              {!isCollapsed && item.submenu && (
+                <div
+                  className={cn(
+                    "overflow-hidden transition-all duration-300 ease-in-out",
+                    expandedItems.includes(item.name) ? "max-h-[500px]" : "max-h-0"
+                  )}
+                >
+                  <ul className="ml-6 mt-1 space-y-1">
+                    {item.submenu.map((subItem) => (
+                      <li key={subItem.name}>
+                        <Button
+                          variant="ghost"
+                          className={cn(
+                            "w-full justify-start pl-7",
+                            isActive(subItem.path)
+                              ? "bg-blue-100 text-blue-900"
+                              : "text-gray-600 hover:bg-blue-50 hover:text-blue-900"
+                          )}
+                          onClick={() => navigate(subItem.path)}
+                        >
+                          <span>{subItem.name}</span>
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </li>
           ))}

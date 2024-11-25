@@ -123,55 +123,71 @@ const SelectPurchaseItemDialog = ({ open, onOpenChange, onSelectItem }) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {getDisplayItems().map((item) => {
-                  const isSelected = selectedItems.some((i) => i._id === item._id);
-                  const purchasePrice = item.purchase_info?.price_per_unit || 0;
-                  const taxIncluded = item.purchase_info?.is_tax_included || false;
-                  
-                  return (
-                    <TableRow   key={item._id}  className="cursor-pointer hover:bg-gray-50"  onClick={() => handleItemSelect(item)}>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => handleItemSelect(item)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell>{item?.manufacturer_name || "_"}</TableCell>
-                      <TableCell>{item?.pack || "_"}</TableCell>
-                      <TableCell>₹{purchasePrice} {taxIncluded ? "(GST Incl.)" : ""}</TableCell>
-                      <TableCell>{formatQuantityDisplay(item.quantity, item.unit, item?.secondary_unit, true)}</TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        {isSelected ? (
-                         <div className="flex items-center gap-2">
-                           <Input
-                            type="text"
-                            value={quantities[item._id] || ""}
-                            onChange={(e) => handleQuantityChange(item._id, e.target.value)}
-                            className="w-20 text-center"
-                            min="1"
-                            step="1"
-                            onClick={(e) => e.stopPropagation()}
+                {getDisplayItems().length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <div className="flex flex-col items-center gap-2">
+                        <p className="text-gray-500">No items found</p>
+                        <Button 
+                          size="sm" 
+                          onClick={() => setShowAddItemDialog(true)}
+                        >
+                          Create New Item
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  getDisplayItems().map((item) => {
+                    const isSelected = selectedItems.some((i) => i._id === item._id);
+                    const purchasePrice = item.purchase_info?.price_per_unit || 0;
+                    const taxIncluded = item.purchase_info?.is_tax_included || false;
+                    
+                    return (
+                      <TableRow   key={item._id}  className="cursor-pointer hover:bg-gray-50"  onClick={() => handleItemSelect(item)}>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => handleItemSelect(item)}
                           />
-                          <p>{item.unit}</p>
-                         </div>
-                        ) : (
-                          <Button 
-                            size="sm"
-                            variant="outline"
-                            className="h-8"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleItemSelect(item);
-                            }}
-                          >
-                            Select
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                        </TableCell>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell>{item?.manufacturer_name || "_"}</TableCell>
+                        <TableCell>{item?.pack || "_"}</TableCell>
+                        <TableCell>₹{purchasePrice} {taxIncluded ? "(GST Incl.)" : ""}</TableCell>
+                        <TableCell>{formatQuantityDisplay(item.quantity, item.unit, item?.secondary_unit, true)}</TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          {isSelected ? (
+                           <div className="flex items-center gap-2">
+                             <Input
+                              type="text"
+                              value={quantities[item._id] || ""}
+                              onChange={(e) => handleQuantityChange(item._id, e.target.value)}
+                              className="w-20 text-center"
+                              min="1"
+                              step="1"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <p>{item.unit}</p>
+                           </div>
+                          ) : (
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              className="h-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleItemSelect(item);
+                              }}
+                            >
+                              Select
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
               </TableBody>
             </Table>
           </div>

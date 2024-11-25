@@ -94,6 +94,8 @@ const CreateSellInvoice = () => {
     );
   };
 
+  console.log(calculateTotals());
+
   const handleFullyPaidChange = (checked) => {
     setIsFullyPaid(checked);
     if (checked) {
