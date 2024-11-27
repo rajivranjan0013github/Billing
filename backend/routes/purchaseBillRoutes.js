@@ -150,10 +150,17 @@ router.get("/", verifyToken, async (req, res) => {
 // Get single purchase bill by ID
 router.get("/purchase-bill/:id", verifyToken, async (req, res) => {
   try {
-    const bill = await PurchaseBill.findById(req.params.id)
-      .populate('supplier')
-      .populate('items.item')
-      .populate('created_by');
+    const billId = req.params.id;
+    let bill;
+    if(mongoose.Types.ObjectId.isValid(billId)){
+      bill = await PurchaseBill.findById(billId)
+        .populate('supplier')
+        .populate('items.item');
+    } else {
+      bill = await PurchaseBill.findOne({ bill_number: billId })
+        .populate('supplier')
+        .populate('items.item');
+    }
     res.status(200).json(bill);
   } catch (error) {
     res.status(500).json({ message: "Error fetching purchase bill", error: error.message });

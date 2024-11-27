@@ -1,6 +1,6 @@
 import { Button } from "../components/ui/button"
 import { Link } from "react-router-dom"
-import { Users, Lightbulb, Target, Mail, Pill, TestTube, UserCog, BarChart, Stethoscope, HeartPulse, LogIn } from "lucide-react"
+import { Users, Lightbulb, Target, Mail, Pill, TestTube, UserCog, BarChart, Stethoscope, HeartPulse, LogIn, FileText, CreditCard, TrendingUp, Clock, Shield } from "lucide-react"
 import { ColorfulLogo } from "../components/custom/Navigations/VerticalNav";
 import { useNavigate } from 'react-router-dom';
 import {
@@ -89,7 +89,7 @@ export default function AboutPage() {
           <Link className="flex items-center justify-center" to="/">
             <ColorfulLogo className="h-6 w-6 sm:h-7 sm:w-7 text-blue-600" />
             <span className="ml-2 text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
-              The Hospital
+              InvoicePro
             </span>
           </Link>
         </div>
@@ -135,9 +135,9 @@ export default function AboutPage() {
           <div className="container px-4 md:px-6 mx-auto">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
-                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter">About The Hospital</h1>
+                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter">About InvoicePro</h1>
                 <p className="max-w-[900px] text-sm sm:text-base md:text-lg lg:text-xl text-gray-500">
-                  Revolutionizing healthcare management with cutting-edge software solutions.
+                  Empowering businesses with smart billing and invoice management solutions.
                 </p>
               </div>
             </div>
@@ -145,48 +145,27 @@ export default function AboutPage() {
         </section>
         <section className="w-full py-8 sm:py-12 md:py-16 lg:py-20 bg-gray-100">
           <div className="container px-4 md:px-6 mx-auto">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tighter text-center mb-8 sm:mb-12">Comprehensive Healthcare Management Solution</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tighter text-center mb-8 sm:mb-12">Comprehensive Billing Management Solution</h2>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-12">
               <div className="flex flex-col items-center text-center space-y-4">
-                <Users className="h-10 w-10 sm:h-12 sm:w-12 text-blue-600" />
-                <h3 className="text-lg sm:text-xl font-bold">Secure Patient Records</h3>
+                <FileText className="h-10 w-10 sm:h-12 sm:w-12 text-blue-600" />
+                <h3 className="text-lg sm:text-xl font-bold">Invoice Generation</h3>
                 <p className="text-sm sm:text-base text-gray-500">
-                  State-of-the-art encryption and access controls ensure patient data privacy and compliance with healthcare regulations.
+                  Create professional invoices instantly with customizable templates and automated calculations.
                 </p>
               </div>
               <div className="flex flex-col items-center text-center space-y-4">
-                <Pill className="h-10 w-10 sm:h-12 sm:w-12 text-blue-600" />
-                <h3 className="text-lg sm:text-xl font-bold">Pharmacy Management</h3>
+                <CreditCard className="h-10 w-10 sm:h-12 sm:w-12 text-blue-600" />
+                <h3 className="text-lg sm:text-xl font-bold">Payment Processing</h3>
                 <p className="text-sm sm:text-base text-gray-500">
-                  Streamline inventory, prescriptions, and billing with our integrated pharmacy management system.
-                </p>
-              </div>
-              <div className="flex flex-col items-center text-center space-y-4">
-                <TestTube className="h-10 w-10 sm:h-12 sm:w-12 text-blue-600" />
-                <h3 className="text-lg sm:text-xl font-bold">Laboratory Management</h3>
-                <p className="text-sm sm:text-base text-gray-500">
-                  Efficiently manage lab orders, results, and reporting to enhance diagnostic processes.
-                </p>
-              </div>
-              <div className="flex flex-col items-center text-center space-y-4">
-                <UserCog className="h-10 w-10 sm:h-12 sm:w-12 text-blue-600" />
-                <h3 className="text-lg sm:text-xl font-bold">Staff Management</h3>
-                <p className="text-sm sm:text-base text-gray-500">
-                  Optimize scheduling, performance tracking, and resource allocation for healthcare professionals.
+                  Accept multiple payment methods and track transactions effortlessly.
                 </p>
               </div>
               <div className="flex flex-col items-center text-center space-y-4">
                 <BarChart className="h-10 w-10 sm:h-12 sm:w-12 text-blue-600" />
-                <h3 className="text-lg sm:text-xl font-bold">Advanced Analytics</h3>
+                <h3 className="text-lg sm:text-xl font-bold">Financial Reports</h3>
                 <p className="text-sm sm:text-base text-gray-500">
-                  Gain actionable insights with powerful reporting tools and predictive analytics.
-                </p>
-              </div>
-              <div className="flex flex-col items-center text-center space-y-4">
-                <Stethoscope className="h-10 w-10 sm:h-12 sm:w-12 text-blue-600" />
-                <h3 className="text-lg sm:text-xl font-bold">Telemedicine Integration</h3>
-                <p className="text-sm sm:text-base text-gray-500">
-                  Seamlessly incorporate virtual consultations and remote patient monitoring into your workflow.
+                  Generate detailed reports and gain insights into your business performance.
                 </p>
               </div>
             </div>
@@ -194,27 +173,27 @@ export default function AboutPage() {
         </section>
         <section className="w-full py-8 sm:py-12 md:py-16 lg:py-20 bg-blue-50">
           <div className="container px-4 md:px-6 mx-auto">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tighter text-center mb-8">Our Impact on Healthcare</h2>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tighter text-center mb-8">Our Impact on Businesses</h2>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-12">
               <div className="flex flex-col items-center text-center space-y-4">
-                <HeartPulse className="h-10 w-10 sm:h-12 sm:w-12 text-blue-600" />
-                <h3 className="text-lg sm:text-xl font-bold">Improved Patient Care</h3>
+                <Clock className="h-10 w-10 sm:h-12 sm:w-12 text-blue-600" />
+                <h3 className="text-lg sm:text-xl font-bold">Time Savings</h3>
                 <p className="text-sm sm:text-base text-gray-600">
-                  Our software enables healthcare providers to focus more on patient care by streamlining administrative tasks.
+                  Businesses save up to 70% of time spent on billing and invoice management.
                 </p>
               </div>
               <div className="flex flex-col items-center text-center space-y-4">
-                <BarChart className="h-10 w-10 sm:h-12 sm:w-12 text-blue-600" />
-                <h3 className="text-lg sm:text-xl font-bold">Enhanced Efficiency</h3>
+                <TrendingUp className="h-10 w-10 sm:h-12 sm:w-12 text-blue-600" />
+                <h3 className="text-lg sm:text-xl font-bold">Increased Efficiency</h3>
                 <p className="text-sm sm:text-base text-gray-600">
-                  Hospitals using our solution report up to 30% increase in operational efficiency and resource utilization.
+                  Our users report 40% improvement in payment collection and cash flow.
                 </p>
               </div>
               <div className="flex flex-col items-center text-center space-y-4">
-                <Users className="h-10 w-10 sm:h-12 sm:w-12 text-blue-600" />
-                <h3 className="text-lg sm:text-xl font-bold">Empowered Staff</h3>
+                <Shield className="h-10 w-10 sm:h-12 sm:w-12 text-blue-600" />
+                <h3 className="text-lg sm:text-xl font-bold">Secure Transactions</h3>
                 <p className="text-sm sm:text-base text-gray-600">
-                  Healthcare professionals can make informed decisions quickly with our intuitive and data-driven platform.
+                  Enterprise-grade security ensuring safe payment processing and data protection.
                 </p>
               </div>
             </div>
@@ -299,7 +278,7 @@ export default function AboutPage() {
         </section>
       </main>
       <footer className="flex flex-col gap-2 sm:flex-row py-4 sm:py-6 w-full shrink-0 items-center px-4 md:px-6 border-t bg-white">
-        <p className="text-xs text-gray-500">© 2024 The Hospital. All rights reserved.</p>
+        <p className="text-xs text-gray-500">© 2024 InvoicePro. All rights reserved.</p>
         <nav className="sm:ml-auto flex gap-4 sm:gap-6">
           <Link className="text-xs hover:underline underline-offset-4" href="#">
             Terms of Service

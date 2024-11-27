@@ -320,7 +320,7 @@ export default function AddItemDialog({ isOpen, onClose }) {
                   </div>
                   <div>
                     <Label htmlFor="hsnCode">HSN Code</Label>
-                    <Input id="hsnCode" placeholder="HSN Code" value={hsnCode} onChange={(e) => setHsnCode(e.target.value)} required />
+                    <Input id="hsnCode" placeholder="HSN Code" value={hsnCode} onChange={(e) => setHsnCode(e.target.value)} />
                   </div>
                   <div>
                     <Label htmlFor="expiryDate">Expiry Date</Label>

@@ -3,7 +3,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { CardContent, Card } from "../components/ui/card";
 import { Link } from "react-router-dom";
-import { ShieldCheck, Users, BarChart, Pill, Loader2, Eye, EyeOff, Menu, LogIn } from "lucide-react";
+import { ShieldCheck, Users, BarChart, Pill, Loader2, Eye, EyeOff, Menu, LogIn, FileText, CreditCard } from "lucide-react";
 import { ColorfulLogo } from "../components/custom/Navigations/VerticalNav";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -119,6 +119,34 @@ export default function LandingPage() {
     }
   };
 
+  // Update the page title and description
+  const pageTitle = "Streamline Your Business Billing";
+  const pageDescription = "InvoicePro provides a comprehensive solution for efficient billing, invoice management, and financial reporting for businesses of all sizes.";
+
+  // Update the features
+  const features = [
+    {
+      icon: <FileText className="h-12 w-12 text-blue-600" />,
+      title: "Easy Invoice Creation",
+      description: "Create professional invoices quickly with customizable templates and automated calculations."
+    },
+    {
+      icon: <Users className="h-12 w-12 text-blue-600" />,
+      title: "Client Management",
+      description: "Efficiently manage client information, payment history, and communication all in one place."
+    },
+    {
+      icon: <CreditCard className="h-12 w-12 text-blue-600" />,
+      title: "Multiple Payment Options",
+      description: "Accept various payment methods and integrate with popular payment gateways for smooth transactions."
+    },
+    {
+      icon: <BarChart className="h-12 w-12 text-blue-600" />,
+      title: "Financial Reporting",
+      description: "Generate comprehensive financial reports and gain insights into your business performance."
+    },
+  ];
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <header className="px-2 lg:px-6 h-16 flex items-center justify-between bg-white shadow-sm">
@@ -170,7 +198,7 @@ export default function LandingPage() {
           <Link className="flex items-center justify-center" to="/">
             <ColorfulLogo className="h-6 w-6 sm:h-7 sm:w-7 text-blue-600" />
             <span className="ml-2 text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
-              The Hospital
+              InvoicePro
             </span>
           </Link>
         </div>
@@ -218,12 +246,10 @@ export default function LandingPage() {
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-2">
                   <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none">
-                    Streamline Your Hospital Management
+                    {pageTitle}
                   </h1>
                   <p className="max-w-[600px] text-gray-500 md:text-xl">
-                    The Hospital provides a comprehensive solution for efficient
-                    hospital administration, patient care, and resource
-                    management.
+                    {pageDescription}
                   </p>
                 </div>
                 <div className="hidden md:flex lg:flex flex-col gap-2 min-[400px]:flex-row">
@@ -251,12 +277,12 @@ export default function LandingPage() {
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         htmlFor="hospitalId"
                       >
-                        Hospital ID
+                        Business ID
                       </label>
                       <Input
                         className="w-full flex h-10 rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
                         id="hospitalId"
-                        placeholder="Enter your hospital ID"
+                        placeholder="Enter your Business ID"
                         type="text"
                         required
                         value={formData.hospitalId}
@@ -344,44 +370,19 @@ export default function LandingPage() {
               Key Features
             </h2>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="flex flex-col items-center text-center space-y-4">
-                <ShieldCheck className="h-12 w-12 text-blue-600" />
-                <h3 className="text-xl font-bold">Secure Patient Records</h3>
-                <p className="text-gray-500">
-                  Maintain confidential patient information with our
-                  state-of-the-art security measures.
-                </p>
-              </div>
-              <div className="flex flex-col items-center text-center space-y-4">
-                <Users className="h-12 w-12 text-blue-600" />
-                <h3 className="text-xl font-bold">Staff Management</h3>
-                <p className="text-gray-500">
-                  Efficiently manage schedules, assignments, and performance of
-                  your medical staff.
-                </p>
-              </div>
-              <div className="flex flex-col items-center text-center space-y-4">
-                <Pill className="h-12 w-12 text-blue-600" />
-                <h3 className="text-xl font-bold">Pharmacy Management</h3>
-                <p className="text-gray-500">
-                  Streamline medication dispensing, inventory control, and
-                  prescription tracking.
-                </p>
-              </div>
-              <div className="flex flex-col items-center text-center space-y-4">
-                <BarChart className="h-12 w-12 text-blue-600" />
-                <h3 className="text-xl font-bold">Analytics Dashboard</h3>
-                <p className="text-gray-500">
-                  Gain insights into hospital operations with comprehensive
-                  analytics and reporting.
-                </p>
-              </div>
+              {features.map((feature, index) => (
+                <div key={index} className="flex flex-col items-center text-center space-y-4">
+                  {feature.icon}
+                  <h3 className="text-xl font-bold">{feature.title}</h3>
+                  <p className="text-gray-500">{feature.description}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
       </main>
       <footer className="flex flex-col sm:flex-row justify-between items-center py-6 px-4 md:px-6 border-t bg-white">
-        <p className="text-xs text-gray-500 mb-2 sm:mb-0">© 2024 TheHospital. All rights reserved.</p>
+        <p className="text-xs text-gray-500 mb-2 sm:mb-0">© 2024 InvoicePro. All rights reserved.</p>
         <nav className="flex gap-4">
           <Link
             className="text-xs hover:underline underline-offset-4"

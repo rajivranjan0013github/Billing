@@ -58,7 +58,7 @@ export const navItems = [
       { name: "Payment Out", path: "/purchase/payment-out" },
     ],
   },
-  { name: "Item Master", icon: Package, path: "/items-master" },
+  { name: "Stocks", icon: Package, path: "/items-master" },
   { name: "Staffs", icon: UsersIcon, path: "/staff" },
   { name: "Settings", icon: Settings, path: "/settings" },
 ];
@@ -182,7 +182,7 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
         {!isCollapsed && (
           <div className="flex items-center">
             <ColorfulLogo className="h-6 w-6" />
-            <span className="ml-2 text-lg font-bold text-gray-800">The Pharma</span>
+            <span className="ml-2 text-lg font-bold text-gray-800">The Invoice</span>
           </div>
         )}
       </div>

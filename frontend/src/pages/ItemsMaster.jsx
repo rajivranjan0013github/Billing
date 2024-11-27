@@ -146,8 +146,8 @@ export default function ItemsMaster() {
                     <TableCell className='capitalize'>{item.name}</TableCell>
                     <TableCell>{item?.manufacturer_name || "-"}</TableCell>
                     <TableCell>{item?.item_category}</TableCell>
-                    <TableCell>₹{item?.purchase_info?.price_per_unit.toLocaleString('en-IN')}</TableCell>
-                    <TableCell>₹{item?.sales_info?.price_per_unit.toLocaleString('en-IN')}</TableCell>
+                    <TableCell>₹{item?.purchase_info?.price_per_unit?.toLocaleString('en-IN')}</TableCell>
+                    <TableCell>₹{item?.sales_info?.price_per_unit?.toLocaleString('en-IN')}</TableCell>
                     <TableCell>₹{item?.mrp?.toLocaleString('en-IN')}</TableCell>
                     <TableCell>
                       <Badge

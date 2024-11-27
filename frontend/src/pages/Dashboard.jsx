@@ -152,7 +152,7 @@ const PharmacyDashboard = () => {
             <BriefcaseMedicalIcon className="h-4 w-4" />
           </Button>
           <ChevronRight className="h-3 w-3 text-gray-400" />
-          <span className="font-semibold text-gray-700 text-sm">Pharmacy Dashboard</span>
+          <span className="font-semibold text-gray-700 text-sm">Dashboard</span>
         </div>
         <div className="flex items-center space-x-4">
         {dateFilter === "Custom" && (
@@ -190,7 +190,7 @@ const PharmacyDashboard = () => {
                 <CardContent className="p-4">
                   <Pill className="w-8 h-8 text-blue-600 mb-2" />
                   <p className="text-2xl font-bold text-blue-600">{dashboardTotals.totalPrescriptions}</p>
-                  <p className="text-sm text-gray-600">Prescriptions Filled</p>
+                  <p className="text-sm text-gray-600">Invoices Issued</p>
                   <p className={`text-xs mt-1 ${calculatePercentageChange(dashboardTotals.totalPrescriptions, previousData.totalCount) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {calculatePercentageChange(dashboardTotals.totalPrescriptions, previousData.totalCount)}% from previous period
                   </p>
@@ -254,7 +254,7 @@ const PharmacyDashboard = () => {
                 <CardContent className="grid grid-cols-3 gap-4">
                   <Button className="w-full justify-center" variant="outline" onClick={() => navigate("/pharmacy/sales")}>
                     <Users className="mr-2 h-4 w-4" />
-                    Pharmacy Sales
+                    Sales
                   </Button>
                   <Button className="w-full justify-center" variant="outline" onClick={() => navigate("/pharmacy/items-master")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />

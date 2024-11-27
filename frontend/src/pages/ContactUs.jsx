@@ -95,7 +95,7 @@ export default function ContactPage() {
           </Sheet>
           <Link className="flex items-center justify-center" to="/">
             <ColorfulLogo className="h-6 w-6 sm:h-7 sm:w-7 text-blue-600" />
-            <span className="ml-2 text-lg sm:text-xl md:text-2xl font-bold text-gray-900">The Hospital</span>
+            <span className="ml-2 text-lg sm:text-xl md:text-2xl font-bold text-gray-900">InvoicePro</span>
           </Link>
         </div>
         <nav className="hidden md:flex items-center space-x-4">
