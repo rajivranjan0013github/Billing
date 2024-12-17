@@ -5,29 +5,27 @@ import { Backend_URL } from "../../assets/Data";
 const initialState = {
   items: [],
   itemsStatus: "idle",
-  createItemStatus: "idle",
-  adjustStockStatus: "idle",
+  manageItemStatus: "idle",
   error: null,
 };
 
-export const createInventoryItem = createLoadingAsyncThunk(
-    "pharmacy/createInventoryItem",
-    async (itemData) => {
-      const response = await fetch(`${Backend_URL}/api/inventory/create`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(itemData),
-        credentials: "include",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to create inventory item");
-      }
-      return response.json();
-    },
-    { useGlobalLoader: true }
-  );
+export const manageInventory = createLoadingAsyncThunk(
+  "inventory/manageInventory",
+  async (itemData) => {
+    const response = await fetch(`${Backend_URL}/api/inventory/manage-inventory`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(itemData),
+      credentials: "include",
+    });
+    if (!response.ok) {
+      throw new Error("Failed to create new item");
+    }
+    return response.json();
+  }
+);
 
 // Thunk for fetching items
 export const fetchItems = createLoadingAsyncThunk(
@@ -42,29 +40,7 @@ export const fetchItems = createLoadingAsyncThunk(
   { useGlobalLoader: true }
 );
 
-// Add new thunk for adjusting stock
-export const adjustStock = createLoadingAsyncThunk(
-  "inventory/adjustStock",
-  async ({ itemId, adjustmentType, quantity, remarks }) => {
-    const response = await fetch(
-      `${Backend_URL}/api/inventory/${itemId}/adjust-stock`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ adjustmentType, quantity, remarks }),
-      }
-    );
-    
-    if (!response.ok) {
-      throw new Error('Failed to adjust stock');
-    }
-    
-    return response.json();
-  }
-);
+// Add new thunk for adjusting sto
 
 const inventorySlice = createSlice({
   name: "inventory",
@@ -83,30 +59,20 @@ const inventorySlice = createSlice({
         state.itemsStatus = "failed";
         state.error = action.error.message;
       })
-      .addCase(adjustStock.pending, (state) => {
-        state.adjustStockStatus = "loading";
+      .addCase(manageInventory.pending, (state) => {
+        state.manageItemStatus = "loading";
       })
-      .addCase(adjustStock.fulfilled, (state, action) => {
-        const updatedItem = action.payload;
-        const index = state.items.findIndex(item => item._id === updatedItem._id);
-        if (index !== -1) {
-          state.items[index] = updatedItem;
+      .addCase(manageInventory.fulfilled, (state, action) => {
+        state.manageItemStatus = "succeeded";
+        const itemIndex = state.items.findIndex(item => item._id === action.payload._id);
+        if (itemIndex !== -1) {
+          state.items[itemIndex] = action.payload;
+        } else {
+          state.items.unshift(action.payload);
         }
-        state.adjustStockStatus = "succeeded";
       })
-      .addCase(adjustStock.rejected, (state, action) => {
-        state.adjustStockStatus = "failed";
-        state.error = action.error.message;
-      })
-      .addCase(createInventoryItem.pending, (state) => {
-        state.createItemStatus = "loading";
-      })
-      .addCase(createInventoryItem.fulfilled, (state, action) => {
-        state.createItemStatus = "succeeded";
-        state.items.unshift(action.payload);
-      })
-      .addCase(createInventoryItem.rejected, (state, action) => {
-        state.createItemStatus = "failed";
+      .addCase(manageInventory.rejected, (state, action) => {
+        state.manageItemStatus = "failed";
         state.error = action.error.message;
       })
   },

@@ -248,3 +248,9 @@ export function numberToWords(number) {
 }
 
 export const s3Domain="https://thousandwayshospital.s3.ap-south-1.amazonaws.com"
+
+export const convertToFraction = (num) => {
+  const value = Number(num);
+  const ans = Math.round(value * 100) / 100;
+  return ans;
+}

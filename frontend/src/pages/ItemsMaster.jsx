@@ -10,10 +10,10 @@ import { Button } from "../components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Badge } from "../components/ui/badge";
-import AddItemDialog from "../components/custom/itemMaster/AddItemDialog";
 import { useToast } from "../hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { formatQuantityDisplay } from "../assets/utils";
+import ManageInventory from "../components/custom/inventory/ManageInventory";
 
 export default function ItemsMaster() {
   const dispatch = useDispatch();
@@ -23,8 +23,8 @@ export default function ItemsMaster() {
   const [typeFilter, setTypeFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  const [isAddItemDialogOpen, setIsAddItemDialogOpen] = useState(false);
   const navigate = useNavigate();
+  const [isUpdateStockOpen, setIsUpdateStockOpen] = useState(false);
 
   const types = ["All", ...new Set(items.map((item) => item.item_category))];
 
@@ -62,14 +62,6 @@ export default function ItemsMaster() {
     } else if (direction === "next" && currentPage < totalPages) {
       setCurrentPage(currentPage + 1);
     }
-  };
-
-  const handleOpenAddItemDialog = () => {
-    setIsAddItemDialogOpen(true);
-  };
-
-  const handleCloseAddItemDialog = () => {
-    setIsAddItemDialogOpen(false);
   };
 
   const handleRowClick = (itemId) => {
@@ -110,7 +102,7 @@ export default function ItemsMaster() {
             </DropdownMenu>
           </div>
           <div className="flex space-x-2">
-            <Button variant="outline" onClick={handleOpenAddItemDialog}>
+            <Button variant="outline" onClick={() => setIsUpdateStockOpen(true)}>
               <Plus className="mr-2 h-4 w-4" /> Add Item
             </Button>
           </div>
@@ -144,7 +136,7 @@ export default function ItemsMaster() {
                     className="cursor-pointer hover:bg-muted/50"
                   >
                     <TableCell className='capitalize'>{item.name}</TableCell>
-                    <TableCell>{item?.manufacturer_name || "-"}</TableCell>
+                    <TableCell>{item?.mfc_name || "-"}</TableCell>
                     <TableCell>{item?.item_category}</TableCell>
                     <TableCell>₹{item?.purchase_info?.price_per_unit?.toLocaleString('en-IN')}</TableCell>
                     <TableCell>₹{item?.sales_info?.price_per_unit?.toLocaleString('en-IN')}</TableCell>
@@ -185,7 +177,10 @@ export default function ItemsMaster() {
           </div>
         </div>
       </CardContent>
-      <AddItemDialog isOpen={isAddItemDialogOpen} onClose={handleCloseAddItemDialog} />
+      <ManageInventory 
+        open={isUpdateStockOpen} 
+        onOpenChange={setIsUpdateStockOpen}
+      />
     </Card>
   );
 }

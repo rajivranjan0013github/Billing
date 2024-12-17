@@ -38,6 +38,7 @@ import CreatePaymentIn from "./pages/createPaymentIn";
 import PaymentDetailsIn from "./pages/PaymentDetailsIn";
 import SalesReturn from "./pages/SalesReturn";
 import PurchaseReturn from "./pages/PurchaseReturn";
+import Inventory from "./pages/Inventory";
 
 const AppContent = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -102,7 +103,7 @@ const AppContent = () => {
               <Route path="/expenses" element={<Expenses />} />
               <Route path="/sales" element={<Sales />} />
               <Route path="/purchase" element={<Purchase />} />
-              <Route path="/items-master" element={<ItemsMaster />} />
+              <Route path="/items-master" element={<Inventory />} />
               <Route path="/parties" element={<Parties />} />
               <Route path="/parties/create-party" element={<CreateParty />} />
               <Route path="/sales/create-sell-invoice" element={<CreateSellInvoice />} />

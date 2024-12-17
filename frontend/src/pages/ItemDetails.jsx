@@ -22,7 +22,6 @@ import { useEffect, useState } from "react"
 import { Backend_URL } from "../assets/Data"
 import { useParams } from "react-router-dom"
 import { Badge } from "../components/ui/badge"
-import AdjustStockDialog from "../components/custom/inventory/AdjustStockDialog"
 import { formatQuantityDisplay } from "../assets/utils"
 
 export default function ItemDetails() {
@@ -30,7 +29,6 @@ export default function ItemDetails() {
   const [item, setItem] = useState(null);
   const [stockHistory, setStockHistory] = useState([]);
   const { itemId } = useParams();
-  const [isAdjustStockOpen, setIsAdjustStockOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
   const [isLoading, setIsLoading] = useState(true);
   
@@ -68,13 +66,6 @@ export default function ItemDetails() {
     }
   }, [itemId, activeTab, item]  );
 
-  const handleStockAdjusted = (newQuantity) => {
-    setItem(prevItem => ({
-      ...prevItem,
-      quantity: newQuantity
-    }));
-  };
-
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -105,9 +96,6 @@ export default function ItemDetails() {
           </Badge>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setIsAdjustStockOpen(true)}>
-            Adjust Stock
-          </Button>
           <Button variant="outline">
             <Edit className="h-4 w-4 mr-2" />
             Edit
@@ -120,15 +108,6 @@ export default function ItemDetails() {
           </Button>
         </div>
       </div>
-
-      {isAdjustStockOpen && (
-        <AdjustStockDialog 
-          open={isAdjustStockOpen} 
-          onOpenChange={setIsAdjustStockOpen}
-          item={item}
-          onStockAdjusted={handleStockAdjusted}
-        />
-      )}
 
       <Tabs defaultValue="details" onValueChange={setActiveTab}>
         <TabsList className="border-b rounded-none w-full justify-start h-auto p-0 mb-6">

@@ -1,25 +1,46 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "../components/ui/button";
+import React, { useState, useRef } from 'react'
+import ProductSelector from '../components/custom/inventory/SelectInventoryItem'
+import { Input } from '../components/ui/input'
 
-export default function Settings() {
-  const navigate = useNavigate();
+const Settings = () => {
+  const [search, setSearch] = useState("");
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const handleAddStaff = () => {
-    navigate("/addstaff");
+  const handleInputChange = (e) => {
+    const value = e.target.value; 
+    if (value.length > 0) {
+      if(value[0] !== ' ') {
+        setSearch(value); 
+      }
+      setIsDialogOpen(true);
+    }
   };
 
-  const handleHospitalInfo = () => {
-    navigate("/settings/hospital-info");
+  const handleProductSelect = (product) => {
+    setSelectedItem(product);
+    setSearch(product.name);
+    console.log(product);
   };
 
   return (
-    <div className="p-4 sm:p-6">
-      <h1 className="text-xl sm:text-2xl font-bold mb-4">Settings</h1>
-      <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-4">
-        <Button onClick={handleAddStaff} className="w-full sm:w-auto">Add Staff</Button>
-        <Button onClick={handleHospitalInfo} className="w-full sm:w-auto">Hospital Info</Button>
-      </div>
+    <div>
+      <p>Item Name:</p>
+      <Input 
+        type="text" 
+        placeholder="Search" 
+        value={search} 
+        onChange={handleInputChange}
+      />
+      <ProductSelector 
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        onSelect={handleProductSelect}
+        search={search}
+        setSearch={setSearch} 
+      />
     </div>
-  );
+  )
 }
+
+export default Settings

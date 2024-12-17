@@ -138,6 +138,7 @@ const AddEditExpenseDialog = ({ isOpen, onClose, expenseToEdit }) => {
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <Input
+                autoFocus
                 id="description"
                 name="description"
                 value={formData.description}
