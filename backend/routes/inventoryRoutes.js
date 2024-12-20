@@ -1,7 +1,7 @@
 import express from 'express';
 import {Inventory} from '../models/Inventory.js';
 import { verifyToken, checkPermission } from '../middleware/authMiddleware.js';
-import { ItemBatch } from '../models/ItemBatch.js';
+import { InventoryBatch } from '../models/InventoryBatch.js';
 import { StockTimeline } from '../models/StockTimeline.js';
 import mongoose from 'mongoose';
 
@@ -30,26 +30,26 @@ router.post('/manage-inventory', async (req, res) => {
 router.post('/manage-batch', async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
-    const {_id, inventory_id, ...details} = req.body; // _id is batch id
+    const {_id, inventoryId, ...details} = req.body; // _id is batch id
     
     try {
-        const itemDetails = await Inventory.findById(inventory_id).session(session);
-        if(!itemDetails) throw new Error('Item not found');
+        const inventoryDetails = await Inventory.findById(inventoryId).session(session);
+        if(!inventoryDetails) throw new Error('Item not found');
         
         // Force quantity to be a number
-        itemDetails.quantity = Number(itemDetails.quantity || 0);
+        inventoryDetails.quantity = Number(inventoryDetails.quantity || 0);
         details.quantity = Number(details.quantity);
         
         // creating timeline for the batch
         const timeline = new StockTimeline({
-            inventory_id: inventory_id,
+            inventoryId: inventoryId,
             type: 'Adjustment',
-            batch_number: details.batch_number,
-            batch_expiry: details.expiry,
+            batchNumber: details.batchNumber,
+            expiry: details.expiry,
         });
 
         if (_id) {
-            const batchDetails = await ItemBatch.findById(_id).session(session);
+            const batchDetails = await InventoryBatch.findById(_id).session(session);
             if(!batchDetails) throw new Error('Batch not found');
             
             const oldQuantity = Number(batchDetails.quantity || 0);
@@ -57,27 +57,27 @@ router.post('/manage-batch', async (req, res) => {
             
             if(newQuantity > oldQuantity){
                 timeline.credit = newQuantity - oldQuantity;
-                itemDetails.quantity += timeline.credit;
+                inventoryDetails.quantity += timeline.credit;
             } else {
                 timeline.debit = oldQuantity - newQuantity;
-                itemDetails.quantity -= timeline.debit;
+                inventoryDetails.quantity -= timeline.debit;
             }
             Object.assign(batchDetails, details);
-            itemDetails.NewBatchOperation(details);
+            inventoryDetails.NewBatchOperation(details);
             await batchDetails.save({session});
         } else {
-            const newBatch = new ItemBatch({inventory_id: inventory_id, ...details});
+            const newBatch = new InventoryBatch({inventoryId: inventoryId, ...details});
             await newBatch.save({session});
-            itemDetails.batch.push(newBatch._id);
-            itemDetails.NewBatchOperation(details);
-            itemDetails.quantity += Number(details.quantity);
+            inventoryDetails.batch.push(newBatch._id);
+            inventoryDetails.NewBatchOperation(details);
+            inventoryDetails.quantity += Number(details.quantity);
             timeline.credit = Number(details.quantity);
         }
         
-        timeline.balance = Number(itemDetails.quantity);
+        timeline.balance = Number(inventoryDetails.quantity);
         await timeline.save({session});
-        await itemDetails.save({session});
-        const updatedItem = await Inventory.findById(inventory_id).populate('batch').session(session);
+        await inventoryDetails.save({session});
+        const updatedItem = await Inventory.findById(inventoryId).populate('batch').session(session);
         await session.commitTransaction();
         res.status(200).json(updatedItem);
     } catch (error) {
@@ -94,23 +94,23 @@ router.delete('/delete-batch/:batchId', async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const batch = await ItemBatch.findByIdAndDelete(batchId).session(session);
+        const batch = await InventoryBatch.findByIdAndDelete(batchId).session(session);
         if(!batch) throw new Error('Batch not found');
-        const itemDetails = await Inventory.findById(batch.inventory_id).session(session);
-        itemDetails.quantity -= Number(batch.quantity);
-        // Remove the batch ID from the itemDetails.batch array
-        itemDetails.batch = itemDetails.batch.filter(id => id.toString() !== batchId);
+        const inventoryDetails = await Inventory.findById(batch.inventoryId).session(session);
+        inventoryDetails.quantity -= Number(batch.quantity);
+        // Remove the batch ID from the inventoryDetails.batch array
+        inventoryDetails.batch = inventoryDetails.batch.filter(id => id.toString() !== batchId);
         const timeline = new StockTimeline({
-            inventory_id: batch.inventory_id,
+            inventoryId: batch.inventoryId,
             type: 'Adjustment',
-            batch_number: batch.batch_number,
-            batch_expiry: batch.expiry,
+            batchNumber: batch.batchNumber,
+            expiry: batch.expiry,
             debit: Number(batch.quantity),
-            balance: Number(itemDetails.quantity),
+            balance: Number(inventoryDetails.quantity),
         });
         await timeline.save({session});
-        await itemDetails.save({session});
-        const updatedItem = await Inventory.findById(batch.inventory_id).populate('batch').session(session);
+        await inventoryDetails.save({session});
+        const updatedItem = await Inventory.findById(batch.inventoryId).populate('batch').session(session);
         await session.commitTransaction();
         res.status(200).json(updatedItem);
     } catch (error) {
@@ -121,11 +121,27 @@ router.delete('/delete-batch/:batchId', async (req, res) => {
     }
 });
 
-router.get('/timeline/:inventory_id', async (req, res) => {
-    const {inventory_id} = req.params;
+router.get('/timeline/:inventoryId', async (req, res) => {
+    const {inventoryId} = req.params;
+    const {type} = req.query;
+    const queryValue = {inventoryId};
+    if(type === 'purchase' || type === 'sale') {
+       queryValue.type = type.toUpperCase();
+    }
     try {
-        const timeline = await StockTimeline.find({inventory_id: inventory_id}).sort({createdAt: -1});
+        const timeline = await StockTimeline.find(queryValue).sort({createdAt: -1});
         res.status(200).json(timeline);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Get all batches..by inventory id
+router.get('/batches/:inventoryId', verifyToken, async (req, res) => {
+    try {
+        const {inventoryId} = req.params;
+        const batches = await InventoryBatch.find({inventoryId});
+        res.status(200).json(batches);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -142,9 +158,9 @@ router.get('/', verifyToken, async (req, res) => {
 });
 
 // Get a specific inventory item by ID
-router.get('/:itemId', verifyToken, async (req, res) => {
+router.get('/:inventoryId', verifyToken, async (req, res) => {
     try {
-        const item = await Inventory.findById(req.params.itemId).populate('batch');
+        const item = await Inventory.findById(req.params.inventoryId).populate('batch');
         if (!item) return res.status(404).json({ message: 'Item not found' });
         res.status(200).json(item);
     } catch (error) {

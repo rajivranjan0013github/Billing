@@ -7,17 +7,17 @@ const inventorySchema = new mongoose.Schema({
   pack : Number,
   secondary_unit : String,
   quantity : {type : Number, default : 0}, // always in loose value
-  item_category : String,
-  mfc_name: String,
-  img_url : String,
+  category : String,
+  mfcName: String,
+  imgUri : String,
   mrp : Number,
-  purchase_rate : Number,
-  gst_percentage : Number,
+  purchaseRate : Number,
+  gstPer : Number,
   ptr : Number,
   expiry : String,
   composition : String,
   location : String,
-  batch : [{type : mongoose.Schema.Types.ObjectId, ref : 'ItemBatch'}],
+  batch : [{type : mongoose.Schema.Types.ObjectId, ref : 'InventoryBatch'}],
 }, {timestamps : true});
 
 inventorySchema.plugin(hospitalPlugin)
@@ -30,15 +30,15 @@ inventorySchema.methods.NewBatchOperation = async function(batchDetails) {
       (newExpiry[2] === oldExpiry[2] && newExpiry[1] < oldExpiry[1])) {
       this.expiry = batchDetails.expiry;
       this.mrp = batchDetails.mrp;
-      this.purchase_rate = batchDetails.purchase_rate;
-      this.gst_percentage = batchDetails.gst_percentage;
+      this.purchaseRate = batchDetails.purchaseRate;
+      this.gstPer = batchDetails.gstPer;
       this.ptr = batchDetails.ptr;
     }
   } else {
     this.expiry = batchDetails.expiry;
     this.mrp = batchDetails.mrp;
-    this.purchase_rate = batchDetails.purchase_rate;
-    this.gst_percentage = batchDetails.gst_percentage;
+    this.purchaseRate = batchDetails.purchaseRate;
+    this.gstPer = batchDetails.gstPer;
     this.ptr = batchDetails.ptr;
   }
 };

@@ -1,194 +1,207 @@
-import { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { fetchPurchaseBills } from "../redux/slices/PurchaseBillSlice";
-import { format } from "date-fns";
-import { Search, Settings, Mail, HelpCircle, PackageX } from "lucide-react"
+import React, {useState, useEffect} from 'react'
+import { Calendar, ChevronDown, Filter, Search, Users } from 'lucide-react'
 import { Button } from "../components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "../components/ui/select"
 import { Input } from "../components/ui/input"
-import { Select } from "../components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table"
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
-import { useNavigate } from "react-router-dom";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "../components/ui/table"
+import { cn } from "../lib/utils"
+import { useNavigate } from "react-router-dom"
+import { useDispatch, useSelector } from "react-redux"
+import {fetchPurchaseBills} from '../redux/slices/PurchaseBillSlice'
 
-export default function Purchase() {
-  const dispatch = useDispatch();
+export default function PurchasesTransactions() {
   const navigate = useNavigate();
-  const { purchaseBills, fetchStatus } = useSelector((state) => state.purchaseBill);
-  const [totalPurchases, setTotalPurchases] = useState(0);
-  const [totalPaid, setTotalPaid] = useState(0);
-  const [totalUnpaid, setTotalUnpaid] = useState(0);
-  
+  const dispatch = useDispatch();
+  const {purchaseBills, fetchStatus} = useSelector(state=> state.purchaseBill);
+
   useEffect(() => {
-    if(fetchStatus === 'idle'){
+    if(fetchStatus === 'idle') {
       dispatch(fetchPurchaseBills());
     }
-  }, [dispatch]);
+  }, [fetchStatus])
 
-  useEffect(() => {
-    if (purchaseBills.length > 0) {
-      const totals = purchaseBills.reduce((acc, bill) => {
-        acc.total += bill.grand_total || 0;
-        acc.paid += bill.payment?.amount_paid || 0;
-        acc.unpaid += ((bill.grand_total || 0) - (bill.payment?.amount_paid || 0));
-        return acc;
-      }, { total: 0, paid: 0, unpaid: 0 });
-
-      setTotalPurchases(totals.total);
-      setTotalPaid(totals.paid);
-      setTotalUnpaid(totals.unpaid);
-    }
-  }, [purchaseBills]);
-
-  // Format currency
+  console.log(purchaseBills);
+  
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'INR'
-    }).format(amount || 0);
+      currency: 'INR',
+      maximumFractionDigits: 2
+    }).format(amount).replace(/^(\D+)/, '₹');
   };
 
-  return (
-    <div className="container mx-auto p-4 space-y-4">
-      <header className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Purchase Invoices</h1>
-        <div className="flex items-center space-x-2">
-          <Select defaultValue="Reports">
-            <option>Reports</option>
-          </Select>
-          <Button variant="ghost" size="icon"   >
-            <Settings className="h-5 w-5" />
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Mail className="h-5 w-5" />
-          </Button>
-        </div>
-      </header>
+  const summary = purchaseBills.reduce((acc, bill) => {
+    acc.count++;
+    acc.purchaseAmount += bill.grandTotal || 0;
+    acc.amountPaid += bill.amountPaid || 0;
+    return acc;
+  }, { count: 0, purchaseAmount: 0, amountPaid: 0 });
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-blue-50 border-blue-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-normal text-blue-600">Total Purchases</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{formatCurrency(totalPurchases)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-normal text-green-600">Paid</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{formatCurrency(totalPaid)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-normal text-red-600">Unpaid</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{formatCurrency(totalUnpaid)}</p>
-          </CardContent>
-        </Card>
+  return (
+    <div className="relative p-6 rounded-lg space-y-6  ">
+      <div className="flex justify-between items-start">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">Purchases Transactions</h1>
+          <p className="text-muted-foreground ">
+            View List of all your Purchases Transactions here
+          </p>
+        </div>
+        <div className="grid grid-cols-5 gap-4 text-right">
+          <div>
+            <div className="font-semibold">{summary.count}</div>
+            <div className="text-sm text-muted-foreground">Purc Count</div>
+          </div>
+          <div>
+            <div className="font-semibold">{formatCurrency(summary.purchaseAmount)}</div>
+            <div className="text-sm text-muted-foreground">Purc Amt Sum</div>
+          </div>
+          <div>
+            <div className="font-semibold">{formatCurrency(summary.amountPaid)}</div>
+            <div className="text-sm text-muted-foreground">Payable Sum</div>
+          </div>
+          <div>
+            <div className="font-semibold">{formatCurrency(summary.amountPaid)}</div>
+            <div className="text-sm text-muted-foreground">Amt Paid Sum</div>
+          </div>
+          <div>
+            <div className="font-semibold text-pink-500">₹957</div>
+            <div className="text-sm text-muted-foreground">You'll Pay</div>
+          </div>
+        </div>
       </div>
 
-      <div className="flex justify-between items-center space-x-4">
-        <div className="flex items-center space-x-2 flex-grow">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <Input className="pl-10" placeholder="Search..." />
+      <div className="flex gap-4">
+        <div className="relative flex-1">
+          <Select defaultValue="invoice">
+            <SelectTrigger className="absolute left-0 w-[140px] rounded-r-none border-r-0">
+              <SelectValue>INVOICE NO</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="invoice">INVOICE NO</SelectItem>
+              <SelectItem value="distributor">DISTRIBUTOR</SelectItem>
+              <SelectItem value="grn">GRN NO</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex">
+            <Input 
+              className="pl-[150px]" 
+              placeholder="Search using Invoice No"
+            />
+            <Button variant="ghost" className="absolute right-0" size="icon">
+              <Search className="h-4 w-4" />
+            </Button>
           </div>
-          <Select defaultValue="Last 365 Days">
-            <option>Last 365 Days</option>
-          </Select>
         </div>
-        <div className="flex items-center space-x-2">
-          <Select defaultValue="Bulk Actions">
-            <option>Bulk Actions</option>
-          </Select>
-          <Button 
-            className="bg-indigo-600 hover:bg-indigo-700 text-white" 
-            onClick={() => navigate("/purchase/create-purchase-invoice")}
-          >
+
+        <div className="relative w-[300px]">
+          <Button variant="outline" className="w-full justify-start text-left font-normal">
+            <Calendar className="mr-2 h-4 w-4" />
+            NOV 21, 2024 - DEC 20, 2024
+            <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
+          </Button>
+        </div>
+
+        <div className="relative w-[200px]">
+          <Button variant="outline" className="w-full justify-start text-left font-normal">
+            <Filter className="mr-2 h-4 w-4" />
+            FILTER BY
+            <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
+          </Button>
+        </div>
+
+        <div className="relative w-[200px]">
+          <Button variant="outline" className="w-full justify-start text-left ">
+            SORT BY
+            <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
+          </Button>
+        </div>
+        <div className="relative w-[200px]">
+          <Button className="w-full justify-start text-left" onClick={()=>navigate(`/purchase/create-purchase-invoice`)}>
             Create Purchase Invoice
           </Button>
         </div>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[40px]">
-              <input type="checkbox" className="rounded border-gray-300" />
-            </TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Invoice Number</TableHead>
-            <TableHead>Party Name</TableHead>
-            <TableHead>Due In</TableHead>
-            <TableHead>Amount</TableHead>
-            <TableHead>Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {fetchStatus === 'loading' ? (
+      <div className="relative overflow-x-auto">
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={7} className="text-center">Loading...</TableCell>
+              <TableHead>INVOICE NO</TableHead>
+              <TableHead>DISTRIBUTOR / GSTIN</TableHead>
+              <TableHead>GRN NO</TableHead>
+              <TableHead>GST</TableHead>
+              <TableHead>BILLED ON</TableHead>
+              <TableHead>INV AMT</TableHead>
+              <TableHead>ADJ AMT</TableHead>
+              <TableHead>PAYABLE</TableHead>
+              <TableHead>BALANCE</TableHead>
+              <TableHead>PAID / DUE</TableHead>
+              <TableHead />
             </TableRow>
-          ) : purchaseBills.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={7}>
-                <div className="flex flex-col items-center justify-center py-8 text-gray-500">
-                  <PackageX size={48} className="mb-2" />
-                  <p className="text-lg font-medium">No purchase bills found</p>
-                  <p className="text-sm">Create your first purchase invoice to get started</p>
-                </div>
-              </TableCell>
-            </TableRow>
-          ) : purchaseBills.map((bill) => (
-            <TableRow 
-              key={bill._id}
-              className="cursor-pointer hover:bg-gray-50"
-              onClick={() => navigate(`/purchase/${bill._id}`)}
-            >
-              <TableCell onClick={(e) => e.stopPropagation()}>
-                <input type="checkbox" className="rounded border-gray-300" />
-              </TableCell>
-              <TableCell>{format(new Date(bill.bill_date), 'dd MMM yyyy')}</TableCell>
-              <TableCell>{bill.bill_number}</TableCell>
-              <TableCell>{bill.supplier_name}</TableCell>
-              <TableCell>-</TableCell>
-              <TableCell>
-                {formatCurrency(bill.grand_total)}
-                {(bill.grand_total || 0) !== (bill.payment?.amount_paid || 0) && (
-                  <div className="text-sm text-gray-500">
-                    ({formatCurrency((bill.grand_total || 0) - (bill.payment?.amount_paid || 0))} unpaid)
+          </TableHeader>
+          <TableBody>
+            {purchaseBills.map((bill) => (
+              <TableRow key={bill._id} className="group cursor-pointer" onClick={()=> navigate(`/purchase/${bill._id}`)}>
+                <TableCell>{bill.invoiceNumber}</TableCell>
+                <TableCell>
+                  <div>{bill.partyName}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {bill.mob}
                   </div>
-                )}
-              </TableCell>
-              <TableCell>
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  (bill.payment?.amount_paid || 0) >= (bill.grand_total || 0)
-                    ? "bg-green-100 text-green-800"
-                    : (bill.payment?.amount_paid || 0) > 0
-                    ? "bg-yellow-100 text-yellow-800"
-                    : "bg-red-100 text-red-800"
-                }`}>
-                  {(bill.payment?.amount_paid || 0) >= (bill.grand_total || 0)
-                    ? "Paid"
-                    : (bill.payment?.amount_paid || 0) > 0
-                    ? "Partially Paid"
-                    : "Unpaid"}
-                </span>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                </TableCell>
+                <TableCell>{bill.grnNo || '-'}</TableCell>
+                <TableCell>{bill.withGst ? 'With GST' : 'Without GST'}</TableCell>
+                <TableCell>
+                  <div>{new Date(bill.invoiceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {new Date(bill.invoiceDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                  </div>
+                </TableCell>
+                <TableCell>{formatCurrency(bill.grandTotal)}</TableCell>
+                <TableCell>{formatCurrency(bill.adjustmentAmount || 0)}</TableCell>
+                <TableCell>{formatCurrency(bill.payableAmount || bill.grandTotal)}</TableCell>
+                <TableCell>
+                  {formatCurrency(bill.grandTotal - (bill.amountPaid || 0))}
+                  {bill.paymentDueDate && (
+                    <div className="text-sm text-muted-foreground">
+                      {new Date(bill.paymentDueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium",
+                        {
+                          "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20":
+                            bill.paymentStatus === "paid",
+                          "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20":
+                            bill.paymentStatus === "due",
+                        }
+                      )}
+                    >
+                      {bill.paymentStatus === 'paid' ? 'Paid' : 'Due'}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="opacity-0 group-hover:opacity-100 text-pink-500 transition-opacity">
+                    →
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
 
-      <div className="fixed bottom-4 right-4">
-        <Button variant="outline" size="icon" className="rounded-full bg-white shadow-lg">
-          <HelpCircle className="h-6 w-6" />
-        </Button>
+      <div className="fixed  bottom-2 flex justify-between items-center">
+        <div className="text-sm text-muted-foreground">
+          Create New Purchases - <span className="font-medium">F2</span> | Move Up or Down - <span className="font-medium">Arrow Keys</span> | To Open - <span className="font-medium">Enter</span>
+        </div>
       </div>
     </div>
   )
 }
+

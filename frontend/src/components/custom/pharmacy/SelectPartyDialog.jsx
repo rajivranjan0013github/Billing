@@ -98,7 +98,7 @@ const SelectPartyDialog = ({ open, onOpenChange, onSelectParty }) => {
                         onClick={() => onSelectParty(party)}
                       >
                         <td className="p-2 text-sm">{party?.name}</td>
-                        <td className="p-2 text-sm">{party?.mobile_number}</td>
+                        <td className="p-2 text-sm">{party?.mob}</td>
                         <td className="p-2 text-sm">{party?.gstin || '-'}</td>
                         <td className="p-2 text-sm">{party?.state || '-'}</td>
                         <td className="p-2">

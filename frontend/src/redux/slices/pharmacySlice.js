@@ -148,9 +148,9 @@ export const createSalesBill = createLoadingAsyncThunk(
 // New thunk for updating inventory items
 export const updateInventoryItem = createLoadingAsyncThunk(
   "pharmacy/updateInventoryItem",
-  async ({ itemId, updateData }) => {
+  async ({ inventoryId, updateData }) => {
     const response = await fetch(
-      `${Backend_URL}/api/pharmacy/inventory/${itemId}`,
+      `${Backend_URL}/api/pharmacy/inventory/${inventoryId}`,
       {
         method: "POST",
         headers: {
@@ -191,9 +191,9 @@ export const createInventoryItem = createLoadingAsyncThunk(
 // New thunk for deleting an inventory item
 export const deleteInventoryItem = createLoadingAsyncThunk(
   "pharmacy/deleteInventoryItem",
-  async (itemId) => {
+  async (inventoryId) => {
     const response = await fetch(
-      `${Backend_URL}/api/pharmacy/inventory/${itemId}`,
+      `${Backend_URL}/api/pharmacy/inventory/${inventoryId}`,
       {
         method: "DELETE",
         credentials: "include",
@@ -202,7 +202,7 @@ export const deleteInventoryItem = createLoadingAsyncThunk(
     if (!response.ok) {
       throw new Error("Failed to delete inventory item");
     }
-    return itemId; // Return the deleted item's ID
+    return inventoryId; // Return the deleted item's ID
   },
   { useGlobalLoader: true }
 );

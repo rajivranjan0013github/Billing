@@ -9,7 +9,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { fetchItems } from '../../../redux/slices/inventorySlice';
 import ManageInventory from '../inventory/ManageInventory';
 
-const InventoryList = ({ onItemSelect, selectedItemId }) => {
+const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const dispatch = useDispatch();
   const { items, itemsStatus } = useSelector(state => state.inventory);
@@ -26,6 +26,10 @@ const InventoryList = ({ onItemSelect, selectedItemId }) => {
       onItemSelect(items[0]._id);
     }
   }, [items, selectedItemId, onItemSelect]);
+
+  useEffect(() => {
+    setHasItems(items.length > 0);
+  }, [items, setHasItems]);
 
   return (
     <ScrollArea className="h-[100vh] pr-3">
@@ -95,7 +99,7 @@ const InventoryList = ({ onItemSelect, selectedItemId }) => {
                   <CircleCheckBig className="h-3 w-3 text-blue-500" />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {item?.mfc_name}
+                  {item?.mfcName}
                 </p>
                 <div className='flex items-center gap-2'>
                   <Badge variant={item?.quantity > 0 ? "success" : "destructive"} className="mt-1 h-5 text-xs">

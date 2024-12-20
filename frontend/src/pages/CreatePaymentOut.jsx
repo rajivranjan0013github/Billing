@@ -255,7 +255,7 @@ export default function Component() {
           {
             selectedParty && (
               <div className="text-sm text-muted-foreground">
-                Current Balance: ₹{selectedParty?.current_balance.toLocaleString()}
+                Current Balance: ₹{selectedParty?.currentBalance.toLocaleString()}
               </div>
             )
           }

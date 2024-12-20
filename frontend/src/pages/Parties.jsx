@@ -26,26 +26,26 @@ export default function Party() {
   // Calculate totals for the cards
   const totalParties = parties.length
   const toCollect = parties
-    .filter(party => party.current_balance > 0)
-    .reduce((sum, party) => sum + party.current_balance, 0)
+    .filter(party => party.currentBalance > 0)
+    .reduce((sum, party) => sum + party.currentBalance, 0)
   const toPay = parties
-    .filter(party => party.current_balance < 0)
-    .reduce((sum, party) => sum + Math.abs(party.current_balance), 0)
+    .filter(party => party.currentBalance < 0)
+    .reduce((sum, party) => sum + Math.abs(party.currentBalance), 0)
 
   // Filter parties based on search and filters
   const filteredParties = parties.filter(party => {
     const searchMatch = 
       party.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      party.mobile_number?.toLowerCase().includes(searchTerm.toLowerCase())
+      party.mob?.toLowerCase().includes(searchTerm.toLowerCase())
     
     const partyTypeMatch = 
       filterPartyType === 'all' || 
-      party.party_type?.toLowerCase() === filterPartyType.toLowerCase()
+      party.partyType?.toLowerCase() === filterPartyType.toLowerCase()
     
     const balanceTypeMatch = 
       filterBalanceType === 'all' || 
-      (filterBalanceType === 'collect' && party.current_balance > 0) ||
-      (filterBalanceType === 'pay' && party.current_balance < 0)
+      (filterBalanceType === 'collect' && party.currentBalance > 0) ||
+      (filterBalanceType === 'pay' && party.currentBalance < 0)
 
     return searchMatch && partyTypeMatch && balanceTypeMatch
   })
@@ -172,12 +172,12 @@ export default function Party() {
                 onClick={() => navigate(`/party-details/${party._id}`)}
               >
                 <TableCell className="font-medium">{party.name}</TableCell>
-                <TableCell>{party.mobile_number || '-'}</TableCell>
-                <TableCell className="capitalize">{party.party_type}</TableCell>
+                <TableCell>{party.mob || '-'}</TableCell>
+                <TableCell className="capitalize">{party.partyType}</TableCell>
                 <TableCell className="text-right">
-                  <span className={party.current_balance > 0 ? "text-green-600" : "text-red-600"}>
-                    {party.current_balance > 0 ? "↓ " : "↑ "}
-                    ₹ {Math.abs(party.current_balance || 0)}
+                  <span className={party.currentBalance > 0 ? "text-green-600" : "text-red-600"}>
+                    {party.currentBalance > 0 ? "↓ " : "↑ "}
+                    ₹ {Math.abs(party.currentBalance || 0)}
                   </span>
                 </TableCell>
               </TableRow>

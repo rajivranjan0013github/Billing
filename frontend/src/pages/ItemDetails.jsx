@@ -24,11 +24,11 @@ import { useParams } from "react-router-dom"
 import { Badge } from "../components/ui/badge"
 import { formatQuantityDisplay } from "../assets/utils"
 
-export default function ItemDetails() {
+export default function inventoryDetails() {
   const navigate = useNavigate();
   const [item, setItem] = useState(null);
   const [stockHistory, setStockHistory] = useState([]);
-  const { itemId } = useParams();
+  const { inventoryId } = useParams();
   const [activeTab, setActiveTab] = useState("details");
   const [isLoading, setIsLoading] = useState(true);
   
@@ -36,7 +36,7 @@ export default function ItemDetails() {
     const fetchItemDetails = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`${Backend_URL}/api/inventory/${itemId}`, {
+        const response = await fetch(`${Backend_URL}/api/inventory/${inventoryId}`, {
           credentials: "include",
         });
         const data = await response.json();
@@ -47,24 +47,24 @@ export default function ItemDetails() {
         setIsLoading(false);
       }
     };
-    if (itemId) {
+    if (inventoryId) {
       fetchItemDetails();
     }
-  }, [itemId]);
+  }, [inventoryId]);
 
   useEffect(() => {
     const fetchStockHistory = async () => {
-      const response = await fetch(`${Backend_URL}/api/inventory/${itemId}/stock-history`, {
+      const response = await fetch(`${Backend_URL}/api/inventory/${inventoryId}/stock-history`, {
         credentials: "include",
       });
       const data = await response.json();
       setStockHistory(data);
     };
     
-    if (itemId && activeTab === "stock") {
+    if (inventoryId && activeTab === "stock") {
       fetchStockHistory();
     }
-  }, [itemId, activeTab, item]  );
+  }, [inventoryId, activeTab, item]  );
 
   if (isLoading) {
     return (
@@ -142,7 +142,7 @@ export default function ItemDetails() {
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground mb-1">Category</div>
-                    <div>{item.item_category || '-'}</div>
+                    <div>{item.category || '-'}</div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground mb-1">Current Stock</div>
@@ -200,11 +200,11 @@ export default function ItemDetails() {
                     </div>
                     <div>
                       <div className="text-sm text-muted-foreground mb-1">HSN Code</div>
-                      <div>{item.hsn_code || '-'}</div>
+                      <div>{item.HSN || '-'}</div>
                     </div>
                     <div>
                       <div className="text-sm text-muted-foreground mb-1">GST Tax Rate</div>
-                      <div>{item.gst_percentage ? `${item.gst_percentage}%` : '-'}</div>
+                      <div>{item.gstPer ? `${item.gstPer}%` : '-'}</div>
                     </div>
                     <div>
                       <div className="text-sm text-muted-foreground mb-1">MRP</div>
@@ -222,7 +222,7 @@ export default function ItemDetails() {
                   <div className="grid gap-4">
                     <div>
                       <div className="text-sm text-muted-foreground mb-1">Batch Number</div>
-                      <div>{item.batch_number || '-'}</div>
+                      <div>{item.batchNumber || '-'}</div>
                     </div>
                     {item.expiry_date && (
                       <div>

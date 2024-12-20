@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import {hospitalPlugin} from '../plugins/hospitalPlugin.js'
 
 const stockDetailSchema = new mongoose.Schema({
-  inventory_id: { 
+  inventoryId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Inventory',
     required: true

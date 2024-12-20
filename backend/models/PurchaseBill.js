@@ -39,7 +39,7 @@ const purchaseBillSchema = new mongoose.Schema({
       ref: 'Inventory',
       required: true
     },
-    batch_number: {
+    batchNumber: {
       type: String,
     },
     expiry_date: {
@@ -60,7 +60,7 @@ const purchaseBillSchema = new mongoose.Schema({
       type: Number,
       default: 0
     },
-    gst_percentage: {
+    gstPer: {
       type: Number,
       default: 0
     },
@@ -68,7 +68,7 @@ const purchaseBillSchema = new mongoose.Schema({
       unit: String,
       conversion_rate: Number,
     },
-    hsn_code: String
+    HSN: String
   }],
 
   // Bill Level Discount
@@ -111,7 +111,7 @@ const purchaseBillSchema = new mongoose.Schema({
   tax_summary: {type: Object},
 
   // Metadata
-  created_by: {
+  createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Staff',
     required: true

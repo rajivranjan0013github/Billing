@@ -76,7 +76,7 @@ export default function Component() {
                   })}
                 </TableCell>
                 <TableCell>{payment?.payment_number}</TableCell>
-                <TableCell>{payment.party_name}</TableCell>
+                <TableCell>{payment.partyName}</TableCell>
                 <TableCell className="text-right">₹ {payment.amount.toLocaleString('en-IN')}</TableCell>
               </TableRow>
             ))}

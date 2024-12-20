@@ -26,7 +26,7 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
   useEffect(() => {
     const filteredProducts = products.filter(product =>
       product.name.toLowerCase().includes(search.toLowerCase()) ||
-      product.mfc_name.toLowerCase().includes(search.toLowerCase())
+      product.mfcName.toLowerCase().includes(search.toLowerCase())
     );
     // Set selectedId to the first item's ID if there are filtered results
     if (filteredProducts.length > 0) {
@@ -38,7 +38,7 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
 
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(search.toLowerCase()) ||
-    product.mfc_name.toLowerCase().includes(search.toLowerCase())
+    product.mfcName.toLowerCase().includes(search.toLowerCase())
   )
 
   // Handle keyboard navigation
@@ -140,7 +140,7 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
                         <div className="flex items-center gap-2">
                           <div>
                             <div>{product.name}</div>
-                            <div className="text-sm text-muted-foreground">{product.mfc_name}</div>
+                            <div className="text-sm text-muted-foreground">{product.mfcName}</div>
                           </div>
                         </div>
                       </TableCell>

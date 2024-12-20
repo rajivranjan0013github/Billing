@@ -52,7 +52,7 @@ const purchaseReturnSchema = new mongoose.Schema({
       enum: ['return', 'normal'],
       required: true
     },
-    batch_number: {
+    batchNumber: {
       type: String,
     },
     expiry_date: {
@@ -71,7 +71,7 @@ const purchaseReturnSchema = new mongoose.Schema({
       type: Number,
       default: 0
     },
-    gst_percentage: {
+    gstPer: {
       type: Number,
       default: 0
     },
@@ -105,7 +105,7 @@ const purchaseReturnSchema = new mongoose.Schema({
   }],
 
   // Metadata
-  created_by: {
+  createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Staff',
     required: true

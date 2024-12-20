@@ -17,15 +17,15 @@ export default function CreateParty() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
-    mobile_number: "",
+    mob: "",
     email: "",
-    opening_balance: 0,
+    openBalance: 0,
     balance_type: "collect",
     gstin: "",
-    pan_number: "",
-    drug_license_number: "",
-    party_type: "customer",
-    billing_address: "",
+    panNumber: "",
+    DLNumber: "",
+    partyType: "customer",
+    address: "",
     shipping_address: "",
     credit_period: 30,
     credit_limit: 0,
@@ -45,7 +45,7 @@ export default function CreateParty() {
     setFormData((prevData) => ({
       ...prevData,
       sameAsBilling: checked,
-      shipping_address: checked ? prevData.billing_address : "",
+      shipping_address: checked ? prevData.address : "",
     }));
   };
 
@@ -53,7 +53,7 @@ export default function CreateParty() {
     e.preventDefault();
     try {
       const partyData = { ...formData };
-      partyData.opening_balance = Number(partyData.opening_balance);
+      partyData.openBalance = Number(partyData.openBalance);
       await dispatch(createParty(partyData)).unwrap();
       toast({
         title: "Party created successfully",
@@ -100,8 +100,8 @@ export default function CreateParty() {
               <Input id="name" name="name" value={formData.name} onChange={handleInputChange} placeholder="Enter name" required />
             </div>
             <div>
-              <Label htmlFor="mobile_number">Mobile Number</Label>
-              <Input id="mobile_number" name="mobile_number" value={formData.mobile_number} onChange={handleInputChange} placeholder="Enter mobile number" />
+              <Label htmlFor="mob">Mobile Number</Label>
+              <Input id="mob" name="mob" value={formData.mob} onChange={handleInputChange} placeholder="Enter mobile number" />
             </div>
             <div>
               <Label htmlFor="email">Email</Label>
@@ -109,8 +109,8 @@ export default function CreateParty() {
             </div>
             <div className="flex items-end space-x-2">
               <div className="flex-grow">
-                <Label htmlFor="opening_balance">Opening Balance</Label>
-                <Input id="opening_balance" name="opening_balance" type="number" value={formData.opening_balance} onChange={handleInputChange} placeholder="₹ 0" />
+                <Label htmlFor="openBalance">Opening Balance</Label>
+                <Input id="openBalance" name="openBalance" type="number" value={formData.openBalance} onChange={handleInputChange} placeholder="₹ 0" />
               </div>
               <Select value={formData.balance_type} onValueChange={(value) => handleSelectChange("balance_type", value)}>
                 <SelectTrigger className="w-[180px]">
@@ -134,14 +134,14 @@ export default function CreateParty() {
           </div>
           <div>
             <Label htmlFor="panNumber">PAN Number</Label>
-            <Input id="panNumber" name="pan_number" value={formData.pan_number} onChange={handleInputChange} placeholder="Enter party PAN Number" />
+            <Input id="panNumber" name="panNumber" value={formData.panNumber} onChange={handleInputChange} placeholder="Enter party PAN Number" />
           </div>
           <div>
             <Label htmlFor="drugLicenseNumber">Drug License Number</Label>
             <Input 
               id="drugLicenseNumber" 
-              name="drug_license_number" 
-              value={formData.drug_license_number} 
+              name="DLNumber" 
+              value={formData.DLNumber} 
               onChange={handleInputChange} 
               placeholder="Enter Drug License Number" 
             />
@@ -151,7 +151,7 @@ export default function CreateParty() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="partyType">Party Type*</Label>
-            <Select value={formData.party_type} onValueChange={(value) => handleSelectChange("party_type", value)}>
+            <Select value={formData.partyType} onValueChange={(value) => handleSelectChange("partyType", value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select Party Type" />
               </SelectTrigger>
@@ -170,10 +170,10 @@ export default function CreateParty() {
               <Label htmlFor="billingAddress">Billing Address</Label>
               <textarea
                 id="billingAddress"
-                name="billing_address"
+                name="address"
                 className="w-full min-h-[100px] p-2 border rounded-md"
                 placeholder="Enter billing address"
-                value={formData.billing_address}
+                value={formData.address}
                 onChange={handleInputChange}
               />
             </div>

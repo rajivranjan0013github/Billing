@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Backend_URL } from "../../../assets/Data"
 import { useToast } from "../../../hooks/use-toast"
 
-export default function Timeline({inventory_id}) {
+export default function Timeline({inventoryId}) {
     const {toast} = useToast();
     const [timeline, setTimeline] = useState([]);
 
@@ -12,7 +12,7 @@ export default function Timeline({inventory_id}) {
     useEffect(() => {
         const fetchTimeline = async () => {
             try {
-                const response = await fetch(`${Backend_URL}/api/inventory/timeline/${inventory_id}`, {credentials: "include"});
+                const response = await fetch(`${Backend_URL}/api/inventory/timeline/${inventoryId}?type=all`, {credentials: "include"});
                 if(!response.ok) throw new Error("Failed to fetch timeline");
                 const data = await response.json();
                 setTimeline(data);
@@ -20,8 +20,8 @@ export default function Timeline({inventory_id}) {
                 toast({title: "Failed to fetch timeline", variant: "destructive"});
             }
         }
-        if(inventory_id) fetchTimeline();
-    }, [inventory_id]);
+        if(inventoryId) fetchTimeline();
+    }, [inventoryId]);
 
   return (
     <div className="w-full">
@@ -60,16 +60,16 @@ export default function Timeline({inventory_id}) {
                   </Badge>
                 </td>
                 <td className="px-4 py-2">
-                  <div className="text-sm">{transaction.invoice_number || '-'}</div>
+                  <div className="text-sm">{transaction.invoiceNumber || '-'}</div>
                   <div className="text-xs text-gray-500">User: {transaction.createdBy?.name || '-'}</div>
                 </td>
                 <td className="px-4 py-2">
-                  <div className="text-sm">{transaction.party_name || '-'}</div>
-                  <div className="text-xs text-gray-500">Mob: {transaction.mobile || '-'}</div>
+                  <div className="text-sm">{transaction.partyName || '-'}</div>
+                  <div className="text-xs text-gray-500">Mob: {transaction.partyMob || '-'}</div>
                 </td>
                 <td className="px-4 py-2">
-                  <div className="text-sm font-medium">{transaction.batch_number}</div>
-                  <div className="text-xs text-gray-500">Exp: {transaction.batch_expiry}</div>
+                  <div className="text-sm font-medium">{transaction.batchNumber}</div>
+                  <div className="text-xs text-gray-500">Exp: {transaction.expiry}</div>
                 </td>
                 <td className="px-4 py-2 text-right">
                   <span className="text-green-600 font-medium">

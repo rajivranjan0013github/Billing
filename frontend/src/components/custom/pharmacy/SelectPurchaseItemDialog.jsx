@@ -53,10 +53,10 @@ const SelectPurchaseItemDialog = ({ open, onOpenChange, onSelectItem }) => {
     });
   };
 
-  const handleQuantityChange = (itemId, value) => {
+  const handleQuantityChange = (inventoryId, value) => {
     setQuantities(prev => ({
       ...prev,
-      [itemId]: value
+      [inventoryId]: value
     }));
   };
 

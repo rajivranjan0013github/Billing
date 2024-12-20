@@ -1,70 +1,35 @@
-import { useRef, useState, useMemo } from 'react'
+import { useRef, useState, useMemo, useEffect } from 'react'
 import { Button } from "../components/ui/button"
 import { Calendar } from "../components/ui/calendar"
 import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group"
 import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover"
-import { CalendarIcon, ChevronLeft, Save } from 'lucide-react'
+import { CalendarIcon, ChevronLeft, Pencil, Save } from 'lucide-react'
 import { format } from "date-fns"
 import { cn } from "../lib/utils"
 import PurchaseItemTable from '../components/custom/purchase/PurchaseItemTable'
-import { convertToFraction } from '../assets/Data'
 import { Backend_URL } from '../assets/Data'
 import { useToast } from '../hooks/use-toast'
 import SelectPartyDialog from '../components/custom/party/SelectPartyDialog'
 import { enIN } from 'date-fns/locale'
-import { useDispatch } from 'react-redux'
-import { fetchItems } from '../redux/slices/inventorySlice';
-import { useNavigate } from 'react-router-dom'
+import { calculateTotals } from './CreatePurchaseInvoice'
+import { useParams, useNavigate } from 'react-router-dom'
 
-export const calculateTotals = (products) => {
-  return products.reduce(
-    (total, product) => {
-      const quantity = Number(product?.quantity || 0);
-      const free = Number(product?.free || 0);
-      const purchaseRate = Number(product?.purchaseRate || 0);
-      const discountPercent = Number(product?.discount || 0) + Number(product?.schemePercent || 0);
-      const gstPer = Number(product?.gstPer || 0);
-      const amount = Number(product?.amount || 0);
-
-      const subtotal = quantity * purchaseRate;
-      const discount = convertToFraction((subtotal * discountPercent) / 100);
-      const taxable = subtotal - discount;
-      const gstAmount = (taxable * gstPer) / 100;
-
-      total.grandTotal += amount;
-      total.productCount += 1;
-      total.totalQuantity += quantity + free;
-      total.subtotal += subtotal;
-      total.discountAmount += discount;
-      total.taxable += taxable;
-      total.gstAmount += convertToFraction(gstAmount);
-
-      return total;
-    },
-    {
-      subtotal: 0,
-      discountAmount: 0,
-      taxable: 0,
-      gstAmount: 0,
-      productCount: 0,
-      totalQuantity: 0,
-      grandTotal: 0,
-    }
-  );
-};
-
-export default function PurchaseForm() {
-  const navigate = useNavigate();
+export default function EditPurchaseInvoice() {
   const inputRef = useRef([]);
-  const dispatch = useDispatch();
+  const {toast} = useToast();
+  const navigate = useNavigate();
+  const {invoiceId} = useParams();
+  const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState(true);
   const [invoiceDate, setInvoiceDate] = useState();
   const [dueDate, setDueDate] = useState();
   const [products, setProducts] = useState([]);
   const [partySelectDialog, setPartySelectDialog] = useState(false);
   const [partyName, setPartyName] = useState("");
-  const {toast} = useToast();
+  const [invoiceDateOpen, setInvoiceDateOpen] = useState(false);
+  const [dueDateOpen, setDueDateOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     purchaseType : 'invoice',
@@ -76,27 +41,62 @@ export default function PurchaseForm() {
     withGst : 'yes',
     overallDiscount : "", // in percentage
   });
+  
+// fetching invoice data from server
+  useEffect(() => {
+    const fetchBill = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch(`${Backend_URL}/api/purchase/invoice/${invoiceId}`, { credentials: 'include' });
+            if(!response.ok) {
+                throw new Error('Something went wrong');
+            }
+            const data = await response.json();
+            const {partyName, partyId, invoiceNumber, products, invoiceDate, paymentDueDate, withGst} = data;
+            setProducts(products);
+            setInvoiceDate(new Date(invoiceDate));
+            setDueDate(new Date(paymentDueDate));
+            setFormData({
+                ...formData, 
+                partyName, 
+                partyId, 
+                invoiceDate, 
+                paymentDueDate, 
+                invoiceNumber, 
+                withGst : withGst ? 'yes' : 'no'
+            })
+            setPartyName(partyName)
+        } catch (error) {
+            console.error('Error fetching bill:', error);
+        } finally {
+            setLoading(false);
+        }
+    }
+    if(invoiceId) {
+        fetchBill();
+    }
+}, [invoiceId]);
 
   // caculating total of the product
-  const amountData = useMemo(()=> calculateTotals(products), [products]);
+  const amountData = useMemo(()=>calculateTotals(products), [products]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev=>({...prev, [field] : value}));
   }
 
-  const [loading, setLoading] = useState(false);
-
   const handleSaveInvoice = async() => {
     try {
       setLoading(true);
+
       // Validate required fields
       if (!formData.partyName || !formData.invoiceNumber || !invoiceDate) {
         throw new Error('Please fill all required fields');
       }
 
       if(products.length === 0)  {
-        throw new Error('Please add atleast one product');
+        throw new Error('Please add atleast one product')
       }
+
       // Format products data to match schema
       const formattedProducts = products.map(product => ({
         inventoryId: product.inventoryId,
@@ -118,6 +118,7 @@ export default function PurchaseForm() {
       }));
 
       const finalData = {
+        _id : invoiceId,
         invoiceType: 'PURCHASE',
         invoiceNumber: formData.invoiceNumber,
         partyName: formData.partyName,
@@ -158,7 +159,7 @@ export default function PurchaseForm() {
         title: "Purchase invoice saved successfully",
         variant: "success"
       });
-      dispatch(fetchItems());
+
       // Reset form
       setFormData({
         purchaseType: 'invoice',
@@ -207,21 +208,23 @@ export default function PurchaseForm() {
     setPartySelectDialog(false);
   };
 
-  const [invoiceDateOpen, setInvoiceDateOpen] = useState(false);
-  const [dueDateOpen, setDueDateOpen] = useState(false);
-
   return (
     <div className=" relative rounded-lg h-[100vh] pt-4">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <ChevronLeft className="w-5 h-5 text-rose-500 cursor-pointer" onClick={()=>navigate(-1)} />
-          <h1 className="text-xl font-medium">Add Purchase</h1>
+          <ChevronLeft className="w-5 h-5 text-rose-500 cursor-pointer" onClick={() => navigate(-1)} />
+          <h1 className="text-xl font-medium">{viewMode ? 'View' : 'Edit'} Purchase</h1>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" className="border-rose-500 text-rose-500">
             PTR, Column Settings
           </Button>
-          <Button 
+          {viewMode ? (
+            <Button  className="gap-2 bg-gray-800" onClick={() => setViewMode(false)} >
+            <Pencil className='w-4 h-4' />  Edit
+            </Button>
+          ) : (
+            <Button 
             className="gap-2 bg-gray-800" 
             onClick={handleSaveInvoice}
             disabled={loading}
@@ -238,6 +241,7 @@ export default function PurchaseForm() {
               </>
             )}
           </Button>
+          )}
         </div>
       </div>
 
@@ -251,6 +255,7 @@ export default function PurchaseForm() {
                 value={formData?.purchaseType} 
                 onValueChange={(value)=> handleInputChange('purchaseType', value)} 
                 className=" gap-4 mt-2"
+                disabled={viewMode}
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="invoice" id="invoice" />
@@ -268,6 +273,7 @@ export default function PurchaseForm() {
                 className=" gap-4 mt-2"
                 value={formData?.withGst}
                 onValueChange={(value)=>handleInputChange('withGst', value)}
+                disabled={viewMode}
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="yes" id="yes" />
@@ -288,6 +294,7 @@ export default function PurchaseForm() {
                 value={partyName || ""} 
                 onChange={handleDistributorNameChange}
                 placeholder='Type or Press space' 
+                disabled={viewMode}
               />
             </div>
             <div>
@@ -298,6 +305,7 @@ export default function PurchaseForm() {
                 value={formData?.invoiceNumber}
                 onChange={(e)=>handleInputChange('invoiceNumber', e.target.value)}
                 placeholder="Invoice No" 
+                disabled={viewMode}
               />
             </div>
               <div>
@@ -312,6 +320,7 @@ export default function PurchaseForm() {
                         "w-full justify-start text-left font-normal",
                         !invoiceDate && "text-muted-foreground"
                       )}
+                      disabled={viewMode}
                     >
                       <CalendarIcon className="w-4 h-4 mr-2" />
                       {invoiceDate ? format(invoiceDate, "dd/MM/yyyy") : "Select Date"}
@@ -343,6 +352,7 @@ export default function PurchaseForm() {
                         "w-full justify-start text-left font-normal",
                         !dueDate && "text-muted-foreground"
                       )}
+                      disabled={viewMode}
                     >
                       <CalendarIcon className="w-4 h-4 mr-2" />
                       {dueDate ? format(dueDate, "dd/MM/yyyy") : "Select Due Date"}
@@ -384,6 +394,7 @@ export default function PurchaseForm() {
           inputRef={inputRef}
           products={products}
           setProducts={setProducts}
+          viewMode={viewMode}
         />
       </div>
 

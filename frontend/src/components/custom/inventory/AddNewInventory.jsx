@@ -10,31 +10,31 @@ import { useToast } from "../../../hooks/use-toast";
 
 const FORMDATAINITIAL = {
   name: '',
-  mfc_name: '',
-  item_category: '',
+  mfcName: '',
+  category: '',
   mrp: '',
   pack: '',
   composition: ''
 }
 
-export default function AddNewInventory({ open, onOpenChange, itemDetails }) {
+export default function AddNewInventory({ open, onOpenChange, inventoryDetails }) {
   const { toast } = useToast();
   const dispatch = useDispatch();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState(FORMDATAINITIAL);
 
   useEffect(() => {
-    if (itemDetails) {
+    if (inventoryDetails) {
       setFormData({ 
-        name : itemDetails.name || '',
-        mfc_name : itemDetails.mfc_name || '',
-        item_category : itemDetails.item_category || '',
-        mrp : itemDetails.mrp || '',
-        pack : itemDetails.pack || '',
-        composition : itemDetails.composition || ''
+        name : inventoryDetails.name || '',
+        mfcName : inventoryDetails.mfcName || '',
+        category : inventoryDetails.category || '',
+        mrp : inventoryDetails.mrp || '',
+        pack : inventoryDetails.pack || '',
+        composition : inventoryDetails.composition || ''
       });
     }
-  }, [itemDetails]);
+  }, [inventoryDetails]);
 
   // submit form data to backend
   const handleSubmit = async (e) => {
@@ -43,24 +43,24 @@ export default function AddNewInventory({ open, onOpenChange, itemDetails }) {
     console.log('running');
     
     
-    const action = itemDetails 
-      ? manageInventory({ ...formData, _id: itemDetails._id }) // Update existing item
+    const action = inventoryDetails 
+      ? manageInventory({ ...formData, _id: inventoryDetails._id }) // Update existing item
       : manageInventory(formData); // Create new item
     
     dispatch(action).unwrap()
       .then(() => {
         toast({
-          title: itemDetails 
+          title: inventoryDetails 
             ? `Product updated successfully`
             : `New product added successfully`,
           variant: 'success'
         });
         onOpenChange(false);
-        if (!itemDetails) setFormData(FORMDATAINITIAL);
+        if (!inventoryDetails) setFormData(FORMDATAINITIAL);
       })
       .catch((error) => {
         toast({
-          title: itemDetails 
+          title: inventoryDetails 
             ? `Failed to update product`
             : `Failed to add new product`,
           variant: "destructive",
@@ -84,7 +84,7 @@ export default function AddNewInventory({ open, onOpenChange, itemDetails }) {
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {itemDetails ? 'Edit Product' : 'Create New Product'}
+            {inventoryDetails ? 'Edit Product' : 'Create New Product'}
           </DialogTitle>
         </DialogHeader>
         
@@ -99,34 +99,34 @@ export default function AddNewInventory({ open, onOpenChange, itemDetails }) {
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required 
-              onKeyDown={(e) => handleKeyDown(e, 'mfc_name')}
+              onKeyDown={(e) => handleKeyDown(e, 'mfcName')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="mfc_name">
+            <Label htmlFor="mfcName">
               Company Name<span className="text-red-500">*</span>
             </Label>
             <Input 
-              id="mfc_name" 
+              id="mfcName" 
               placeholder="Enter Company Name"
               required
-              value={formData.mfc_name}
-              onChange={(e) => setFormData({ ...formData, mfc_name: e.target.value })}
-              onKeyDown={(e) => handleKeyDown(e, 'item_category')}
+              value={formData.mfcName}
+              onChange={(e) => setFormData({ ...formData, mfcName: e.target.value })}
+              onKeyDown={(e) => handleKeyDown(e, 'category')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="item_category">
+            <Label htmlFor="category">
               Product Category<span className="text-red-500">*</span>
             </Label>
             <Input 
-              id="item_category" 
+              id="category" 
               placeholder="Enter Product Category"
               required 
-              value={formData.item_category}
-              onChange={(e) => setFormData({ ...formData, item_category: e.target.value })}
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               onKeyDown={(e) => handleKeyDown(e, 'mrp-input')}
             />
           </div>
@@ -198,7 +198,7 @@ export default function AddNewInventory({ open, onOpenChange, itemDetails }) {
               type="submit"
               disabled={isLoading}
             >
-              {isLoading ? (itemDetails ? "Updating..." : "Creating...") : (itemDetails ? "Update" : "Create")}
+              {isLoading ? (inventoryDetails ? "Updating..." : "Creating...") : (inventoryDetails ? "Update" : "Create")}
             </Button>
           </div>
         </form>

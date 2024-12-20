@@ -85,7 +85,7 @@ export default function PaymentDetails() {
           <div className="grid grid-cols-3 gap-6">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">PARTY NAME</p>
-              <p className="font-medium">{paymentDetails.party_name}</p>
+              <p className="font-medium">{paymentDetails.partyName}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">PAYMENT DATE</p>

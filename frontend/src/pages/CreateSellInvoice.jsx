@@ -147,7 +147,7 @@ const CreateSellInvoice = () => {
           } else {
             // If item doesn't exist, add it as new
             let rate = selectedItem.sales_info?.price_per_unit || 0;
-            let gst = selectedItem.gst_percentage || 0;
+            let gst = selectedItem.gstPer || 0;
             if(selectedItem.sales_info?.is_tax_included) {
               rate = rate / (1 + gst/100);
             }
@@ -156,7 +156,7 @@ const CreateSellInvoice = () => {
               id: updatedItems.length + 1,
               itemName: selectedItem.name,
               pack: selectedItem.pack,
-              hsn: selectedItem.hsn_code,
+              hsn: selectedItem.HSN,
               batchNo: "",
               expDate: "",
               qty: selectedItem.qty || "",
@@ -165,8 +165,8 @@ const CreateSellInvoice = () => {
               secondary_unit: selectedItem.secondary_unit,
               discount: 0,
               discountAmount: 0,
-              tax: selectedItem.gst_percentage || 0,
-              amount: (calculateQuantityValue(selectedItem.qty, selectedItem?.secondary_unit?.conversion_rate) * rate * (1 + (selectedItem.gst_percentage || 0) / 100)).toFixed(2),
+              tax: selectedItem.gstPer || 0,
+              amount: (calculateQuantityValue(selectedItem.qty, selectedItem?.secondary_unit?.conversion_rate) * rate * (1 + (selectedItem.gstPer || 0) / 100)).toFixed(2),
               unit: selectedItem.unit,
               _id: selectedItem._id
             });
@@ -217,8 +217,8 @@ const CreateSellInvoice = () => {
   };
 
   // Add this new function after other state declarations
-  const handleDeleteItem = (itemId) => {
-    setItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
+  const handleDeleteItem = (inventoryId) => {
+    setItems((prevItems) => prevItems.filter((item) => item.id !== inventoryId));
   };
 
   // Add this function to handle cash customer toggle
@@ -248,7 +248,7 @@ const CreateSellInvoice = () => {
       // Party details
       party: isCashCustomer ? null : selectedParty._id,
       is_cash_customer: isCashCustomer,
-      party_name: isCashCustomer ? "Cash Customer" : selectedParty.name,
+      partyName: isCashCustomer ? "Cash Customer" : selectedParty.name,
 
       // Items details
       items: items.map(item => ({
@@ -330,11 +330,11 @@ const CreateSellInvoice = () => {
                   <div className="space-y-1 text-sm text-gray-600">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">Phone:</span>
-                      <span>{selectedParty?.mobile_number}</span>
+                      <span>{selectedParty?.mob}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium">Address:</span>
-                      <span>{selectedParty?.billing_address}</span>
+                      <span>{selectedParty?.address}</span>
                     </div>
                     <div className="flex gap-4">
                       <div className="flex items-center gap-2">

@@ -82,7 +82,7 @@ router.post("/make-payment", async (req, res) => {
 
     // For payment out (paying to supplier) - increase balance
     // For payment in (receiving from customer) - decrease balance
-    partyDoc.current_balance += payment_type === "Payment Out" ? amount : -amount;
+    partyDoc.currentBalance += payment_type === "Payment Out" ? amount : -amount;
 
     // Create payment record
     const payment = new Payment({
@@ -90,7 +90,7 @@ router.post("/make-payment", async (req, res) => {
       payment_type,
       payment_method,
       party_id,
-      party_name: partyDoc.name,
+      partyName: partyDoc.name,
       remarks,
       amount,
       payment_date
@@ -104,7 +104,7 @@ router.post("/make-payment", async (req, res) => {
       credit: payment_type === "Payment In" ? amount : 0,
       description: remarks,
       bill_number: payment_number,
-      balance: partyDoc.current_balance
+      balance: partyDoc.currentBalance
     });
 
     await ledger.save({ session });

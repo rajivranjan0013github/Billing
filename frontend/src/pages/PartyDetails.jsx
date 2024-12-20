@@ -137,7 +137,7 @@ export default function PartyDetails() {
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
                     <h1 className="text-xl font-semibold">{party.name}</h1>
-                    <span className="text-sm text-gray-500 capitalize">({party.party_type})</span>
+                    <span className="text-sm text-gray-500 capitalize">({party.partyType})</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <DropdownMenu>
@@ -204,7 +204,7 @@ export default function PartyDetails() {
                                         </div>
                                         <div>
                                             <div className="text-sm text-muted-foreground">Mobile Number</div>
-                                            <div>{party.mobile_number || '-'}</div>
+                                            <div>{party.mob || '-'}</div>
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -214,11 +214,11 @@ export default function PartyDetails() {
                                         </div>
                                         <div>
                                             <div className="text-sm text-muted-foreground">Opening Balance</div>
-                                            <div className={party.opening_balance > 0 ? "text-green-600" : "text-red-600"}>
-                                                {party.opening_balance !== 0 && (party.opening_balance > 0 ? "↓ " : "↑ ")}
-                                                ₹ {Math.abs(party.opening_balance).toLocaleString()} 
+                                            <div className={party.openBalance > 0 ? "text-green-600" : "text-red-600"}>
+                                                {party.openBalance !== 0 && (party.openBalance > 0 ? "↓ " : "↑ ")}
+                                                ₹ {Math.abs(party.openBalance).toLocaleString()} 
                                                 <span className="text-gray-500 text-sm ml-1">
-                                                    ({party.opening_balance > 0 ? 'To Collect' : 'To Pay'})
+                                                    ({party.openBalance > 0 ? 'To Collect' : 'To Pay'})
                                                 </span>
                                             </div>
                                         </div>
@@ -226,17 +226,17 @@ export default function PartyDetails() {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <div className="text-sm text-muted-foreground">Current Balance</div>
-                                            <div className={party.current_balance > 0 ? "text-green-600" : "text-red-600"}>
-                                                {party.current_balance !== 0 && (party.current_balance > 0 ? "↓ " : "↑ ")}
-                                                ₹ {Math.abs(party.current_balance).toLocaleString()} 
+                                            <div className={party.currentBalance > 0 ? "text-green-600" : "text-red-600"}>
+                                                {party.currentBalance !== 0 && (party.currentBalance > 0 ? "↓ " : "↑ ")}
+                                                ₹ {Math.abs(party.currentBalance).toLocaleString()} 
                                                 <span className="text-gray-500 text-sm ml-1">
-                                                    ({party.current_balance > 0 ? 'To Collect' : 'To Pay'})
+                                                    ({party.currentBalance > 0 ? 'To Collect' : 'To Pay'})
                                                 </span>
                                             </div>
                                         </div>
                                         <div>
                                             <div className="text-sm text-muted-foreground">Customer Type</div>
-                                            <div className="capitalize">{party.party_type}</div>
+                                            <div className="capitalize">{party.partyType}</div>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -253,18 +253,18 @@ export default function PartyDetails() {
                                         </div>
                                         <div>
                                             <div className="text-sm text-muted-foreground">PAN Number</div>
-                                            <div>{party.pan_number || '-'}</div>
+                                            <div>{party.panNumber || '-'}</div>
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-1 gap-4">
                                         <div>
                                             <div className="text-sm text-muted-foreground">Drug License Number</div>
-                                            <div>{party.drug_license_number || '-'}</div>
+                                            <div>{party.DLNumber || '-'}</div>
                                         </div>
                                     </div>
                                     <div>
                                         <div className="text-sm text-muted-foreground">Billing Address</div>
-                                        <div>{party.billing_address || '-'}</div>
+                                        <div>{party.address || '-'}</div>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -444,7 +444,7 @@ export default function PartyDetails() {
                                                 {`₹ ${ledger.reduce((sum, entry) => sum + (entry.credit || 0), 0).toLocaleString()}`}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                {`₹ ${party.current_balance.toLocaleString()}`}
+                                                {`₹ ${party.currentBalance.toLocaleString()}`}
                                             </TableCell>
                                         </TableRow>
                                     </TableBody>

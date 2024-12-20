@@ -103,10 +103,10 @@ export default function ViewSalesBill() {
                         <div className="p-4">
                             <h3 className="font-bold mb-2">BILL TO</h3>
                             <div className="text-sm">
-                                <p className="font-bold">{billData?.party_name}</p>
-                                <p>{billData?.party?.billing_address}</p>
+                                <p className="font-bold">{billData?.partyName}</p>
+                                <p>{billData?.party?.address}</p>
                                 <p>GSTIN: {billData?.party?.gstin}</p>
-                                <p>Mobile: {billData?.party?.mobile_number}</p>
+                                <p>Mobile: {billData?.party?.mob}</p>
                             </div>
                         </div>
                     </div>
@@ -135,16 +135,16 @@ export default function ViewSalesBill() {
                                     const discountPercent = (item?.discount_percentage || 0);
                                     const discountAmount = (subtotal * discountPercent) / 100;
                                     const afterDiscount = subtotal - discountAmount;
-                                    const gstPercent = (item?.gst_percentage || 0);
-                                    const taxAmount = (afterDiscount * gstPercent) / 100;
+                                    const gstPer = (item?.gstPer || 0);
+                                    const taxAmount = (afterDiscount * gstPer) / 100;
                                     const totalAmount = afterDiscount + taxAmount;
                                     
                                     return (
                                         <tr key={index}>
                                             <td className="p-2 border">{index + 1}</td>
                                             <td className="p-2 border">{item?.item?.name}</td>
-                                            <td className="p-2 border">{item?.hsn_code}</td>
-                                            <td className="p-2 border">{item?.batch_number || '-'}</td>
+                                            <td className="p-2 border">{item?.HSN}</td>
+                                            <td className="p-2 border">{item?.batchNumber || '-'}</td>
                                             <td className="p-2 border">
                                                 {item?.expiry_date ? new Date(item.expiry_date).toLocaleDateString() : '-'}
                                             </td>
@@ -152,7 +152,7 @@ export default function ViewSalesBill() {
                                             <td className="p-2 border">{formatCurrency(item?.price_per_unit)}</td>
                                             <td className="p-2 border">{formatCurrency(subtotal)}</td>
                                             <td className="p-2 border">{formatCurrency(discountAmount)} ({item?.discount_percentage}%)</td>
-                                            <td className="p-2 border">{formatCurrency(taxAmount)} ({item?.gst_percentage}%)</td>
+                                            <td className="p-2 border">{formatCurrency(taxAmount)} ({item?.gstPer}%)</td>
                                             <td className="p-2 border">{formatCurrency(totalAmount)}</td>
                                         </tr>
                                     );
@@ -179,7 +179,7 @@ export default function ViewSalesBill() {
                                             const subtotal = (item?.quantity || 0) * (item?.price_per_unit || 0);
                                             const discountAmount = (subtotal * (item?.discount_percentage || 0)) / 100;
                                             const afterDiscount = subtotal - discountAmount;
-                                            const taxAmount = (afterDiscount * (item?.gst_percentage || 0)) / 100;
+                                            const taxAmount = (afterDiscount * (item?.gstPer || 0)) / 100;
                                             return acc + taxAmount;
                                         }, 0))}
                                     </td>
@@ -225,7 +225,7 @@ export default function ViewSalesBill() {
 
                     {/* Signature Section */}
                     <div className="p-4 border-t border-gray-300 text-right">
-                        <p className="font-semibold">For {billData?.created_by?.name}</p>
+                        <p className="font-semibold">For {billData?.createdBy?.name}</p>
                         <div className="h-16"></div>
                         <p>Authorized Signatory</p>
                     </div>

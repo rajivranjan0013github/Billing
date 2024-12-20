@@ -28,7 +28,7 @@ export default function AdjustStockDialog({ open, onOpenChange, item, onStockAdj
     }
     setIsSubmitting(true);
     dispatch(adjustStock({
-        itemId: item._id,
+        inventoryId: item._id,
         adjustmentType,
         quantity: calculateQuantityValue(adjustmentQuantity, item.secondary_unit?.conversion_rate),
         remarks

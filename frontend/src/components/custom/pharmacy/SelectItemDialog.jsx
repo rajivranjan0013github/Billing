@@ -69,52 +69,52 @@ const SelectItemDialog = ({ open, onOpenChange, onSelectItem, mode = "sale" }) =
     });
   };
 
-  const handleQuantityChange = (itemId, value) => {
+  const handleQuantityChange = (inventoryId, value) => {
     const numValue = parseInt(value) || 1;
-    const item = filteredItems.find(item => item._id === itemId);
+    const item = filteredItems.find(item => item._id === inventoryId);
     
     if (mode === "sale") {
       // For sales: Limit by available stock
       const maxStock = item?.quantity || 0;
       setQuantities(prev => ({
         ...prev,
-        [itemId]: Math.max(1, Math.min(numValue, maxStock))
+        [inventoryId]: Math.max(1, Math.min(numValue, maxStock))
       }));
     } else {
       // For purchase: No upper limit
       setQuantities(prev => ({
         ...prev,
-        [itemId]: Math.max(1, numValue)
+        [inventoryId]: Math.max(1, numValue)
       }));
     }
   };
 
-  const incrementQuantity = (itemId) => {
-    const item = filteredItems.find(item => item._id === itemId);
+  const incrementQuantity = (inventoryId) => {
+    const item = filteredItems.find(item => item._id === inventoryId);
     
     setQuantities(prev => {
-      const currentQty = prev[itemId] || 1;
+      const currentQty = prev[inventoryId] || 1;
       if (mode === "sale") {
         // For sales: Check stock limit
         const maxStock = item?.quantity || 0;
         return {
           ...prev,
-          [itemId]: Math.min(currentQty + 1, maxStock)
+          [inventoryId]: Math.min(currentQty + 1, maxStock)
         };
       } else {
         // For purchase: No upper limit
         return {
           ...prev,
-          [itemId]: currentQty + 1
+          [inventoryId]: currentQty + 1
         };
       }
     });
   };
 
-  const decrementQuantity = (itemId) => {
+  const decrementQuantity = (inventoryId) => {
     setQuantities(prev => ({
       ...prev,
-      [itemId]: Math.max((prev[itemId] || 1) - 1, 1)
+      [inventoryId]: Math.max((prev[inventoryId] || 1) - 1, 1)
     }));
   };
 

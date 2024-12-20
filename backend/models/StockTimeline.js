@@ -2,27 +2,33 @@ import mongoose from 'mongoose';
 import {hospitalPlugin} from '../plugins/hospitalPlugin.js'
 
 const stockTimelineSchema = new mongoose.Schema({
-  inventory_id: { 
+  inventoryId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Inventory',
     required: true
   },
+  invoiceId : {type : mongoose.Schema.Types.ObjectId, ref : 'Invoice'},
   type: {
     type: String, 
-    enum: ['Adjustment', 'Purchase', 'Sale']
+    enum: ['Adjustment', 'PURCHASE', 'SALE']
   },
-  invoice_number: String,
+  invoiceNumber: String,
   credit : Number,
   debit : Number,
   balance : Number,
-  batch_number: String,
-  batch_expiry: String,
-  user: {
+  batchNumber: String,
+  expiry: String,
+  mrp : Number,
+  purchaseRate : Number,
+  ptr : Number, // sale rate also
+  gstPer : Number,
+  user: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'User',
   },
-  party_name: String,
-  party_mobile: String,
+  userName : String,
+  partyName: String,
+  partyMob: String,
   remarks: String
 }, {timestamps : true});
 

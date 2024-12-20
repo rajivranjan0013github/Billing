@@ -38,7 +38,7 @@ export default function AddItemDialog({ isOpen, onClose }) {
   const [measuringUnit, setMeasuringUnit] = useState("");
   const [priceWithTax, setPriceWithTax] = useState("withoutTax");
   const [sellPriceWithTax, setSellPriceWithTax] = useState("withoutTax");
-  const [hsnCode, setHsnCode] = useState("");
+  const [HSN, sethsn_code] = useState("");
   const [manufactureName, setManufactureName] = useState("");
   const [secondaryUnit, setSecondaryUnit] = useState("");
   const [conversionRate, setConversionRate] = useState("");
@@ -48,10 +48,10 @@ export default function AddItemDialog({ isOpen, onClose }) {
   const handleAddItem = () => {
     const itemData = {
       itemsDetails: {
-        item_category: category,  
+        category: category,  
         name,
         manufacturer_name: manufactureName,
-        gst_percentage: parseInt(gstRate),
+        gstPer: parseInt(gstRate),
         sales_info: {
           is_tax_included: sellPriceWithTax === "withTax",
           price_per_unit: parseFloat(sellPrice),
@@ -68,7 +68,7 @@ export default function AddItemDialog({ isOpen, onClose }) {
         quantity: parseInt(quantity),
         expiry_date: expiryDate,
         mrp: parseFloat(MRP),
-        hsn_code: hsnCode,
+        HSN: HSN,
         pack,
       }
     };
@@ -101,7 +101,7 @@ export default function AddItemDialog({ isOpen, onClose }) {
     setMeasuringUnit("");
     setPriceWithTax("withoutTax");
     setSellPriceWithTax("withoutTax");
-    setHsnCode("");
+    sethsn_code("");
     setManufactureName("");
     setSecondaryUnit("");
     setConversionRate("");
@@ -319,8 +319,8 @@ export default function AddItemDialog({ isOpen, onClose }) {
                     <Input id="MRP" placeholder="MRP" value={MRP} onChange={(e) => setMRP(e.target.value)} required />
                   </div>
                   <div>
-                    <Label htmlFor="hsnCode">HSN Code</Label>
-                    <Input id="hsnCode" placeholder="HSN Code" value={hsnCode} onChange={(e) => setHsnCode(e.target.value)} />
+                    <Label htmlFor="HSN">HSN Code</Label>
+                    <Input id="HSN" placeholder="HSN Code" value={HSN} onChange={(e) => sethsn_code(e.target.value)} />
                   </div>
                   <div>
                     <Label htmlFor="expiryDate">Expiry Date</Label>

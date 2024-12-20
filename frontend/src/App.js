@@ -21,14 +21,12 @@ import ContactPage from './pages/ContactUs';
 import Expenses from './pages/Expenses';
 import Sales from "./pages/Sales";
 import Purchase from "./pages/Purchase";
-import ItemsMaster from "./pages/ItemsMaster";
 import Parties from "./pages/Parties";
 import CreateParty from "./pages/CreateParty";
 import CreateSellInvoice from "./pages/CreateSellInvoice";
 import ViewSalesBill from "./pages/ViewSalesBill";
 import CreatePurchaseInvoice from "./pages/CreatePurchaseInvoice";
-import ViewPurchaseBill from "./pages/ViewPurchaseBill";
-import ItemDetails from "./pages/ItemDetails";
+import EditPurchaseInvoice from "./pages/EditPurchaseInvoice";
 import PartyDetails from "./pages/PartyDetails";
 import PaymentOut from "./pages/PaymentOut";
 import CreatePaymentOut from "./pages/CreatePaymentOut";
@@ -109,8 +107,8 @@ const AppContent = () => {
               <Route path="/sales/create-sell-invoice" element={<CreateSellInvoice />} />
               <Route path="/sales/:billId" element={<ViewSalesBill />} />
               <Route path="/purchase/create-purchase-invoice" element={<CreatePurchaseInvoice />} />
-              <Route path="/purchase/:billId" element={<ViewPurchaseBill />} />
-              <Route path="/item-details/:itemId" element={<ItemDetails />} />
+              <Route path="/purchase/:invoiceId" element={<EditPurchaseInvoice />} />
+              <Route path="/item-details/:inventoryId" element={<inventoryDetails />} />
               <Route path="/party-details/:partyId" element={<PartyDetails />} />
               <Route path="/purchase/payment-out" element={<PaymentOut />} />
               <Route path="/purchase/payment-out/:paymentId" element={<PaymentDetails />} />

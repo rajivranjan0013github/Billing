@@ -51,7 +51,7 @@ export default function Sales() {
   const filteredBills = bills.filter(bill => {
     const partyName = bill.is_cash_customer 
       ? "Cash Sale" 
-      : (bill.party?.name || bill.party_name || "");
+      : (bill.party?.name || bill.partyName || "");
     
     return partyName.toLowerCase().includes(searchQuery.toLowerCase());
   });
@@ -169,7 +169,7 @@ export default function Sales() {
               </TableCell>
               <TableCell>{format(new Date(bill.bill_date), 'dd MMM yyyy')}</TableCell>
               <TableCell>{bill.bill_number}</TableCell>
-              <TableCell>{bill.is_cash_customer ? "Cash Sale" : bill.party?.name || bill.party_name}</TableCell>
+              <TableCell>{bill.is_cash_customer ? "Cash Sale" : bill.party?.name || bill.partyName}</TableCell>
               <TableCell>-</TableCell>
               <TableCell>
                 {formatCurrency(bill.grand_total)}

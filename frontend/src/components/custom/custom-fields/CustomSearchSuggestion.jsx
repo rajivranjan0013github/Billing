@@ -92,9 +92,9 @@ export const SearchSuggestion = forwardRef(({ suggestions=[], placeholder, value
             >
               <div className="flex justify-between items-center">
                 <span className='capitalize'>{suggestion.name}</span>
-                {showAmount && suggestion?.current_balance !== undefined && (
-                  <Badge variant={suggestion?.current_balance <= 0 ? "destructive" : "success"}>
-                    {suggestion?.current_balance || 0}
+                {showAmount && suggestion?.currentBalance !== undefined && (
+                  <Badge variant={suggestion?.currentBalance <= 0 ? "destructive" : "success"}>
+                    {suggestion?.currentBalance || 0}
                   </Badge>
                 )}
               </div>

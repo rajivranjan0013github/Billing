@@ -17,7 +17,7 @@ router.post("/", verifyToken, async (req, res) => {
   session.startTransaction();
 
   try {
-    const { party, is_cash_customer, party_name, items, bill_discount, payment, grand_total, tax_summary, is_round_off } = req.body;
+    const { party, is_cash_customer, partyName, items, bill_discount, payment, grand_total, tax_summary, is_round_off } = req.body;
 
     // Validate party for non-cash customers
     if (!is_cash_customer && !party) {
@@ -37,11 +37,11 @@ router.post("/", verifyToken, async (req, res) => {
     const newBill = new SalesBill({
       party: is_cash_customer ? null : party,
       is_cash_customer,
-      party_name,
+      partyName,
       payment_status,
       items: items.map((item) => ({
         item: item._id,
-        batch_number: item.batchNo,
+        batchNumber: item.batchNo,
         expiry_date: item.expDate,
         quantity: parseFloat(item.qty),
         unit: item.unit,
@@ -49,15 +49,15 @@ router.post("/", verifyToken, async (req, res) => {
         mrp: parseFloat(item.mrp),
         price_per_unit: parseFloat(item.pricePerItem),
         discount_percentage: parseFloat(item.discount),
-        gst_percentage: parseFloat(item.tax),
-        hsn_code: item.hsn,
+        gstPer: parseFloat(item.tax),
+        HSN: item.hsn,
       })),
       bill_discount,
       payment,
       grand_total,
       tax_summary,
       is_round_off,
-      created_by: req.user._id,
+      createdBy: req.user._id,
     });
 
     // Create payment record if payment was made
@@ -67,7 +67,7 @@ router.post("/", verifyToken, async (req, res) => {
         payment_type: "Sell Invoice",
         payment_method: payment.payment_method,
         party_id: is_cash_customer ? null : party,
-        party_name: party_name,
+        partyName: partyName,
         bill_number: newBill.bill_number,
         bill_id: newBill._id,
       });
@@ -84,7 +84,7 @@ router.post("/", verifyToken, async (req, res) => {
 
       await StockDetail.create(
         [{
-          inventory_id: item._id,
+          inventoryId: item._id,
           quantity: -parseFloat(item.qty),
           type: "Sell Invoice",
           bill_number: savedBill.bill_number,
@@ -101,7 +101,7 @@ router.post("/", verifyToken, async (req, res) => {
     // Handle party transactions for non-cash customers
     if (!is_cash_customer) {
       // Update party balance
-      partyDoc.current_balance += grand_total - parseFloat(payment.amount_paid);
+      partyDoc.currentBalance += grand_total - parseFloat(payment.amount_paid);
       await partyDoc.save({ session });
 
       // Create party transaction
@@ -126,7 +126,7 @@ router.post("/", verifyToken, async (req, res) => {
           bill_id: savedBill._id,
           debit: grand_total,
           credit: parseFloat(payment.amount_paid),
-          balance: partyDoc.current_balance,
+          balance: partyDoc.currentBalance,
         }],
         { session }
       );

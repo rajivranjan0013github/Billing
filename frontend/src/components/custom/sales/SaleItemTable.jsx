@@ -29,11 +29,11 @@ export default function PurchaseTable() {
         </div>
         <div className='space-y-2'>
           <p className='text-xs font-semibold'>HSN</p>
-          <input onChange={(e) => handleInputChange('hsn_code', e.target.value)} value={newProduct.hsn_code || ''}  type="text" placeholder="" className='h-8 w-full border-[1px] border-gray-300 px-1' />
+          <input onChange={(e) => handleInputChange('HSN', e.target.value)} value={newProduct.HSN || ''}  type="text" placeholder="" className='h-8 w-full border-[1px] border-gray-300 px-1' />
         </div>
         <div className='space-y-2 col-span-2'>
           <p className='text-xs font-semibold'>BATCH</p>
-          <input type="text" onChange={(e) => handleInputChange('batch_number', e.target.value)} value={newProduct.batch_number || ''} placeholder="batch no" className='h-8 w-full border-[1px] border-gray-300 px-1' />
+          <input type="text" onChange={(e) => handleInputChange('batchNumber', e.target.value)} value={newProduct.batchNumber || ''} placeholder="batch no" className='h-8 w-full border-[1px] border-gray-300 px-1' />
         </div>
         <div className='space-y-2'>
           <p className='text-xs font-semibold'>EXPIRY</p>
@@ -57,7 +57,7 @@ export default function PurchaseTable() {
         </div>
         <div className='space-y-2'>
           <p className='text-xs font-semibold'>RATE</p>
-          <input onChange={(e) => handleInputChange('purchase_rate', e.target.value)} value={newProduct.purchase_rate || ''} type="text" placeholder="" className='h-8 w-full border-[1px] border-gray-300 px-1' />
+          <input onChange={(e) => handleInputChange('purchaseRate', e.target.value)} value={newProduct.purchaseRate || ''} type="text" placeholder="" className='h-8 w-full border-[1px] border-gray-300 px-1' />
         </div>
         <div className='space-y-2'>
           <p className='text-xs font-semibold'>P-T-R</p>
@@ -81,7 +81,7 @@ export default function PurchaseTable() {
         </div>
         <div className='space-y-2'>
           <p className='text-xs font-semibold'>GST</p>
-          <input onChange={(e) => handleInputChange('gst_percentage', e.target.value)} value={newProduct.gst_percentage || ''} type="text" placeholder="" className='h-8 w-full border-[1px] border-gray-300 px-1' />
+          <input onChange={(e) => handleInputChange('gstPer', e.target.value)} value={newProduct.gstPer || ''} type="text" placeholder="" className='h-8 w-full border-[1px] border-gray-300 px-1' />
         </div>
         <div className='space-y-2'>
           <p className='text-xs font-semibold'>AMT</p>

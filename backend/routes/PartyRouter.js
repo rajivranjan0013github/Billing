@@ -18,17 +18,17 @@ router.post("/create", async (req, res) => {
             type: "Opening Balance"
         });
         
-        // Adjust opening_balance based on balance_type
+        // Adjust openBalance based on balance_type
         if (partyData.balance_type === 'collect') {
-            ledgerDoc.debit = partyData.opening_balance;
-            partyData.opening_balance = Math.abs(partyData.opening_balance);
+            ledgerDoc.debit = partyData.openBalance;
+            partyData.openBalance = Math.abs(partyData.openBalance);
         } else if (partyData.balance_type === 'pay') {
-            ledgerDoc.credit = partyData.opening_balance;
-            partyData.opening_balance = -Math.abs(partyData.opening_balance);
+            ledgerDoc.credit = partyData.openBalance;
+            partyData.openBalance = -Math.abs(partyData.openBalance);
         }
    
-        // Set current_balance equal to opening_balance for new party
-        ledgerDoc.balance = partyData.current_balance = partyData.opening_balance;        
+        // Set currentBalance equal to openBalance for new party
+        ledgerDoc.balance = partyData.currentBalance = partyData.openBalance;        
         
         // Use session for all database operations
         const party = new Party(partyData);

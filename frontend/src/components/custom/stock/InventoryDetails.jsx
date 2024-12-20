@@ -29,9 +29,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../ui/alert-dialog"
+import PurchaseTab from "./PurchaseTab"
 
-export default function InventoryDetails({itemId}) { 
-  const [itemDetails, setItemDetails] = useState(null);
+export default function InventoryDetails({inventoryId}) { 
+  const [inventoryDetails, setItemDetails] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isManageInventoryOpen, setIsManageInventoryOpen] = useState(false);
   const [isEditItemOpen, setIsEditItemOpen] = useState(false);
@@ -45,7 +46,7 @@ export default function InventoryDetails({itemId}) {
     const fetchItemDetails = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`${Backend_URL}/api/inventory/${itemId}`, {credentials: "include"});
+        const response = await fetch(`${Backend_URL}/api/inventory/${inventoryId}`, {credentials: "include"});
         if(!response.ok) throw new Error("Failed to fetch item details");
         const data = await response.json();
         setItemDetails(data);
@@ -55,10 +56,10 @@ export default function InventoryDetails({itemId}) {
         setIsLoading(false);
       }
     };
-    if (itemId) {
+    if (inventoryId) {
       fetchItemDetails();      
     }
-  }, [itemId, items]);
+  }, [inventoryId, items]);
 
   const handleDeleteBatch = async (batchId) => {
     try {
@@ -96,8 +97,8 @@ export default function InventoryDetails({itemId}) {
           <Card className="w-48">
             <CardContent className="p-2">
               <img
-                src={itemDetails?.img_url || ""}
-                alt={itemDetails?.name}
+                src={inventoryDetails?.imgUri || ""}
+                alt={inventoryDetails?.name}
                 width={100}
                 height={100}
                 className="object-contain"
@@ -105,12 +106,12 @@ export default function InventoryDetails({itemId}) {
             </CardContent>
           </Card>
           <div>
-            <h1 className="text-2xl font-semibold">{itemDetails?.name}</h1>
-            <p className="text-muted-foreground">{itemDetails?.mfc_name}</p>
+            <h1 className="text-2xl font-semibold">{inventoryDetails?.name}</h1>
+            <p className="text-muted-foreground">{inventoryDetails?.mfcName}</p>
             <div className="flex items-center gap-2 mt-2">
               <div className="bg-orange-500 text-white p-1 rounded-full">Rx</div>
               <div className="bg-red-500 text-white p-1 rounded-full">H</div>
-              <span>{itemDetails?.composition}</span>
+              <span>{inventoryDetails?.composition}</span>
             </div>
           </div>
         </div>
@@ -142,35 +143,35 @@ export default function InventoryDetails({itemId}) {
       <div className="grid grid-cols-8 gap-4 text-sm my-3">
         <div>
           <div className="text-muted-foreground">PACK</div>
-          <div>{itemDetails?.pack}'s</div>
+          <div>{inventoryDetails?.pack}'s</div>
         </div>
         <div>
           <div className="text-muted-foreground">EXPIRY</div>
-          <div>{itemDetails?.expiry || '-'}</div>
+          <div>{inventoryDetails?.expiry || '-'}</div>
         </div>
         <div>
           <div className="text-muted-foreground">LOCATION</div>
-          <div>{itemDetails?.location || '-'}</div>
+          <div>{inventoryDetails?.location || '-'}</div>
         </div>
         <div>
           <div className="text-muted-foreground">MRP</div>
-          <div>{itemDetails?.mrp ? `₹${itemDetails?.mrp?.toFixed(2)}` : '-'}</div>
+          <div>{inventoryDetails?.mrp ? `₹${inventoryDetails?.mrp?.toFixed(2)}` : '-'}</div>
         </div>
         <div>
           <div className="text-muted-foreground">PURC RATE</div>
-          <div>{itemDetails?.purchase_rate ? `₹${itemDetails?.purchase_rate?.toFixed(2)}` : '-'}</div>
+          <div>{inventoryDetails?.purchaseRate ? `₹${inventoryDetails?.purchaseRate?.toFixed(2)}` : '-'}</div>
         </div>
         <div>
           <div className="text-muted-foreground">NET RATE</div>
-          <div>{itemDetails?.net_purchase_rate ? `₹${itemDetails?.net_purchase_rate?.toFixed(2)}` : '-'}</div>
+          <div>{inventoryDetails?.netRate ? `₹${inventoryDetails?.netRate?.toFixed(2)}` : '-'}</div>
         </div>
         <div>
           <div className="text-muted-foreground">PTR</div>
-          <div>{itemDetails?.ptr ? `₹${itemDetails?.ptr?.toFixed(2)}` : '-'}</div>
+          <div>{inventoryDetails?.ptr ? `₹${inventoryDetails?.ptr?.toFixed(2)}` : '-'}</div>
         </div>
         <div>
           <div className="text-muted-foreground">STOCK</div>
-          <div>{itemDetails?.quantity ? `${itemDetails?.quantity} PACKS` : '-'}</div>
+          <div>{inventoryDetails?.quantity ? `${inventoryDetails?.quantity} PACKS` : '-'}</div>
         </div>
       </div>
 
@@ -192,7 +193,7 @@ export default function InventoryDetails({itemId}) {
         </div>
 
         <TabsContent value="batches" className="mt-4">
-          {(!itemDetails?.batch || itemDetails.batch.length === 0) ? (
+          {(!inventoryDetails?.batch || inventoryDetails.batch.length === 0) ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <PackageX className="h-12 w-12 mb-2" />
               <p>No batches found for this item</p>
@@ -214,9 +215,9 @@ export default function InventoryDetails({itemId}) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {itemDetails.batch.map((batch) => (
+                {inventoryDetails.batch.map((batch) => (
                   <TableRow key={batch._id}>
-                    <TableCell className="font-medium">{batch.batch_number}</TableCell>
+                    <TableCell className="font-medium">{batch.batchNumber}</TableCell>
                     <TableCell>{batch.pack}</TableCell>
                     <TableCell>{batch.expiry}</TableCell>
                     <TableCell>
@@ -225,10 +226,10 @@ export default function InventoryDetails({itemId}) {
                       </span>
                     </TableCell>
                     <TableCell>₹{batch.mrp?.toFixed(2)}</TableCell>
-                    <TableCell>₹{batch.purchase_rate?.toFixed(2)}</TableCell>
-                    <TableCell>₹{batch.net_purchase_rate?.toFixed(2)}</TableCell>
+                    <TableCell>₹{batch.purchaseRate?.toFixed(2)}</TableCell>
+                    <TableCell>₹{batch.netRate?.toFixed(2)}</TableCell>
                     <TableCell>₹{batch.ptr?.toFixed(2)}</TableCell>
-                    <TableCell>{batch.quantity} {itemDetails.unit}s</TableCell>
+                    <TableCell>{batch.quantity} {inventoryDetails.unit}s</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -258,20 +259,20 @@ export default function InventoryDetails({itemId}) {
           )}
         </TabsContent>
         <TabsContent value="purchases">
-          <div>Purchases</div>
+          <PurchaseTab inventoryId={inventoryDetails._id} />
         </TabsContent>
         <TabsContent value="sales">
           <div>Sales</div>
         </TabsContent>
         <TabsContent value="timeline">
-          <Timeline inventory_id={itemDetails._id} />
+          <Timeline inventoryId={inventoryDetails._id} />
         </TabsContent>
       </Tabs>
 
       <ManageInventory 
         open={isManageInventoryOpen} 
         onOpenChange={setIsManageInventoryOpen}
-        itemDetails={itemDetails}
+        inventoryDetails={inventoryDetails}
         setItemDetails={setItemDetails}
         batchDetails={updateBatchDetails} 
         setUpdateBatchDetails={setUpdateBatchDetails}
@@ -280,7 +281,7 @@ export default function InventoryDetails({itemId}) {
       <AddNewInventory 
         open={isEditItemOpen} 
         onOpenChange={setIsEditItemOpen}
-        itemDetails={itemDetails}
+        inventoryDetails={inventoryDetails}
       />
 
       <AlertDialog open={!!batchToDelete} onOpenChange={() => setBatchToDelete(null)}>
@@ -288,7 +289,7 @@ export default function InventoryDetails({itemId}) {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the batch {batchToDelete?.batch_number}. This action cannot be undone.
+              This will permanently delete the batch {batchToDelete?.batchNumber}. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -10,60 +10,60 @@ import ProductSelector from './SelectInventoryItem';
 import { Backend_URL } from "../../../assets/Data";
 
 const INITIAL_FORM_DATA = {
-  inventory_id: "",
-  batch_number: "",
+  inventoryId: "",
+  batchNumber: "",
   expiryMonth: "",
   expiryYear: "",
   mrp: "",
-  hsn_code: "",
-  gst_percentage: "",
-  purchase_rate: "",
+  HSN: "",
+  gstPer: "",
+  purchaseRate: "",
   purchaseGstType: "Excl gst",
   ptr: "",
   unitsPerPack: "",
   quantityInStock: "" 
 }
 
-export default function ManageInventory({ open, onOpenChange, itemDetails, setItemDetails, batchDetails, setUpdateBatchDetails }) {
+export default function ManageInventory({ open, onOpenChange, inventoryDetails, setItemDetails, batchDetails, setUpdateBatchDetails }) {
   const dispatch = useDispatch();
   const { toast } = useToast();
-  const batchNumberRef = useRef(null);
+  const batch_numberRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
   // creating new batch
   useEffect(() => {
-    if(itemDetails && open) {
-      setFormData({...formData, inventory_id: itemDetails._id});
-      setProductSearch(itemDetails.name);
+    if(inventoryDetails && open) {
+      setFormData({...formData, inventoryId: inventoryDetails._id});
+      setProductSearch(inventoryDetails.name);
       setTimeout(() => {
-        if(batchNumberRef.current) {
-          batchNumberRef.current.focus();
+        if(batch_numberRef.current) {
+          batch_numberRef.current.focus();
         }
       }, 100);
     }
-  }, [itemDetails, open]);
+  }, [inventoryDetails, open]);
 
   // Update useEffect to handle batch editing
   useEffect(() => {
     if (batchDetails && open) {
       setFormData({
-        inventory_id: batchDetails.inventory_id,
-        batch_number: batchDetails.batch_number,
+        inventoryId: batchDetails.inventoryId,
+        batchNumber: batchDetails.batchNumber,
         expiryMonth: batchDetails.expiry.split('/')[0],
         expiryYear: batchDetails.expiry.split('/')[1],
         mrp: batchDetails.mrp,
-        hsn_code: batchDetails.hsn_code,
-        gst_percentage: batchDetails.gst_percentage,
-        purchase_rate: batchDetails.purchase_rate,
+        HSN: batchDetails.HSN,
+        gstPer: batchDetails.gstPer,
+        purchaseRate: batchDetails.purchaseRate,
         purchaseGstType: "Excl gst",
         ptr: batchDetails.ptr,
         unitsPerPack: batchDetails.pack,
         quantityInStock: batchDetails.quantity
       });
-      // Set product name if itemDetails is available
-      if (itemDetails) {
-        setProductSearch(itemDetails.name);
+      // Set product name if inventoryDetails is available
+      if (inventoryDetails) {
+        setProductSearch(inventoryDetails.name);
       }
     }
   }, [batchDetails, open]);
@@ -94,18 +94,18 @@ export default function ManageInventory({ open, onOpenChange, itemDetails, setIt
     if(isProductSelectorOpen) return;
     
     const expiry = `${formData.expiryMonth}/${formData.expiryYear}`;
-    const purchase_rate = formData.purchaseGstType === "Excl gst" ? 
-      formData.purchase_rate : 
-      formData.purchase_rate / (1 + formData.gst_percentage/100);
+    const purchaseRate = formData.purchaseGstType === "Excl gst" ? 
+      formData.purchaseRate : 
+      formData.purchaseRate / (1 + formData.gstPer/100);
     
     const finalFormData = {
-      inventory_id: formData.inventory_id,
-      batch_number: formData.batch_number,
+      inventoryId: formData.inventoryId,
+      batchNumber: formData.batchNumber,
       expiry,
       mrp: Number(formData.mrp),
-      hsn_code: formData.hsn_code,
-      gst_percentage: Number(formData.gst_percentage),
-      purchase_rate: Number(parseFloat(purchase_rate).toFixed(2)),
+      HSN: formData.HSN,
+      gstPer: Number(formData.gstPer),
+      purchaseRate: Number(parseFloat(purchaseRate).toFixed(2)),
       ptr: Number(parseFloat(formData.ptr).toFixed(2)),
       pack: parseInt(formData.unitsPerPack),
       quantity: Number(formData.quantityInStock),
@@ -142,11 +142,11 @@ export default function ManageInventory({ open, onOpenChange, itemDetails, setIt
   const handleProductSelect = (product) => {
     setFormData(prev => ({
       ...prev,
-      inventory_id: product._id,
+      inventoryId: product._id,
     }));
     setProductSearch(product.name);
-    if(batchNumberRef.current) {
-      batchNumberRef.current.focus();
+    if(batch_numberRef.current) {
+      batch_numberRef.current.focus();
     }
   };
 
@@ -167,7 +167,7 @@ export default function ManageInventory({ open, onOpenChange, itemDetails, setIt
             </Label>
             <Input
               id="productName"
-              autoFocus={!itemDetails}
+              autoFocus={!inventoryDetails}
               placeholder="Type to search products"
               value={productSearch}
               onChange={(e) => {
@@ -189,15 +189,15 @@ export default function ManageInventory({ open, onOpenChange, itemDetails, setIt
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label htmlFor="batch_number">
+              <Label htmlFor="batchNumber">
                 BATCH NUMBER<span className="text-red-500">*</span>
               </Label>
               <Input
-                ref={batchNumberRef}
-                id="batch_number"
-                name="batch_number"
+                ref={batch_numberRef}
+                id="batchNumber"
+                name="batchNumber"
                 placeholder="Batch Number"
-                value={formData.batch_number}
+                value={formData.batchNumber}
                 onChange={handleInputChange}
                 className="w-full h-10"
               />
@@ -242,22 +242,22 @@ export default function ManageInventory({ open, onOpenChange, itemDetails, setIt
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="hsn_code">
+              <Label htmlFor="HSN">
                 HSN CODE WITH GST RATE<span className="text-red-500">*</span>
               </Label>
               <div className="flex gap-2">
                 <Input
-                  id="hsn_code"
-                  name="hsn_code"
+                  id="HSN"
+                  name="HSN"
                   placeholder="Ex. 3004"
-                  value={formData.hsn_code}
+                  value={formData.HSN}
                   onChange={handleInputChange}
                   className="w-full h-10"
                 />
                 <Select 
-                  name="gst_percentage" 
-                  value={formData.gst_percentage}
-                  onValueChange={(value) => handleInputChange({ target: { name: 'gst_percentage', value }})}
+                  name="gstPer" 
+                  value={formData.gstPer}
+                  onValueChange={(value) => handleInputChange({ target: { name: 'gstPer', value }})}
                 >
                   <SelectTrigger className="w-24">
                     <SelectValue placeholder="gst %" />
@@ -275,15 +275,15 @@ export default function ManageInventory({ open, onOpenChange, itemDetails, setIt
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label htmlFor="purchase_rate">
+              <Label htmlFor="purchaseRate">
                 PURCHASE RATE<span className="text-red-500">*</span>
               </Label>
               <div className="flex gap-2">
                 <Input
-                  id="purchase_rate"
-                  name="purchase_rate"
+                  id="purchaseRate"
+                  name="purchaseRate"
                   placeholder="Purch Rate"
-                  value={formData.purchase_rate}
+                  value={formData.purchaseRate}
                   onChange={handleInputChange}
                   className="w-full h-10"
                 />
