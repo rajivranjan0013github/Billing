@@ -8,7 +8,7 @@ import { useToast } from "../../../hooks/use-toast";
 
 export default function PurchaseTable({inputRef, products, setProducts, viewMode}) {
   const {toast} = useToast();
-  const [editMode, setEditMode] = useState(true)
+  const [editMode, setEditMode] = useState(true);
   const [newProduct, setNewProduct] = useState({});
   const [productSearch, setProductSearch] = useState("");
   const [isProductSelectorOpen, setIsProductSelectorOpen] = useState(false);
@@ -61,6 +61,13 @@ export default function PurchaseTable({inputRef, products, setProducts, viewMode
       productName: product.name,
       inventoryId: product._id,
       productName: product.name,
+      mrp : product.mrp,
+      expiry : product.expiry,
+      pack : product.pack,
+      purchaseRate : product.purchaseRate,
+      ptr : product.ptr,
+      HSN : product.HSN,
+      gstPer : product.gstPer
     }));
     setProductSearch(product.name);
     if (inputRef.current["batchNumber"]) {

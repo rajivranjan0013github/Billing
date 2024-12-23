@@ -4,6 +4,7 @@ import { verifyToken, checkPermission } from '../middleware/authMiddleware.js';
 import { InventoryBatch } from '../models/InventoryBatch.js';
 import { StockTimeline } from '../models/StockTimeline.js';
 import mongoose from 'mongoose';
+import {findChangesInObject} from '../utils/Helper.js'
 
 const router = express.Router();
 
@@ -27,7 +28,7 @@ router.post('/manage-inventory', async (req, res) => {
 });
 
 // creating or updating batch
-router.post('/manage-batch', async (req, res) => {
+router.post('/manage-batch', verifyToken, async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     const {_id, inventoryId, ...details} = req.body; // _id is batch id
@@ -36,7 +37,7 @@ router.post('/manage-batch', async (req, res) => {
         const inventoryDetails = await Inventory.findById(inventoryId).session(session);
         if(!inventoryDetails) throw new Error('Item not found');
         
-        // Force quantity to be a number
+        // Force quantity to be a number -> parsing
         inventoryDetails.quantity = Number(inventoryDetails.quantity || 0);
         details.quantity = Number(details.quantity);
         
@@ -46,6 +47,8 @@ router.post('/manage-batch', async (req, res) => {
             type: 'Adjustment',
             batchNumber: details.batchNumber,
             expiry: details.expiry,
+            user : req.user._id,
+            userName : req.user?.name
         });
 
         if (_id) {
@@ -62,6 +65,7 @@ router.post('/manage-batch', async (req, res) => {
                 timeline.debit = oldQuantity - newQuantity;
                 inventoryDetails.quantity -= timeline.debit;
             }
+            timeline.remarks = findChangesInObject(batchDetails, details);
             Object.assign(batchDetails, details);
             inventoryDetails.NewBatchOperation(details);
             await batchDetails.save({session});

@@ -8,6 +8,7 @@ import { Search, Filter, ArrowUpDown, Plus, CircleCheckBig } from "lucide-react"
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchItems } from '../../../redux/slices/inventorySlice';
 import ManageInventory from '../inventory/ManageInventory';
+import {convertQuantity} from '../../../assets/Data'
 
 const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -117,7 +118,7 @@ const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
                   Exp: {item?.expiry}
                 </p>
                 <p className="text-sm font-medium">
-                  {item?.quantity} units
+                  {item?.quantity ? convertQuantity(item.quantity, item.pack) : ""}
                 </p>
               </div>
             </div>

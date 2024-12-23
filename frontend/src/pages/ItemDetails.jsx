@@ -3,20 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { ArrowLeft, Edit, Printer, Trash2, Loader2 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../components/ui/dropdown-menu"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../components/ui/table"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "../components/ui/dropdown-menu"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "../components/ui/table"
 import { Calendar, Download } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Backend_URL } from "../assets/Data"
@@ -36,9 +24,7 @@ export default function inventoryDetails() {
     const fetchItemDetails = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`${Backend_URL}/api/inventory/${inventoryId}`, {
-          credentials: "include",
-        });
+        const response = await fetch(`${Backend_URL}/api/inventory/${inventoryId}`, { credentials: "include" });
         const data = await response.json();
         setItem(data);
       } catch (error) {

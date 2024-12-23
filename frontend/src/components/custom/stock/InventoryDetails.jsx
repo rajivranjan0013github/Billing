@@ -6,9 +6,10 @@ import { Checkbox } from "../../ui/checkbox"
 import { Settings, ChevronRight, Loader2, PackageX } from 'lucide-react'
 import { ScrollArea } from "../../ui/scroll-area"
 import { useEffect, useState } from "react";
-import { Backend_URL } from "../../../assets/Data"
+import { Backend_URL, convertQuantity } from "../../../assets/Data"
 import ManageInventory from "../inventory/ManageInventory"
 import Timeline from "./Timeline"
+import SalesTab from "./SalesTab"
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -171,7 +172,7 @@ export default function InventoryDetails({inventoryId}) {
         </div>
         <div>
           <div className="text-muted-foreground">STOCK</div>
-          <div>{inventoryDetails?.quantity ? `${inventoryDetails?.quantity} PACKS` : '-'}</div>
+          <div>{convertQuantity(inventoryDetails?.quantity, inventoryDetails?.pack)}</div>
         </div>
       </div>
 
@@ -229,7 +230,7 @@ export default function InventoryDetails({inventoryId}) {
                     <TableCell>₹{batch.purchaseRate?.toFixed(2)}</TableCell>
                     <TableCell>₹{batch.netRate?.toFixed(2)}</TableCell>
                     <TableCell>₹{batch.ptr?.toFixed(2)}</TableCell>
-                    <TableCell>{batch.quantity} {inventoryDetails.unit}s</TableCell>
+                    <TableCell>{convertQuantity(batch?.quantity, batch?.pack)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -262,7 +263,7 @@ export default function InventoryDetails({inventoryId}) {
           <PurchaseTab inventoryId={inventoryDetails._id} />
         </TabsContent>
         <TabsContent value="sales">
-          <div>Sales</div>
+          <SalesTab inventoryId={inventoryDetails._id} />
         </TabsContent>
         <TabsContent value="timeline">
           <Timeline inventoryId={inventoryDetails._id} />

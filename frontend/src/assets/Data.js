@@ -254,3 +254,13 @@ export const convertToFraction = (num) => {
   const ans = Math.round(value * 100) / 100;
   return ans;
 }
+
+export const convertQuantity = (qty, pack=1) => {
+  if(!qty) return '-'
+  const packs = Math.floor(qty/pack);
+  const loose = qty%pack;
+  if(loose) {
+      return `${packs} packs, ${loose} units`
+  } 
+  return `${packs} packs`
+}

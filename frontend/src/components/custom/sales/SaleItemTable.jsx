@@ -1,98 +1,422 @@
-import { useState } from 'react'
-import { Button } from "../../ui/button"
-import ProductSelector from '../inventory/SelectInventoryItem';
+import { useState, useRef, useEffect } from "react";
+import { Button } from "../../ui/button";
+import { convertToFraction } from "../../../assets/Data";
+import { Pen, Trash2 } from 'lucide-react';
+import { useToast } from "../../../hooks/use-toast";
+import InventorySuggestion from './InventorySuggestion';
+import BatchSuggestion from './BatchSuggestion';
 
-export default function PurchaseTable() {
-  const [products, setProducts] = useState([]);
-  const [inventorySelected, setInventorySelected] = useState({});
-  const [isProductSelectorOpen, setIsProductSelectorOpen] = useState(false);
+export default function SaleTable({inputRef, products, setProducts, viewMode}) {
+  const {toast} = useToast();
+  const [editMode, setEditMode] = useState(true)
+  const [newProduct, setNewProduct] = useState({});
+  const [productSearch, setProductSearch] = useState(""); // for product input-> which is passing in inventory suggestion
+  const [batchNumber, setBatchNumber] = useState("");
 
-  const [newProduct, setNewProduct] = useState({})
-  // some inputs
-
+  // input changes handler
   const handleInputChange = (field, value) => {
-    setNewProduct(prev => ({...prev, [field]: value}))
-  }
+    const updatedProduct = { ...newProduct, [field]: value };
+    if ((updatedProduct?.packs || updatedProduct?.loose) && updatedProduct?.ptr) {
+      const discount = Number(updatedProduct?.discount) || 0;
+      const gstPer = Number(updatedProduct?.gstPer) || 0;
+      const packs = Number(updatedProduct?.packs || 0); // for quantity
+      const loose = Number(updatedProduct?.loose || 0);
+      const pack = Number(updatedProduct?.pack || 1);
+      const ptr = Number(updatedProduct?.ptr || 0);
+      const quantity = pack* packs + loose;
+      const subtotal = quantity * (ptr/pack);
+      const total = subtotal * (1 - discount / 100);
+      updatedProduct.amount = convertToFraction(total * (1 + gstPer / 100));
+      updatedProduct.quantity = quantity;
+    } else {
+      updatedProduct.amount = "";
+    }
+    setNewProduct(updatedProduct);
+  };
+
+  // handle add product to list
   const handleAdd = () => {
-    if (!newProduct.product) return
-    console.log(newProduct);    
+    if (!newProduct.productName ){
+      toast({variant : 'destructive', title:'Please add product'})
+      return;
+    };
+
+    if(newProduct.batchNumber){
+      setProducts((pre) => [...pre, newProduct]);
+    } else {
+      setProducts(pre=> [...pre, {...newProduct, batchNumber}]);
+    }
+    setNewProduct({});
+    setProductSearch("");
+    setBatchNumber("");
+    inputRef.current['product'].focus();
+  };
+
+  // edit all product togather
+  const handleInputChangeEditMode = (index, field, value) => {}
+
+  const handleDeleteProduct = (indexToDelete) => {
+    const updatedProducts = products.filter((_, index) => index !== indexToDelete)
+    setProducts(updatedProducts);
+  }
+
+  const handleEditProduct = (index) => {
+    const product = products[index];
+    setNewProduct(product);
+    setProductSearch(product?.productName || product?.product);
+    handleDeleteProduct(index);
+  }
+
+  const handleProductSelect = (product) => {
+    setNewProduct({
+      productName : product.name,
+      inventoryId : product._id,
+      mrp : product.mrp,
+      expiry : product.expiry,
+      ptr : product.ptr,
+      gstPer : product.gstPer,
+      HSN : product.HSN,
+      pack : product.pack
+    });
+    if(inputRef?.current['batchNumber']) {
+      inputRef.current['batchNumber'].focus();
+    }
+  }
+
+  const handleBatchSelect = (batch) => {
+    setNewProduct({
+      ...newProduct,
+      batchNumber : batch.batchNumber,
+      batchId : batch._id,
+      mrp : batch.mrp,
+      expiry : batch.expiry,
+      ptr : batch.ptr,
+      gstPer : batch.gstPer,
+      HSN : batch.HSN,
+      pack : batch.pack
+    });
+    if(inputRef?.current['packs']) {
+      inputRef?.current['packs'].focus();
+    }
+
   }
 
   return (
-    <div className="w-full">
-
-      <div className="grid grid-cols-20 w-full space-x-1">
-        <div className='w-[5px]'>#</div>
-        <div className='col-span-3 space-y-2'>
-          <p className='text-xs font-semibold'>PRODUCT</p>
-          <input onChange={(e) => handleInputChange('product', e.target.value)} value={newProduct.product || ''} type="text" placeholder="Type or Press Space" className='h-8 w-full border-[1px] border-gray-300 px-2' />
+    <div className="w-full border-[1px] border-inherit py-4 rounded-sm space-y-2">
+      <div className="grid grid-cols-16 w-full space-x-1 ">
+        <div className="col-span-3 grid grid-cols-6">
+          <div className="text-xs font-semibold text-center">#</div>
+          <div className="text-xs font-semibold grid-cols-5">PRODUCT</div>
         </div>
-        <div className='space-y-2'>
-          <p className='text-xs font-semibold'>HSN</p>
-          <input onChange={(e) => handleInputChange('HSN', e.target.value)} value={newProduct.HSN || ''}  type="text" placeholder="" className='h-8 w-full border-[1px] border-gray-300 px-1' />
+        <div className="col-span-2">
+          <p className="text-xs font-semibold">BATCH</p>
         </div>
-        <div className='space-y-2 col-span-2'>
-          <p className='text-xs font-semibold'>BATCH</p>
-          <input type="text" onChange={(e) => handleInputChange('batchNumber', e.target.value)} value={newProduct.batchNumber || ''} placeholder="batch no" className='h-8 w-full border-[1px] border-gray-300 px-1' />
+        <div className=" ">
+          <p className="text-xs font-semibold">HSN</p>
         </div>
-        <div className='space-y-2'>
-          <p className='text-xs font-semibold'>EXPIRY</p>
-          <input onChange={(e) => handleInputChange('expiry', e.target.value)} value={newProduct.expiry || ''} type="text" placeholder="MM/YY" className='h-8 w-full border-[1px] border-gray-300 px-2' />
+        <div className=" ">
+          <p className="text-xs font-semibold">PACK</p>
         </div>
-        <div className='space-y-2'>
-          <p className='text-xs font-semibold'>PACK</p>
-          <input onChange={(e) => handleInputChange('pack', e.target.value)} value={newProduct.pack || ''} type="text" placeholder="1*" className='h-8 w-full border-[1px] border-gray-300 px-1' />
+        <div className=" ">
+          <p className="text-xs font-semibold">EXPIRY</p>
         </div>
-        <div className='space-y-2'>
-          <p className='text-xs font-semibold'>QTY</p>
-          <input onChange={(e) => handleInputChange('quantity', e.target.value)} value={newProduct.quantity || ''} type="text" placeholder="" className='h-8 w-full border-[1px] border-gray-300 px-1' />
+        <div className=" ">
+          <p className="text-xs font-semibold">MRP</p>
         </div>
-        <div className='space-y-2'>
-          <p className='text-xs font-semibold'>FREE</p>
-          <input onChange={(e) => handleInputChange('free', e.target.value)} value={newProduct.free || ''} type="text" placeholder="" className='h-8 w-full border-[1px] border-gray-300 px-1' />
+        <div className=" ">
+          <p className="text-xs font-semibold">PACKS</p>
         </div>
-        <div className='space-y-2'>
-          <p className='text-xs font-semibold'>MRP</p>
-          <input onChange={(e) => handleInputChange('mrp', e.target.value)} value={newProduct.mrp || ''} type="text" placeholder="" className='h-8 w-full border-[1px] border-gray-300 px-1' />
+        <div className=" ">
+          <p className="text-xs font-semibold">LOOSE</p>
         </div>
-        <div className='space-y-2'>
-          <p className='text-xs font-semibold'>RATE</p>
-          <input onChange={(e) => handleInputChange('purchaseRate', e.target.value)} value={newProduct.purchaseRate || ''} type="text" placeholder="" className='h-8 w-full border-[1px] border-gray-300 px-1' />
+        <div className=" ">
+          <p className="text-xs font-semibold">SALE RATE</p>
         </div>
-        <div className='space-y-2'>
-          <p className='text-xs font-semibold'>P-T-R</p>
-          <input onChange={(e) => handleInputChange('ptr', e.target.value)} value={newProduct.ptr || ''} type="text" placeholder="" className='h-8 w-full border-[1px] border-gray-300 px-1' />
+        <div className=" ">
+          <p className="text-xs font-semibold">DISC</p>
         </div>
-        <div className='space-y-2'>
-          <p className='text-xs font-semibold'>SCHEME</p>
-          <div className='flex'>
-            <input type="text" placeholder="" className='h-8 w-full border-[1px] border-gray-300 px-1' />
-            +
-            <input type="text" placeholder="" className='h-8 w-full border-[1px] border-gray-300 px-1' />
-          </div>
+        <div className=" ">
+          <p className="text-xs font-semibold">GST</p>
         </div>
-        <div className='space-y-2'>
-          <p className='text-xs font-semibold'>SCH%</p>
-          <input onChange={(e) => handleInputChange('schPercent', e.target.value)} value={newProduct.schPercent || ''} type="text" placeholder="" className='h-8 w-full border-[1px] border-gray-300 px-1' />
+        <div className=" ">
+          <p className="text-xs font-semibold">AMT</p>
         </div>
-        <div className='space-y-2'>
-          <p className='text-xs font-semibold'>DISC</p>
-          <input onChange={(e) => handleInputChange('discount', e.target.value)} value={newProduct.discount || ''} type="text" placeholder="" className='h-8 w-full border-[1px] border-gray-300 px-1' />
-        </div>
-        <div className='space-y-2'>
-          <p className='text-xs font-semibold'>GST</p>
-          <input onChange={(e) => handleInputChange('gstPer', e.target.value)} value={newProduct.gstPer || ''} type="text" placeholder="" className='h-8 w-full border-[1px] border-gray-300 px-1' />
-        </div>
-        <div className='space-y-2'>
-          <p className='text-xs font-semibold'>AMT</p>
-          <input onChange={(e) => handleInputChange('amount', e.target.value)} value={newProduct.amount || ''} type="text" placeholder="" className='h-8 w-full border-[1px] border-gray-300 px-1' />
-        </div>
-        <div className='space-y-2'>
-          <p className='text-xs font-semibold'>EDIT ALL</p>
-         <Button onClick={handleAdd} className='h-8'>Add</Button>
+        <div>
+           <p className="text-xs font-semibold">EDIT ALL</p>
         </div>
       </div>
-    </div>
-  )
-}
 
+      {/* Input row */}
+      {!viewMode && (
+        <div className="grid grid-cols-16 w-full space-x-1">
+          <div className="col-span-3 grid grid-cols-6">
+            <div></div>
+            <div className="col-span-5">
+              {/* <input
+                ref={(el) => (inputRef.current["product"] = el)}
+                onChange={handleProductNameChange}
+                value={productSearch}
+                type="text"
+                placeholder="Type or Press Space"
+                className="h-8 w-full border-[1px] border-gray-300 px-2"
+              /> */}
+              <InventorySuggestion
+                inputRef={inputRef}
+                value={productSearch}
+                setValue={setProductSearch}
+                onSuggestionSelect={handleProductSelect}
+              />
+            </div>
+          </div>
+          <div className="col-span-2">
+            {/* <input
+              ref={(el) => (inputRef.current["batchNumber"] = el)}
+              type="text"
+              onChange={handleBatchNameChange}
+              value={batchNumber || ""}
+              placeholder="batch no"
+              className="h-8 w-full border-[1px] border-gray-300 px-1"
+            /> */}
+            <BatchSuggestion
+                inputRef={inputRef}
+                value={batchNumber}
+                setValue={setBatchNumber}
+                onSuggestionSelect={handleBatchSelect}
+                inventoryId={newProduct?.inventoryId}
+            />
+          </div>
+          <div>
+            <input
+              ref={(el) => (inputRef.current["HSN"] = el)}
+              onChange={(e) => handleInputChange("HSN", e.target.value)}
+              value={newProduct.HSN || ""}
+              type="text"
+              className="h-8 w-full border-[1px] border-gray-300 px-1"
+            />
+          </div>
+          <div>
+            <input
+              ref={(el) => (inputRef.current["pack"] = el)}
+              onChange={(e) => handleInputChange("pack", e.target.value)}
+              value={newProduct.pack || ""}
+              type="text"
+              className="h-8 w-full border-[1px] border-gray-300 px-1"
+            />
+          </div>
+          <div>
+            <input
+              ref={(el) => (inputRef.current["expiry"] = el)}
+              onChange={(e) => handleInputChange("expiry", e.target.value)}
+              value={newProduct.expiry || ""}
+              type="text"
+              placeholder="MM/YY"
+              className="h-8 w-full border-[1px] border-gray-300 px-2"
+            />
+          </div>
+          <div>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2">₹</span>
+              <input
+                ref={(el) => (inputRef.current["mrp"] = el)}
+                onChange={(e) => handleInputChange("mrp", e.target.value)}
+                value={newProduct.mrp || ""}
+                type="text"
+                className="h-8 w-full border-[1px] border-gray-300 pl-5 px-1"
+              />
+            </div>
+          </div>
+          <div>
+            <input
+              ref={(el) => (inputRef.current["packs"] = el)}
+              onChange={(e) => handleInputChange("packs", e.target.value)}
+              value={newProduct.packs || ""}
+              type="text"
+              className="h-8 w-full border-[1px] border-gray-300 px-1"
+            />
+          </div>
+          <div>
+            <input
+              ref={(el) => (inputRef.current["loose"] = el)}
+              onChange={(e) => handleInputChange("loose", e.target.value)}
+              value={newProduct.loose || ""}
+              type="text"
+              className="h-8 w-full border-[1px] border-gray-300 px-1"
+            />
+          </div>
+          <div>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2">₹</span>
+              <input
+                ref={(el) => (inputRef.current["ptr"] = el)}
+                onChange={(e) => handleInputChange("ptr", e.target.value)}
+                value={newProduct.ptr || ""}
+                type="text"
+                className="h-8 w-full border-[1px] border-gray-300 pl-5 px-1"
+              />
+            </div>
+          </div>
+          <div>
+            <div className="relative">
+              <input
+                onChange={(e) => handleInputChange("discount", e.target.value)}
+                value={newProduct.discount || ""}
+                type="text"
+                className="h-8 w-full border-[1px] border-gray-300 px-1 pr-5"
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2">%</span>
+            </div>
+          </div>
+          <div>
+            <div className="relative">
+              <input
+                onChange={(e) => handleInputChange("gstPer", e.target.value)}
+                value={newProduct.gstPer || ""}
+                type="text"
+                className="h-8 w-full border-[1px] border-gray-300 px-1 pr-5"
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2">%</span>
+            </div>
+          </div>
+          <div>
+            <input
+              readOnly
+              value={newProduct.amount || ""}
+              type="text"
+              className="h-8 w-full border-[1px] border-gray-300 px-1"
+              disabled
+            />
+          </div>
+          <div>
+            <Button onClick={handleAdd} className="h-8" ref={(el) => (inputRef.current["add"] = el)} >
+              Add
+            </Button>
+          </div>
+        </div>
+      )}
+
+
+
+      {/* Product list */}
+      <div className="w-full space-y-2">
+        {products.length !== 0 &&
+          products.map((product, index) => (
+            <div className="grid grid-cols-16 w-full space-x-1" key={product?.inventoryId}>
+              <div className="col-span-3 grid grid-cols-6">
+                  <span className="text-center font-semibold">{index + 1}.</span>
+                  <input
+                    disabled
+                    value={product?.productName}
+                    type="text"
+                    className="h-8 w-full border-[1px] border-gray-300 px-2 col-span-5 uppercase"
+                  />
+              </div>
+              <div className="col-span-2">
+                <input  
+                  disabled={editMode}
+                  type="text"
+                  value={product?.batchNumber || ""}
+                  className="h-8 w-full border-[1px] border-gray-300 px-1 uppercase"
+                />
+              </div>
+              <div>
+                <input
+                  disabled={editMode}
+                  value={product?.HSN || ""}
+                  type="text"
+                  className="h-8 w-full border-[1px] border-gray-300 px-1"
+                />
+              </div>
+              <div>
+                <input
+                  disabled={editMode}
+                  value={product?.pack || ""}
+                  type="text"
+                  className="h-8 w-full border-[1px] border-gray-300 px-1"
+                />
+              </div>
+              <div>
+                <input
+                  disabled={editMode}
+                  value={product.expiry || ""}
+                  type="text"
+                  className="h-8 w-full border-[1px] border-gray-300 px-2"
+                />
+              </div>
+              <div>
+                <div className="relative">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2">₹</span>
+                  <input
+                    disabled={editMode}
+                    value={product?.mrp || ""}
+                    type="text"
+                    className="h-8 w-full border-[1px] border-gray-300 pl-5 px-1"
+                  />
+                </div>
+              </div>
+              <div>
+                <input
+                  disabled={editMode}
+                  value={product?.packs || ""}
+                  type="text"
+                  className="h-8 w-full border-[1px] border-gray-300 px-1"
+                />
+              </div>
+              <div>
+                <input
+                  disabled={editMode}
+                  value={product?.loose || ""}
+                  type="text"
+                  className="h-8 w-full border-[1px] border-gray-300 px-1"
+                />
+              </div>
+              <div>
+                <div className="relative">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2">₹</span>
+                  <input
+                    disabled={editMode}
+                    value={product?.ptr || ""}
+                    type="text"
+                    className="h-8 w-full border-[1px] border-gray-300 pl-5 px-1"
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="relative">
+                  <input
+                    disabled={editMode}
+                    value={product?.discount || ""}
+                    type="text"
+                    className="h-8 w-full border-[1px] border-gray-300 px-1 pr-5"
+                  />
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2">%</span>
+                </div>
+              </div>
+              <div>
+                <div className="relative">
+                  <input
+                    disabled={editMode}
+                    value={product?.gstPer || ""}
+                    type="text"
+                    className="h-8 w-full border-[1px] border-gray-300 px-1 pr-5"
+                  />
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2">%</span>
+                </div>
+              </div>
+              <div>
+                <input
+                  disabled
+                  value={product?.amount || ""}
+                  type="text"
+                  className="h-8 w-full border-[1px] border-gray-300 px-1"
+                />
+              </div>
+              <div className="flex gap-4 items-center justify-center">
+                <button disabled={viewMode} onClick={() => handleEditProduct(index)}><Pen className="h-4 w-4" /></button>
+                <button disabled={viewMode} onClick={() => handleDeleteProduct(index)}><Trash2 className="h-4 w-4" /></button>
+              </div>
+            </div>
+          ))}
+      </div>
+    </div>
+  );
+}

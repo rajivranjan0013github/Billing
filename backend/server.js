@@ -7,7 +7,7 @@ import { fileURLToPath } from "url";
 import inventoryRoutes from "./routes/inventoryRoutes.js";
 import staffRoutes from "./routes/staffRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
-import billRoutes from "./routes/sellBillRoutes.js";
+import sellBillRoutes from "./routes/sellBillRoutes.js";
 import { identifyHospital } from "./middleware/hospitalMiddleware.js";
 import hospitalRoutes from "./routes/hospitalRoutes.js";
 import superAdminRoutes from "./routes/superAdmin.js";
@@ -50,7 +50,7 @@ app.use("/api", identifyHospital);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/party", partyRoutes);
-app.use("/api/sales", billRoutes);
+app.use("/api/sales", sellBillRoutes);
 app.use("/api/purchase", purchaseBillRoutes);
 app.use("/api/payment", paymentRoutes);
 // Serve index.html for any other routes

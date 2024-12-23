@@ -15,6 +15,7 @@ const stockTimelineSchema = new mongoose.Schema({
   invoiceNumber: String,
   credit : Number,
   debit : Number,
+  pack : Number,
   balance : Number,
   batchNumber: String,
   expiry: String,

@@ -17,6 +17,7 @@ const inventorySchema = new mongoose.Schema({
   expiry : String,
   composition : String,
   location : String,
+  HSN : String,
   batch : [{type : mongoose.Schema.Types.ObjectId, ref : 'InventoryBatch'}],
 }, {timestamps : true});
 
@@ -33,6 +34,7 @@ inventorySchema.methods.NewBatchOperation = async function(batchDetails) {
       this.purchaseRate = batchDetails.purchaseRate;
       this.gstPer = batchDetails.gstPer;
       this.ptr = batchDetails.ptr;
+      this.HSN = batchDetails.HSN
     }
   } else {
     this.expiry = batchDetails.expiry;
@@ -40,6 +42,7 @@ inventorySchema.methods.NewBatchOperation = async function(batchDetails) {
     this.purchaseRate = batchDetails.purchaseRate;
     this.gstPer = batchDetails.gstPer;
     this.ptr = batchDetails.ptr;
+    this.HSN = batchDetails.HSN
   }
 };
 

@@ -53,7 +53,8 @@ export default function EditPurchaseInvoice() {
             }
             const data = await response.json();
             const {partyName, partyId, invoiceNumber, products, invoiceDate, paymentDueDate, withGst} = data;
-            setProducts(products);
+            const tempData = products.map((p) => ({...p, quantity : p.quantity/(p.pack||1)}));
+            setProducts(tempData);
             setInvoiceDate(new Date(invoiceDate));
             setDueDate(new Date(paymentDueDate));
             setFormData({

@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { hospitalPlugin } from '../plugins/hospitalPlugin.js';
 
 const invoiceShema = new mongoose.Schema({
-    invoiceType : {type : String}, // sales oe purchase
+    invoiceType : {type : String, enum : ['SALE', 'PURCHASE']}, // sales or purchase
     invoiceNumber : {type : String, required : true},
     partyId : {type : mongoose.Schema.Types.ObjectId, ref : 'Party'},
     partyName : String,

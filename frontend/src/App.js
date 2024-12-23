@@ -27,6 +27,7 @@ import CreateSellInvoice from "./pages/CreateSellInvoice";
 import ViewSalesBill from "./pages/ViewSalesBill";
 import CreatePurchaseInvoice from "./pages/CreatePurchaseInvoice";
 import EditPurchaseInvoice from "./pages/EditPurchaseInvoice";
+import EditSaleInvoice from "./pages/EditSaleInvoice";
 import PartyDetails from "./pages/PartyDetails";
 import PaymentOut from "./pages/PaymentOut";
 import CreatePaymentOut from "./pages/CreatePaymentOut";
@@ -108,6 +109,7 @@ const AppContent = () => {
               <Route path="/sales/:billId" element={<ViewSalesBill />} />
               <Route path="/purchase/create-purchase-invoice" element={<CreatePurchaseInvoice />} />
               <Route path="/purchase/:invoiceId" element={<EditPurchaseInvoice />} />
+              <Route path="/sale/:invoiceId" element={<EditSaleInvoice />} />
               <Route path="/item-details/:inventoryId" element={<inventoryDetails />} />
               <Route path="/party-details/:partyId" element={<PartyDetails />} />
               <Route path="/purchase/payment-out" element={<PaymentOut />} />

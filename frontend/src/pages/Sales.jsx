@@ -1,209 +1,204 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchBills } from "../redux/slices/SellBillSlice";
-import { format } from "date-fns";
-import { Search, Settings, Mail, HelpCircle, PackageX } from "lucide-react"
-import { Button } from "../components/ui/button"
-import { Input } from "../components/ui/input"
-import { Select } from "../components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table"
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
+import { Calendar, ChevronDown, Filter, Search } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
+import { cn } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
 
 export default function Sales() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { bills, fetchStatus } = useSelector((state) => state.bill);
-  const [totalSales, setTotalSales] = useState(0);
-  const [totalPaid, setTotalPaid] = useState(0);
-  const [totalUnpaid, setTotalUnpaid] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if(fetchStatus === 'idle'){
       dispatch(fetchBills());
     }
-  }, [dispatch]);
+  }, [dispatch, fetchStatus]);
 
-  useEffect(() => {
-    if (bills.length > 0) {
-      const totals = bills.reduce((acc, bill) => {
-        acc.total += bill.grand_total;
-        acc.paid += bill.payment.amount_paid;
-        acc.unpaid += (bill.grand_total - bill.payment.amount_paid);
-        return acc;
-      }, { total: 0, paid: 0, unpaid: 0 });
-
-      setTotalSales(totals.total);
-      setTotalPaid(totals.paid);
-      setTotalUnpaid(totals.unpaid);
-    }
-  }, [bills]);
-
-  // Format currency
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'INR'
-    }).format(amount);
+      currency: 'INR',
+      maximumFractionDigits: 2
+    }).format(amount).replace(/^(\D+)/, '₹');
   };
 
-  const filteredBills = bills.filter(bill => {
-    const partyName = bill.is_cash_customer 
-      ? "Cash Sale" 
-      : (bill.party?.name || bill.partyName || "");
-    
-    return partyName.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const summary = bills.reduce((acc, bill) => {
+    acc.count++;
+    acc.salesAmount += bill.grand_total || 0;
+    acc.amountPaid += bill?.payment?.amount_paid || 0;
+    return acc;
+  }, { count: 0, salesAmount: 0, amountPaid: 0 });
 
   return (
-    <div className="container mx-auto p-4 space-y-4">
-      <header className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Sales Invoices</h1>
-        <div className="flex items-center space-x-2">
-          <Select defaultValue="Reports">
-            <option>Reports</option>
-          </Select>
-          <Button variant="ghost" size="icon"   >
-            <Settings className="h-5 w-5" />
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Mail className="h-5 w-5" />
-          </Button>
+    <div className="relative p-6 rounded-lg space-y-6">
+      <div className="flex justify-between items-start">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">Sales Transactions</h1>
+          <p className="text-muted-foreground">
+            View List of all your Sales Transactions here
+          </p>
         </div>
-      </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-blue-50 border-blue-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-normal text-blue-600">Total Sales</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{formatCurrency(totalSales)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-normal text-green-600">Paid</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{formatCurrency(totalPaid)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-normal text-red-600">Unpaid</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{formatCurrency(totalUnpaid)}</p>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-4 gap-4 text-right">
+          <div>
+            <div className="font-semibold">{summary.count}</div>
+            <div className="text-sm text-muted-foreground">Sales Count</div>
+          </div>
+          <div>
+            <div className="font-semibold">{formatCurrency(summary.salesAmount)}</div>
+            <div className="text-sm text-muted-foreground">Sales Amount</div>
+          </div>
+          <div>
+            <div className="font-semibold">{formatCurrency(summary.amountPaid)}</div>
+            <div className="text-sm text-muted-foreground">Amount Paid</div>
+          </div>
+          <div>
+            <div className="font-semibold text-pink-500">
+              {formatCurrency(summary.salesAmount - summary.amountPaid)}
+            </div>
+            <div className="text-sm text-muted-foreground">To Receive</div>
+          </div>
+        </div>
       </div>
 
-      <div className="flex justify-between items-center space-x-4">
-        <div className="flex items-center space-x-2 flex-grow">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+      <div className="flex gap-4">
+        <div className="relative flex-1">
+          <Select defaultValue="invoice">
+            <SelectTrigger className="absolute left-0 w-[140px] rounded-r-none border-r-0">
+              <SelectValue>INVOICE NO</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="invoice">INVOICE NO</SelectItem>
+              <SelectItem value="customer">CUSTOMER</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex">
             <Input 
-              className="pl-10" 
-              placeholder="Search by party name..." 
+              className="pl-[150px]" 
+              placeholder="Search using Invoice No"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            <Button variant="ghost" className="absolute right-0" size="icon">
+              <Search className="h-4 w-4" />
+            </Button>
           </div>
-          <Select defaultValue="Last 365 Days">
-            <option>Last 365 Days</option>
-          </Select>
         </div>
-        <div className="flex items-center space-x-2">
-          <Select defaultValue="Bulk Actions">
-            <option>Bulk Actions</option>
-          </Select>
-          <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => navigate("/sales/create-sell-invoice")}>
+
+        <div className="relative w-[300px]">
+          <Button variant="outline" className="w-full justify-start text-left font-normal">
+            <Calendar className="mr-2 h-4 w-4" />
+            Last 365 Days
+            <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
+          </Button>
+        </div>
+
+        <div className="relative w-[200px]">
+          <Button variant="outline" className="w-full justify-start text-left font-normal">
+            <Filter className="mr-2 h-4 w-4" />
+            FILTER BY
+            <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
+          </Button>
+        </div>
+
+        <div className="relative w-[200px]">
+          <Button variant="outline" className="w-full justify-start text-left">
+            SORT BY
+            <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
+          </Button>
+        </div>
+
+        <div className="relative w-[200px]">
+          <Button 
+            className="w-full justify-start text-left"
+            onClick={() => navigate("/sales/create-sell-invoice")}
+          >
             Create Sales Invoice
           </Button>
         </div>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[40px]">
-              <input type="checkbox" className="rounded border-gray-300" />
-            </TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Invoice Number</TableHead>
-            <TableHead>Party Name</TableHead>
-            <TableHead>Due In</TableHead>
-            <TableHead>Amount</TableHead>
-            <TableHead>Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {fetchStatus === 'loading' ? (
+      <div className="relative overflow-x-auto">
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={7} className="text-center">Loading...</TableCell>
+              <TableHead>INVOICE NO</TableHead>
+              <TableHead>CUSTOMER</TableHead>
+              <TableHead>BILLED ON</TableHead>
+              <TableHead>INV AMT</TableHead>
+              <TableHead>RECEIVABLE</TableHead>
+              <TableHead>BALANCE</TableHead>
+              <TableHead>STATUS</TableHead>
+              <TableHead />
             </TableRow>
-          ) : filteredBills.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={7}>
-                <div className="flex flex-col items-center justify-center py-8 text-center text-gray-500">
-                  <PackageX className="h-12 w-12 mb-2" />
-                  <p className="text-lg font-medium">No bills found</p>
-                  <p className="text-sm">
-                    {searchQuery 
-                      ? "Try adjusting your search query" 
-                      : "Start by creating your first sales invoice"}
-                  </p>
-                </div>
-              </TableCell>
-            </TableRow>
-          ) : filteredBills.map((bill) => (
-            <TableRow 
-              key={bill._id}
-              className="cursor-pointer hover:bg-gray-50"
-              onClick={() => navigate(`/sales/${bill._id}`)}
-            >
-              <TableCell onClick={(e) => e.stopPropagation()}>
-                <input type="checkbox" className="rounded border-gray-300" />
-              </TableCell>
-              <TableCell>{format(new Date(bill.bill_date), 'dd MMM yyyy')}</TableCell>
-              <TableCell>{bill.bill_number}</TableCell>
-              <TableCell>{bill.is_cash_customer ? "Cash Sale" : bill.party?.name || bill.partyName}</TableCell>
-              <TableCell>-</TableCell>
-              <TableCell>
-                {formatCurrency(bill.grand_total)}
-                {bill.grand_total !== bill.payment.amount_paid && (
-                  <div className="text-sm text-gray-500">
-                    ({formatCurrency(bill.grand_total - bill.payment.amount_paid)} unpaid)
+          </TableHeader>
+          <TableBody>
+            {bills.map((bill) => (
+              <TableRow 
+                key={bill._id} 
+                className="group cursor-pointer"
+                onClick={() => navigate(`/sales/${bill._id}`)}
+              >
+                <TableCell>{bill.bill_number}</TableCell>
+                <TableCell>
+                  <div>{bill.is_cash_customer ? "Cash Sale" : bill.party?.name}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {bill.party?.mobile || '-'}
                   </div>
-                )}
-              </TableCell>
-              <TableCell>
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  bill.payment.amount_paid >= bill.grand_total 
-                    ? "bg-green-100 text-green-800"
-                    : bill.payment.amount_paid > 0
-                    ? "bg-yellow-100 text-yellow-800"
-                    : "bg-red-100 text-red-800"
-                }`}>
-                  {bill.payment.amount_paid >= bill.grand_total 
-                    ? "Paid"
-                    : bill.payment.amount_paid > 0
-                    ? "Partially Paid"
-                    : "Unpaid"}
-                </span>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                </TableCell>
+                <TableCell>
+                  <div>{new Date(bill.bill_date).toLocaleDateString('en-IN', { 
+                    day: '2-digit', 
+                    month: 'short', 
+                    year: '2-digit' 
+                  })}</div>
+                </TableCell>
+                <TableCell>{formatCurrency(bill.grand_total)}</TableCell>
+                <TableCell>{formatCurrency(bill.grand_total)}</TableCell>
+                <TableCell>{formatCurrency(bill.grand_total - bill?.payment?.amount_paid)}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium",
+                      {
+                        "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20":
+                          bill?.payment?.amount_paid >= bill.grand_total,
+                        "bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-600/20":
+                          bill?.payment?.amount_paid > 0 && bill?.payment?.amount_paid < bill.grand_total,
+                        "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20":
+                          bill?.payment?.amount_paid === 0,
+                      }
+                    )}>
+                      {bill?.payment?.amount_paid >= bill.grand_total 
+                        ? "Paid"
+                        : bill?.payment?.amount_paid > 0
+                        ? "Partial"
+                        : "Unpaid"}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="opacity-0 group-hover:opacity-100 text-pink-500 transition-opacity">
+                    →
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
 
-      <div className="fixed bottom-4 right-4">
-        <Button variant="outline" size="icon" className="rounded-full bg-white shadow-lg">
-          <HelpCircle className="h-6 w-6" />
-        </Button>
+      <div className="fixed bottom-2 flex justify-between items-center">
+        <div className="text-sm text-muted-foreground">
+          Create New Sale - <span className="font-medium">F2</span> | Move Up or Down - <span className="font-medium">Arrow Keys</span> | To Open - <span className="font-medium">Enter</span>
+        </div>
       </div>
     </div>
-  )
+  );
 }

@@ -15,7 +15,6 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
   const {items : products, itemsStatus} = useSelector(state => state.inventory);
   const dispatch = useDispatch();
   
-  
   useEffect(() => {
     if(itemsStatus === 'idle'){
       dispatch(fetchItems());

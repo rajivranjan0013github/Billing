@@ -1,215 +1,138 @@
 import express from "express";
-import { SalesBill } from "../models/SalesBill.js";
-import { Inventory } from "../models/Inventory.js";
-import { StockDetail } from "../models/StockDetail.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
-import { PartyTransaction } from "../models/PartyTransaction.js";
-import { Party } from "../models/Party.js";
-import { Payment } from "../models/Payment.js";
-import { Ledger } from "../models/Ledger.js";
 import mongoose from "mongoose";
+import { InvoiceSchema } from "../models/InvoiceSchema.js";
+import { Inventory } from "../models/Inventory.js";
+import { InventoryBatch } from "../models/InventoryBatch.js";
+import { StockTimeline } from "../models/StockTimeline.js";
+import { Party } from '../models/Party.js';
 
 const router = express.Router();
 
-// Create new bill
+// Create new sell bill
 router.post("/", verifyToken, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
-
+  
   try {
-    const { party, is_cash_customer, partyName, items, bill_discount, payment, grand_total, tax_summary, is_round_off } = req.body;
-
-    // Validate party for non-cash customers
-    if (!is_cash_customer && !party) {
-      await session.abortTransaction();
-      return res.status(400).json({ message: "Party is required for non-cash bills" });
+    const {invoiceType, partyId, _id, ...details} = req.body;
+    if(!mongoose.isValidObjectId(partyId)) {
+      throw Error('Party Id is not valid');
     }
 
-    let partyDoc;
-    if (!is_cash_customer) {
-      partyDoc = await Party.findById(party).session(session);
-    }
+    // Fetch party details
+    const partyDetails = await Party.findById(partyId).session(session);
+    const newInvoice = new InvoiceSchema({...req.body, createdBy: req.user._id});
 
-    // Determine payment status
-    const payment_status = payment.amount_paid === grand_total ? "paid" : "pending";
+    // Process each product in the sale
+    for(const product of req.body.products) {
+      const {inventoryId, batchNumber, batchId, quantity, pack} = product;
+      
+      // Find inventory and validate
+      const inventorySchema = await Inventory.findById(inventoryId).session(session);
+      if(!inventorySchema) {
+        throw new Error(`Inventory not found: ${inventoryId}`);
+      }
 
-    // Create new bill
-    const newBill = new SalesBill({
-      party: is_cash_customer ? null : party,
-      is_cash_customer,
-      partyName,
-      payment_status,
-      items: items.map((item) => ({
-        item: item._id,
-        batchNumber: item.batchNo,
-        expiry_date: item.expDate,
-        quantity: parseFloat(item.qty),
-        unit: item.unit,
-        secondary_unit: item.secondary_unit,
-        mrp: parseFloat(item.mrp),
-        price_per_unit: parseFloat(item.pricePerItem),
-        discount_percentage: parseFloat(item.discount),
-        gstPer: parseFloat(item.tax),
-        HSN: item.hsn,
-      })),
-      bill_discount,
-      payment,
-      grand_total,
-      tax_summary,
-      is_round_off,
-      createdBy: req.user._id,
-    });
+      // Find batch and update quantity
+      const batch = await InventoryBatch.findById(batchId).session(session);
+      if(!batch) {
+        throw new Error(`Batch not found: ${batchId}`);
+      }
 
-    // Create payment record if payment was made
-    if (payment.amount_paid > 0) {
-      const paymentDoc = new Payment({
-        amount: payment.amount_paid,
-        payment_type: "Sell Invoice",
-        payment_method: payment.payment_method,
-        party_id: is_cash_customer ? null : party,
-        partyName: partyName,
-        bill_number: newBill.bill_number,
-        bill_id: newBill._id,
+      // Check if sufficient stock exists
+      if(batch.quantity < quantity) {
+        throw new Error(`Insufficient stock for ${inventorySchema.name} in batch ${batchNumber}`);
+      }
+
+      // Update batch quantity
+      batch.quantity -= quantity;
+      await batch.save({session});
+
+      // Update inventory quantity
+      inventorySchema.quantity -= quantity;
+      await inventorySchema.save({session});
+
+      // Record timeline
+      const timeline = new StockTimeline({
+        inventoryId: inventoryId,
+        invoiceId: newInvoice._id,
+        type: 'SALE',
+        invoiceNumber: details.invoiceNumber,
+        debit: quantity,
+        balance: inventorySchema.quantity,
+        batchNumber: batch.batchNumber,
+        expiry: batch.expiry,
+        mrp: batch.mrp,
+        purchaseRate: batch.purchaseRate,
+        gstPer: batch.gstPer,
+        ptr: batch.ptr,
+        user: req.user._id,
+        userName: req?.user?.name,
+        partyName: partyDetails.name,
+        partyMob: partyDetails.mob
       });
-      await paymentDoc.save({ session });
-      newBill.payment_details.push(paymentDoc._id);
+      await timeline.save({session});
     }
 
-    const savedBill = await newBill.save({ session });
-
-    // Update inventory and create stock details
-    for (const item of items) {
-      const inventory = await Inventory.findById(item._id);
-      const newQuantity = parseFloat(inventory.quantity) - parseFloat(item.qty);
-
-      await StockDetail.create(
-        [{
-          inventoryId: item._id,
-          quantity: -parseFloat(item.qty),
-          type: "Sell Invoice",
-          bill_number: savedBill.bill_number,
-          closing_stock: newQuantity,
-          secondary_unit: item.secondary_unit,
-          bill_number: savedBill.bill_number,
-        }],
-        { session }
-      );
-
-      await Inventory.findByIdAndUpdate(item._id, { quantity: newQuantity }, { session });
-    }
-
-    // Handle party transactions for non-cash customers
-    if (!is_cash_customer) {
-      // Update party balance
-      partyDoc.currentBalance += grand_total - parseFloat(payment.amount_paid);
-      await partyDoc.save({ session });
-
-      // Create party transaction
-      await PartyTransaction.create(
-        [{
-          party_id: party,
-          amount: grand_total,
-          type: "Sell Invoice",
-          bill_number: savedBill.bill_number,
-          invoice_id: savedBill._id,
-          amount_paid: parseFloat(payment.amount_paid),
-        }],
-        { session }
-      );
-
-      // Create ledger entry
-      await Ledger.create(
-        [{
-          party_id: party,
-          type: "Sell Invoice",
-          bill_number: savedBill.bill_number,
-          bill_id: savedBill._id,
-          debit: grand_total,
-          credit: parseFloat(payment.amount_paid),
-          balance: partyDoc.currentBalance,
-        }],
-        { session }
-      );
-    }
-
+    const savedInvoice = await newInvoice.save({session});
     await session.commitTransaction();
-    res.status(201).json(savedBill);
+    res.status(201).json(savedInvoice);
+
   } catch (error) {
     await session.abortTransaction();
-    console.error("Error creating bill:", error);
-    if (error.name === "ValidationError") {
-      return res.status(400).json({
-        message: "Validation Error",
-        error: Object.values(error.errors).map((err) => err.message),
-      });
-    }
-    res.status(500).json({ message: "Error creating bill", error: error.message });
+    console.log(error);
+    res.status(500).json({ message: "Error creating sell bill", error: error.message });
   } finally {
     session.endSession();
   }
 });
 
-// Get all bills
+// Get all sell bills
 router.get("/", verifyToken, async (req, res) => {
   try {
-    const bills = await SalesBill.find({ hospital: req.user.hospital }).sort({
-      createdAt: -1,
-    });
+    const bills = await InvoiceSchema.find({ invoiceType: 'SALE' })
+      .sort({ createdAt: -1 });
     res.json(bills);
   } catch (error) {
-    console.error("Error fetching bills:", error);
-    res
-      .status(500)
-      .json({ message: "Error fetching bills", error: error.message });
+    res.status(500).json({ message: "Error fetching sell bills", error: error.message });
   }
 });
 
-router.get("/sales-bill/:id", verifyToken, async (req, res) => {
+// Get single sell bill by ID
+router.get("/invoice/:invoiceId", verifyToken, async (req, res) => {
   try {
-    const bill = await SalesBill.findById(req.params.id)
-      .populate("party")
-      .populate("items.item")
-      .populate("payment_details");
+    const {invoiceId} = req.params;
+    const bill = await InvoiceSchema.findById(invoiceId);
+    if (!bill) {
+      return res.status(404).json({ message: "Invoice not found" });
+    }
     res.status(200).json(bill);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching bill", error: error.message });
+    res.status(500).json({ message: "Error fetching sell bill", error: error.message });
   }
 });
 
-// Add this new route after existing routes
-router.get("/next-invoice-number", verifyToken, async (req, res) => {
+// Get next bill number
+router.get("/next-bill-number", verifyToken, async (req, res) => {
   try {
-    // Find the last bill for this hospital, sorted by creation date
-    const lastBill = await SalesBill.findOne({
-      hospital: req.user.hospital,
-    }).sort({ createdAt: -1 });
-
-    const nextCounter = lastBill ? (lastBill.invoice_counter || 0) + 1 : 1;
-
-    const today = new Date();
-    const fiscalYear =
-      today.getMonth() >= 3
-        ? `${today.getFullYear()}-${(today.getFullYear() + 1)
-            .toString()
-            .slice(2)}`
-        : `${today.getFullYear() - 1}-${today
-            .getFullYear()
-            .toString()
-            .slice(2)}`;
-
-    const nextBillNumber = `INV/${fiscalYear}/${nextCounter
-      .toString()
-      .padStart(6, "0")}`;
-    res.json({ nextBillNumber, nextCounter });
+    const lastBill = await InvoiceSchema.findOne(
+      { hospital: req.user.hospital, invoiceType: 'sales' }
+    ).sort({ createdAt: -1 });
+    
+    const nextCounter = lastBill ? (parseInt(lastBill.invoiceNumber) || 0) + 1 : 1;
+    
+    res.json({ 
+      success: true,
+      nextBillNumber: nextCounter.toString().padStart(6, '0'),
+      nextCounter 
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Error getting next invoice number",
-        error: error.message,
-      });
+    res.status(500).json({ 
+      success: false,
+      message: "Error getting next bill number", 
+      error: error.message 
+    });
   }
 });
 
