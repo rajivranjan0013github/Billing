@@ -5,9 +5,16 @@ import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { useToast } from "../../../hooks/use-toast";
 import { useDispatch, useSelector } from "react-redux";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
-import ProductSelector from './SelectInventoryItem';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../ui/select";
+import ProductSelector from "./SelectInventoryItem";
 import { Backend_URL } from "../../../assets/Data";
+import {fetchItems} from '../../../redux/slices/inventorySlice'
 
 const INITIAL_FORM_DATA = {
   inventoryId: "",
@@ -20,11 +27,19 @@ const INITIAL_FORM_DATA = {
   purchaseRate: "",
   purchaseGstType: "Excl gst",
   ptr: "",
-  unitsPerPack: "",
-  quantityInStock: "" 
-}
+  pack: "",
+  packs: "",
+  loose:""
+};
 
-export default function ManageInventory({ open, onOpenChange, inventoryDetails, setItemDetails, batchDetails, setUpdateBatchDetails }) {
+export default function ManageInventory({
+  open,
+  onOpenChange,
+  inventoryDetails,
+  setItemDetails,
+  batchDetails,
+  setUpdateBatchDetails,
+}) {
   const dispatch = useDispatch();
   const { toast } = useToast();
   const batch_numberRef = useRef(null);
@@ -33,11 +48,11 @@ export default function ManageInventory({ open, onOpenChange, inventoryDetails, 
 
   // creating new batch
   useEffect(() => {
-    if(inventoryDetails && open) {
-      setFormData({...formData, inventoryId: inventoryDetails._id});
+    if (inventoryDetails && open) {
+      setFormData({ ...formData, inventoryId: inventoryDetails._id });
       setProductSearch(inventoryDetails.name);
       setTimeout(() => {
-        if(batch_numberRef.current) {
+        if (batch_numberRef.current) {
           batch_numberRef.current.focus();
         }
       }, 100);
@@ -50,16 +65,17 @@ export default function ManageInventory({ open, onOpenChange, inventoryDetails, 
       setFormData({
         inventoryId: batchDetails.inventoryId,
         batchNumber: batchDetails.batchNumber,
-        expiryMonth: batchDetails.expiry.split('/')[0],
-        expiryYear: batchDetails.expiry.split('/')[1],
+        expiryMonth: batchDetails.expiry.split("/")[0],
+        expiryYear: batchDetails.expiry.split("/")[1],
         mrp: batchDetails.mrp,
         HSN: batchDetails.HSN,
         gstPer: batchDetails.gstPer,
         purchaseRate: batchDetails.purchaseRate,
         purchaseGstType: "Excl gst",
         ptr: batchDetails.ptr,
-        unitsPerPack: batchDetails.pack,
-        quantityInStock: batchDetails.quantity
+        pack: batchDetails.pack,
+        packs: Math.floor(Number(batchDetails.quantity)/Number(batchDetails.pack|| 1)),
+        loose : Number(batchDetails.quantity) % Number(batchDetails.pack || 1)
       });
       // Set product name if inventoryDetails is available
       if (inventoryDetails) {
@@ -69,7 +85,7 @@ export default function ManageInventory({ open, onOpenChange, inventoryDetails, 
   }, [batchDetails, open]);
 
   useEffect(() => {
-    if(!open) {
+    if (!open) {
       setFormData(INITIAL_FORM_DATA);
       setProductSearch("");
       if (setUpdateBatchDetails) {
@@ -83,21 +99,23 @@ export default function ManageInventory({ open, onOpenChange, inventoryDetails, 
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if(isProductSelectorOpen) return;
-    
+    if (isProductSelectorOpen) return;
+
     const expiry = `${formData.expiryMonth}/${formData.expiryYear}`;
-    const purchaseRate = formData.purchaseGstType === "Excl gst" ? 
-      formData.purchaseRate : 
-      formData.purchaseRate / (1 + formData.gstPer/100);
-    
+    const purchaseRate =
+      formData.purchaseGstType === "Excl gst"
+        ? formData.purchaseRate
+        : formData.purchaseRate / (1 + formData.gstPer / 100);
+
+    const quantity = Number(formData.packs) * Number(formData.pack) + Number(formData.loose);
     const finalFormData = {
       inventoryId: formData.inventoryId,
       batchNumber: formData.batchNumber,
@@ -107,31 +125,35 @@ export default function ManageInventory({ open, onOpenChange, inventoryDetails, 
       gstPer: Number(formData.gstPer),
       purchaseRate: Number(parseFloat(purchaseRate).toFixed(2)),
       ptr: Number(parseFloat(formData.ptr).toFixed(2)),
-      pack: parseInt(formData.unitsPerPack),
-      quantity: Number(formData.quantityInStock),
+      pack: parseInt(formData.pack),
+      quantity
     };
 
     // Add batch ID if editing existing batch
     if (batchDetails?._id) {
       finalFormData._id = batchDetails._id;
     }
-
+    
     setIsLoading(true);
     try {
-      const response = await fetch(`${Backend_URL}/api/inventory/manage-batch`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(finalFormData),
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${Backend_URL}/api/inventory/manage-batch`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(finalFormData),
+          credentials: "include",
+        }
+      );
       if (!response.ok) {
-        toast({title: "Error", variant: "destructive"});
+        toast({ title: "Error", variant: "destructive" });
         return;
       }
       const data = await response.json();
       setItemDetails(data); // here batch are fetching from the server
+      dispatch(fetchItems());
       onOpenChange(false);
-      toast({title: "Batch Added", variant:"success"});
+      toast({ title: "Batch Added", variant: "success" });
     } catch (error) {
       toast({ title: "Error", description: error.message });
     } finally {
@@ -140,12 +162,12 @@ export default function ManageInventory({ open, onOpenChange, inventoryDetails, 
   };
 
   const handleProductSelect = (product) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       inventoryId: product._id,
     }));
     setProductSearch(product.name);
-    if(batch_numberRef.current) {
+    if (batch_numberRef.current) {
       batch_numberRef.current.focus();
     }
   };
@@ -172,7 +194,7 @@ export default function ManageInventory({ open, onOpenChange, inventoryDetails, 
               value={productSearch}
               onChange={(e) => {
                 const value = e.target.value;
-                if (value.length > 0 && value[0] !== ' ') {
+                if (value.length > 0 && value[0] !== " ") {
                   setProductSearch(value);
                   setIsProductSelectorOpen(true);
                 }
@@ -254,10 +276,12 @@ export default function ManageInventory({ open, onOpenChange, inventoryDetails, 
                   onChange={handleInputChange}
                   className="w-full h-10"
                 />
-                <Select 
-                  name="gstPer" 
+                <Select
+                  name="gstPer"
                   value={formData.gstPer}
-                  onValueChange={(value) => handleInputChange({ target: { name: 'gstPer', value }})}
+                  onValueChange={(value) =>
+                    handleInputChange({ target: { name: "gstPer", value } })
+                  }
                 >
                   <SelectTrigger className="w-24">
                     <SelectValue placeholder="gst %" />
@@ -287,10 +311,14 @@ export default function ManageInventory({ open, onOpenChange, inventoryDetails, 
                   onChange={handleInputChange}
                   className="w-full h-10"
                 />
-                <Select 
+                <Select
                   name="purchaseGstType"
                   value={formData.purchaseGstType}
-                  onValueChange={(value) => handleInputChange({ target: { name: 'purchaseGstType', value }})}
+                  onValueChange={(value) =>
+                    handleInputChange({
+                      target: { name: "purchaseGstType", value },
+                    })
+                  }
                 >
                   <SelectTrigger className="w-24">
                     <SelectValue placeholder="Excl gst" />
@@ -304,7 +332,8 @@ export default function ManageInventory({ open, onOpenChange, inventoryDetails, 
             </div>
             <div className="space-y-1">
               <Label htmlFor="ptr">
-                PRICE TO RETAILER (EXCL GST)<span className="text-red-500">*</span>
+                PRICE TO RETAILER (EXCL GST)
+                <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="ptr"
@@ -319,46 +348,63 @@ export default function ManageInventory({ open, onOpenChange, inventoryDetails, 
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label htmlFor="unitsPerPack">
+              <Label htmlFor="pack">
                 UNITS PER PACK<span className="text-red-500">*</span>
               </Label>
               <Input
-                id="unitsPerPack"
-                name="unitsPerPack"
+                id="pack"
+                name="pack"
                 placeholder="Ex. Tablets or Capsule per Strip"
-                value={formData.unitsPerPack}
+                value={formData.pack}
                 onChange={handleInputChange}
                 className="w-full h-10"
               />
             </div>
-            <div>
-            <Label htmlFor="quantityInStock">
-              QUANTITY IN STOCK<span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="quantityInStock"
-              name="quantityInStock"
-              placeholder="No of Packs"
-              value={formData.quantityInStock}
-              onChange={handleInputChange}
-              className="w-full h-10"
-            />
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+                <div className="bg-pink-500 rounded-full p-1 w-6 h-6 flex items-center justify-center text-white">
+                  💊
+                </div>
+                <p>
+                  For a strip of 10 tablets or capsules, the Units per Pack will
+                  be 10
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="space-y-1">
-            
-            <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
-              <div className="bg-pink-500 rounded-full p-1 w-6 h-6 flex items-center justify-center text-white">
-                💊
-              </div>
-              <p>For a strip of 10 tablets or capsules, the Units per Pack will be 10</p>
+          <div>
+            <Label htmlFor="packs">
+              QUANTITY IN STOCK<span className="text-red-500">*</span>
+            </Label>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                id="packs"
+                name="packs"
+                placeholder="No of Packs"
+                value={formData.packs}
+                onChange={handleInputChange}
+                className="w-full h-10"
+              />
+
+              <Input
+                id="loose"
+                name="loose"
+                placeholder="Loose Units"
+                value={formData.loose || ""}
+                onChange={handleInputChange}
+                className="w-full h-10"
+              />
             </div>
           </div>
 
           <div className="flex justify-end pt-4">
-            <Button type="submit" className="bg-gray-800 text-white" disabled={isLoading}>
-              {isLoading ? 'Saving...' : 'Save (F2)'}
+            <Button
+              type="submit"
+              className="bg-gray-800 text-white"
+              disabled={isLoading}
+            >
+              {isLoading ? "Saving..." : "Save (F2)"}
             </Button>
           </div>
         </form>

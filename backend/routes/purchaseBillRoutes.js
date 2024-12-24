@@ -16,13 +16,13 @@ router.post("/", verifyToken, async (req, res) => {
   session.startTransaction();
   
   try {
-    const {invoiceType, partyId, _id, ...details} = req.body; // _id => invoice id
+    const {invoiceType, partyId, ...details} = req.body; // _id => invoice id
     if(!mongoose.isValidObjectId(partyId)) {
       throw Error('Party Id is not valid');
     }
     // fetching party to update current balance of party
     const partyDetails = await Party.findById(partyId).session(session);
-    const newInvoice = new InvoiceSchema({...req.body, createdBy : req.user._id});
+    const newInvoice = new InvoiceSchema({...req.body, createdBy : req.user._id, mob : partyDetails.mob});
     for(const product of req.body.products) {
       const {inventoryId , batchNumber, batchId, expiry, quantity, pack, purchaseRate, ptr, gstPer, HSN,mrp} = product;
       const inventorySchema = await Inventory.findById(inventoryId).session(session);
@@ -52,7 +52,7 @@ router.post("/", verifyToken, async (req, res) => {
         balance : inventorySchema.quantity,
         batchNumber,
         expiry : expiry,
-        mrp, purchaseRate, gstPer, ptr,
+        mrp, purchaseRate, gstPer, ptr, pack,
         user : req.user._id,
         userName : req?.user?.name,
         partyName : partyDetails.name,
@@ -118,7 +118,7 @@ router.post("/edit", verifyToken, async (req, res) => {
         balance : inventorySchema.quantity,
         batchNumber,
         expiry : expiry,
-        mrp, purchaseRate, gstPer, ptr,
+        mrp, purchaseRate, gstPer, ptr, pack,
         user : req.user._id,
         userName : req?.user?.name,
         partyName : partyDetails.name,
@@ -145,7 +145,7 @@ router.post("/edit", verifyToken, async (req, res) => {
 // Get all purchase bills
 router.get("/", verifyToken, async (req, res) => {
   try {
-    const bills = await InvoiceSchema.find().sort({ createdAt: -1 });
+    const bills = await InvoiceSchema.find({invoiceType : 'PURCHASE'}).sort({ createdAt: -1 });
     res.json(bills);
   } catch (error) {
     res.status(500).json({ message: "Error fetching purchase bills", error: error.message });

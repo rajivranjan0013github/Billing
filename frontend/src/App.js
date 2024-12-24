@@ -110,7 +110,6 @@ const AppContent = () => {
               <Route path="/purchase/create-purchase-invoice" element={<CreatePurchaseInvoice />} />
               <Route path="/purchase/:invoiceId" element={<EditPurchaseInvoice />} />
               <Route path="/sale/:invoiceId" element={<EditSaleInvoice />} />
-              <Route path="/item-details/:inventoryId" element={<inventoryDetails />} />
               <Route path="/party-details/:partyId" element={<PartyDetails />} />
               <Route path="/purchase/payment-out" element={<PaymentOut />} />
               <Route path="/purchase/payment-out/:paymentId" element={<PaymentDetails />} />

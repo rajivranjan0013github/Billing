@@ -31,8 +31,8 @@ export default function Sales() {
 
   const summary = bills.reduce((acc, bill) => {
     acc.count++;
-    acc.salesAmount += bill.grand_total || 0;
-    acc.amountPaid += bill?.payment?.amount_paid || 0;
+    acc.salesAmount += bill.grandTotal || 0;
+    acc.amountPaid += bill.amountPaid || 0;
     return acc;
   }, { count: 0, salesAmount: 0, amountPaid: 0 });
 
@@ -125,73 +125,92 @@ export default function Sales() {
       </div>
 
       <div className="relative overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>INVOICE NO</TableHead>
-              <TableHead>CUSTOMER</TableHead>
-              <TableHead>BILLED ON</TableHead>
-              <TableHead>INV AMT</TableHead>
-              <TableHead>RECEIVABLE</TableHead>
-              <TableHead>BALANCE</TableHead>
-              <TableHead>STATUS</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {bills.map((bill) => (
-              <TableRow 
-                key={bill._id} 
-                className="group cursor-pointer"
-                onClick={() => navigate(`/sales/${bill._id}`)}
-              >
-                <TableCell>{bill.bill_number}</TableCell>
-                <TableCell>
-                  <div>{bill.is_cash_customer ? "Cash Sale" : bill.party?.name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {bill.party?.mobile || '-'}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div>{new Date(bill.bill_date).toLocaleDateString('en-IN', { 
-                    day: '2-digit', 
-                    month: 'short', 
-                    year: '2-digit' 
-                  })}</div>
-                </TableCell>
-                <TableCell>{formatCurrency(bill.grand_total)}</TableCell>
-                <TableCell>{formatCurrency(bill.grand_total)}</TableCell>
-                <TableCell>{formatCurrency(bill.grand_total - bill?.payment?.amount_paid)}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className={cn(
-                      "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium",
-                      {
-                        "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20":
-                          bill?.payment?.amount_paid >= bill.grand_total,
-                        "bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-600/20":
-                          bill?.payment?.amount_paid > 0 && bill?.payment?.amount_paid < bill.grand_total,
-                        "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20":
-                          bill?.payment?.amount_paid === 0,
-                      }
-                    )}>
-                      {bill?.payment?.amount_paid >= bill.grand_total 
-                        ? "Paid"
-                        : bill?.payment?.amount_paid > 0
-                        ? "Partial"
-                        : "Unpaid"}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="opacity-0 group-hover:opacity-100 text-pink-500 transition-opacity">
-                    →
-                  </div>
-                </TableCell>
+        {bills.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <svg
+              className="h-12 w-12 mb-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            <p>No sales transactions found</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>INVOICE NO</TableHead>
+                <TableHead>CUSTOMER</TableHead>
+                <TableHead>BILLED ON</TableHead>
+                <TableHead>INV AMT</TableHead>
+                <TableHead>RECEIVABLE</TableHead>
+                <TableHead>BALANCE</TableHead>
+                <TableHead>STATUS</TableHead>
+                <TableHead />
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {bills.map((bill) => (
+                <TableRow 
+                  key={bill._id} 
+                  className="group cursor-pointer"
+                  onClick={() => navigate(`/sale/${bill._id}`)}
+                >
+                  <TableCell>{bill.invoiceNumber}</TableCell>
+                  <TableCell>
+                    <div>{bill.partyName || "Cash Sale"}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {bill.mob || '-'}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div>{new Date(bill.invoiceDate).toLocaleDateString('en-IN', { 
+                      day: '2-digit', 
+                      month: 'short', 
+                      year: '2-digit' 
+                    })}</div>
+                  </TableCell>
+                  <TableCell>{formatCurrency(bill.grandTotal)}</TableCell>
+                  <TableCell>{formatCurrency(bill.grandTotal)}</TableCell>
+                  <TableCell>{formatCurrency(bill.grandTotal - bill.amountPaid)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium",
+                        {
+                          "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20":
+                            bill.amountPaid >= bill.grandTotal,
+                          "bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-600/20":
+                            bill.amountPaid > 0 && bill.amountPaid < bill.grandTotal,
+                          "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20":
+                            bill.amountPaid === 0,
+                        }
+                      )}>
+                        {bill.amountPaid >= bill.grandTotal 
+                          ? "Paid"
+                          : bill.amountPaid > 0
+                          ? "Partial"
+                          : "Unpaid"}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="opacity-0 group-hover:opacity-100 text-pink-500 transition-opacity">
+                      →
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </div>
 
       <div className="fixed bottom-2 flex justify-between items-center">

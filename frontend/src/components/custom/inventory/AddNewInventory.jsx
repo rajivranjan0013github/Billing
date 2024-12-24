@@ -40,8 +40,6 @@ export default function AddNewInventory({ open, onOpenChange, inventoryDetails }
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true);
-    console.log('running');
-    
     
     const action = inventoryDetails 
       ? manageInventory({ ...formData, _id: inventoryDetails._id }) // Update existing item

@@ -1,26 +1,30 @@
-import { useRef, useState, useMemo, useEffect } from 'react'
-import { Button } from "../components/ui/button"
-import { Calendar } from "../components/ui/calendar"
-import { Input } from "../components/ui/input"
-import { Label } from "../components/ui/label"
-import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group"
-import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover"
-import { CalendarIcon, ChevronLeft, Pencil, Save } from 'lucide-react'
-import { format } from "date-fns"
-import { cn } from "../lib/utils"
-import { Backend_URL } from '../assets/Data'
-import { useToast } from '../hooks/use-toast'
-import SelectPartyDialog from '../components/custom/party/SelectPartyDialog'
-import { enIN } from 'date-fns/locale'
-import { calculateTotals } from './CreateSellInvoice'
-import { useParams, useNavigate } from 'react-router-dom'
-import SaleItemTable from '../components/custom/sales/SaleItemTable'
+import { useRef, useState, useMemo, useEffect } from "react";
+import { Button } from "../components/ui/button";
+import { Calendar } from "../components/ui/calendar";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../components/ui/popover";
+import { CalendarIcon, ChevronLeft, Pencil, Save, FileText, Trash2 } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "../lib/utils";
+import { Backend_URL, convertQuantityValue } from "../assets/Data";
+import { useToast } from "../hooks/use-toast";
+import SelectPartyDialog from "../components/custom/party/SelectPartyDialog";
+import { enIN } from "date-fns/locale";
+import { calculateTotals } from "./CreateSellInvoice";
+import { useParams, useNavigate } from "react-router-dom";
+import SaleItemTable from "../components/custom/sales/SaleItemTable";
 
 export default function EditSaleInvoice() {
   const inputRef = useRef([]);
-  const {toast} = useToast();
+  const { toast } = useToast();
   const navigate = useNavigate();
-  const {invoiceId} = useParams();
+  const { invoiceId } = useParams();
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState(true);
   const [invoiceDate, setInvoiceDate] = useState();
@@ -32,13 +36,13 @@ export default function EditSaleInvoice() {
   const [dueDateOpen, setDueDateOpen] = useState(false);
 
   const [formData, setFormData] = useState({
-    saleType: 'invoice',
+    saleType: "invoice",
     partyName: "",
     partyId: "",
     invoiceNumber: "",
     invoiceDate: "",
     paymentDueDate: "",
-    withGst: 'yes',
+    withGst: "yes",
     overallDiscount: "",
   });
 
@@ -47,16 +51,30 @@ export default function EditSaleInvoice() {
     const fetchBill = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${Backend_URL}/api/purchase/invoice/${invoiceId}`, { credentials: 'include' });
+        const response = await fetch(
+          `${Backend_URL}/api/purchase/invoice/${invoiceId}`,
+          { credentials: "include" }
+        );
         if (!response.ok) {
-          throw new Error('Something went wrong');
+          throw new Error("Something went wrong");
         }
         const data = await response.json();
-        const { partyName, partyId, invoiceNumber, products, invoiceDate, paymentDueDate, withGst } = data;
-        
-        setProducts(products);
-        setInvoiceDate(new Date(invoiceDate));
-        setDueDate(new Date(paymentDueDate));
+        const {
+          partyName,
+          partyId,
+          invoiceNumber,
+          products,
+          invoiceDate,
+          paymentDueDate,
+          withGst,
+        } = data;
+        const fomateProduct = products.map((item) => {
+          const temp = convertQuantityValue(item.quantity, item.pack);
+          return { ...item, ...temp };
+        });
+        setProducts(fomateProduct);
+        setInvoiceDate(invoiceDate ? new Date(invoiceDate) : null);
+        setDueDate(paymentDueDate ? new Date(paymentDueDate) : null);
         setFormData({
           ...formData,
           partyName,
@@ -64,15 +82,20 @@ export default function EditSaleInvoice() {
           invoiceDate,
           paymentDueDate,
           invoiceNumber,
-          withGst: withGst ? 'yes' : 'no'
+          withGst: withGst ? "yes" : "no",
         });
         setPartyName(partyName);
       } catch (error) {
-        console.error('Error fetching bill:', error);
+        console.error("Error fetching bill:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch invoice details",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
-    }
+    };
     if (invoiceId) {
       fetchBill();
     }
@@ -82,22 +105,22 @@ export default function EditSaleInvoice() {
   const amountData = useMemo(() => calculateTotals(products), [products]);
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handleSaveInvoice = async () => {
     try {
       setLoading(true);
 
       if (!formData.partyName || !formData.invoiceNumber || !invoiceDate) {
-        throw new Error('Please fill all required fields');
+        throw new Error("Please fill all required fields");
       }
 
       if (products.length === 0) {
-        throw new Error('Please add at least one product');
+        throw new Error("Please add at least one product");
       }
 
-      const formattedProducts = products.map(product => ({
+      const formattedProducts = products.map((product) => ({
         inventoryId: product.inventoryId,
         productName: product.productName,
         batchNumber: product.batchNumber,
@@ -109,54 +132,56 @@ export default function EditSaleInvoice() {
         ptr: Number(product.ptr),
         discount: Number(product.discount || 0),
         gstPer: Number(product.gstPer),
-        amount: Number(product.amount)
+        amount: Number(product.amount),
       }));
 
       const finalData = {
         _id: invoiceId,
-        invoiceType: 'SALE',
+        invoiceType: "SALE",
         invoiceNumber: formData.invoiceNumber,
         partyName: formData.partyName,
         partyId: formData.partyId,
         invoiceDate: invoiceDate,
         paymentDueDate: dueDate,
         products: formattedProducts,
-        withGst: formData.withGst === 'yes',
+        withGst: formData.withGst === "yes",
         grandTotal: amountData.grandTotal,
         gstSummary: {
           subtotal: amountData.subtotal,
           discountAmount: amountData.discountAmount,
           taxableAmount: amountData.taxable,
-          gstAmount: amountData.gstAmount
+          gstAmount: amountData.gstAmount,
         },
-        paymentStatus: 'due',
-        amountPaid: 0
+        paymentStatus: "due",
+        amountPaid: 0,
       };
 
-      const response = await fetch(`${Backend_URL}/api/purchase/invoice/${invoiceId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(finalData)
-      });
+      const response = await fetch(
+        `${Backend_URL}/api/purchase/invoice/${invoiceId}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(finalData),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save invoice');
+        throw new Error(errorData.message || "Failed to save invoice");
       }
 
       toast({
         title: "Sale invoice saved successfully",
-        variant: "success"
+        variant: "success",
       });
 
       navigate(-1);
-
     } catch (error) {
       toast({
         title: "Error",
         description: error.message || "Failed to save invoice",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -166,8 +191,8 @@ export default function EditSaleInvoice() {
   const handleCustomerNameChange = (e) => {
     e.preventDefault();
     const value = e.target.value;
-    
-    if (value.length === 1 && value === ' ') {
+
+    if (value.length === 1 && value === " ") {
       setPartySelectDialog(true);
       return;
     }
@@ -179,7 +204,11 @@ export default function EditSaleInvoice() {
 
   const handleCustomerSelect = (customer) => {
     setPartyName(customer.name);
-    setFormData({ ...formData, partyId: customer._id, partyName: customer.name });
+    setFormData({
+      ...formData,
+      partyId: customer._id,
+      partyName: customer.name,
+    });
     setPartySelectDialog(false);
   };
 
@@ -188,33 +217,56 @@ export default function EditSaleInvoice() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <ChevronLeft className="w-5 h-5 text-rose-500 cursor-pointer" onClick={() => navigate(-1)} />
-          <h1 className="text-xl font-medium">{viewMode ? 'View' : 'Edit'} Sale</h1>
+          <ChevronLeft
+            className="w-5 h-5 text-rose-500 cursor-pointer"
+            onClick={() => navigate(-1)}
+          />
+          <h1 className="text-xl font-medium">
+            {viewMode ? "View" : "Edit"} Sale
+          </h1>
         </div>
-        <div className="flex items-center gap-3">
-          {viewMode ? (
-            <Button className="gap-2 bg-gray-800" onClick={() => setViewMode(false)}>
-              <Pencil className='w-4 h-4' /> Edit
-            </Button>
-          ) : (
-            <Button
-              className="gap-2 bg-gray-800"
-              onClick={handleSaveInvoice}
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <span className="animate-spin">⏳</span>
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  Save (Alt + S)
-                </>
-              )}
-            </Button>
-          )}
+        <div className="flex gap-4">
+          <div className="flex items-center gap-3">
+            {viewMode ? (
+              <>
+                <Button
+                  className="gap-2 bg-blue-600"
+                >
+                  <FileText className="w-4 h-4" /> Show Invoice
+                </Button>
+                <Button
+                  className="gap-2 bg-blue-600 px-6"
+                  onClick={() => setViewMode(false)}
+                >
+                  <Pencil className="w-4 h-4" /> Edit
+                </Button>
+              
+                <Button
+                  className="gap-2 bg-rose-600"
+                >
+                  <Trash2 className="w-4 h-4" /> Delete
+                </Button>
+              </>
+            ) : (
+              <Button
+                className="gap-2 bg-gray-800"
+                onClick={handleSaveInvoice}
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <span className="animate-spin">⏳</span>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Save (Alt + S)
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -224,9 +276,9 @@ export default function EditSaleInvoice() {
           <div className="flex gap-8">
             <div>
               <Label className="text-sm font-medium">SALE TYPE</Label>
-              <RadioGroup 
-                value={formData?.saleType} 
-                onValueChange={(value)=> handleInputChange('saleType', value)} 
+              <RadioGroup
+                value={formData?.saleType}
+                onValueChange={(value) => handleInputChange("saleType", value)}
                 className=" gap-4 mt-2"
                 disabled={viewMode}
               >
@@ -242,10 +294,10 @@ export default function EditSaleInvoice() {
             </div>
             <div>
               <Label className="text-sm font-medium">WITH GST?</Label>
-              <RadioGroup  
+              <RadioGroup
                 className=" gap-4 mt-2"
                 value={formData?.withGst}
-                onValueChange={(value)=>handleInputChange('withGst', value)}
+                onValueChange={(value) => handleInputChange("withGst", value)}
                 disabled={viewMode}
               >
                 <div className="flex items-center space-x-2">
@@ -264,9 +316,9 @@ export default function EditSaleInvoice() {
               CUSTOMER NAME<span className="text-rose-500">*REQUIRED</span>
             </Label>
             <Input
-              value={partyName || ""} 
+              value={partyName || ""}
               onChange={handleCustomerNameChange}
-              placeholder='Type or Press space' 
+              placeholder="Type or Press space"
               disabled={viewMode}
             />
           </div>
@@ -274,10 +326,12 @@ export default function EditSaleInvoice() {
             <Label className="text-sm font-medium">
               INVOICE NO<span className="text-rose-500">*REQUIRED</span>
             </Label>
-            <Input 
+            <Input
               value={formData?.invoiceNumber}
-              onChange={(e)=>handleInputChange('invoiceNumber', e.target.value)}
-              placeholder="Invoice No" 
+              onChange={(e) =>
+                handleInputChange("invoiceNumber", e.target.value)
+              }
+              placeholder="Invoice No"
               disabled={viewMode}
             />
           </div>
@@ -296,7 +350,9 @@ export default function EditSaleInvoice() {
                   disabled={viewMode}
                 >
                   <CalendarIcon className="w-4 h-4 mr-2" />
-                  {invoiceDate ? format(invoiceDate, "dd/MM/yyyy") : "Select Date"}
+                  {invoiceDate && !isNaN(invoiceDate.getTime())
+                    ? format(invoiceDate, "dd/MM/yyyy")
+                    : "Select Date"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
@@ -328,7 +384,9 @@ export default function EditSaleInvoice() {
                   disabled={viewMode}
                 >
                   <CalendarIcon className="w-4 h-4 mr-2" />
-                  {dueDate ? format(dueDate, "dd/MM/yyyy") : "Select Due Date"}
+                  {dueDate && !isNaN(dueDate.getTime())
+                    ? format(dueDate, "dd/MM/yyyy")
+                    : "Select Due Date"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
@@ -351,7 +409,7 @@ export default function EditSaleInvoice() {
       </div>
 
       {/* Sale Item Table */}
-      <div className='my-4'>
+      <div className="my-4">
         <SaleItemTable
           inputRef={inputRef}
           products={products}
@@ -365,17 +423,18 @@ export default function EditSaleInvoice() {
         <div className="p-4 border rounded-lg">
           <h3 className="mb-4 text-sm font-medium">OVERALL BILL DISCOUNT</h3>
           <div className="flex gap-4">
-            <Input 
-              placeholder="Value" 
-              className="w-24" 
-              value={formData?.overallDiscount} 
-              onChange={(e)=>handleInputChange('overallDiscount', e.target.value)}
+            <Input
+              placeholder="Value"
+              className="w-24"
+              value={formData?.overallDiscount}
+              onChange={(e) =>
+                handleInputChange("overallDiscount", e.target.value)
+              }
               disabled={viewMode}
             />
-            %
-            <span className="px-2 py-1">OR</span>
-            <Input 
-              placeholder="₹ Value" 
+            %<span className="px-2 py-1">OR</span>
+            <Input
+              placeholder="₹ Value"
               className="flex-1"
               disabled={viewMode}
             />
@@ -384,7 +443,7 @@ export default function EditSaleInvoice() {
         <div className="p-4 border rounded-lg">
           <h3 className="mb-4 text-sm font-medium">CUSTOM CHARGE</h3>
           <div className="flex gap-4">
-            <Input placeholder='Custom charge' disabled={viewMode} />
+            <Input placeholder="Custom charge" disabled={viewMode} />
             <Input placeholder="₹ Value" disabled={viewMode} />
           </div>
         </div>
@@ -399,8 +458,12 @@ export default function EditSaleInvoice() {
       {/* Fixed Footer */}
       <div className="fixed bottom-0 w-[cal(100%-200px)] grid grid-cols-8 gap-4 p-4 text-sm text-white bg-gray-800 rounded-lg">
         <div className="">
-          <div className="mb-1 text-gray-400">Total Products: {amountData?.productCount}</div>
-          <div className="text-gray-400">Total Quantity: {amountData?.totalQuantity}</div>
+          <div className="mb-1 text-gray-400">
+            Total Products: {amountData?.productCount}
+          </div>
+          <div className="text-gray-400">
+            Total Quantity: {amountData?.totalQuantity}
+          </div>
         </div>
         <div>
           <div className="mb-1 text-gray-400">Subtotal</div>
@@ -441,5 +504,5 @@ export default function EditSaleInvoice() {
         onSelect={handleCustomerSelect}
       />
     </div>
-  )
+  );
 }

@@ -1,6 +1,6 @@
 import { ChevronRight } from 'lucide-react'
 import { useState, useEffect } from "react"
-import { Backend_URL, convertToFraction, convertQuantity } from "../../../assets/Data"
+import { Backend_URL, convertToFraction, convertQuantity, convertQuantityValue } from "../../../assets/Data"
 import { useToast } from "../../../hooks/use-toast"
 import { useNavigate } from 'react-router-dom'
 
@@ -23,7 +23,6 @@ export default function SalesTab({inventoryId}) {
         if(inventoryId) fetchSales();
     }, [inventoryId]);
 
-    console.log(sales);
     
     return (
         <div className="w-full">
@@ -76,7 +75,8 @@ export default function SalesTab({inventoryId}) {
                                     </span>
                                 </td>
                                 <td className="px-4 py-2 text-right">
-                                    <div className="text-sm font-medium">{convertQuantity(sale.debit)}</div>
+                                    <div className="text-sm ">Packs: {convertQuantityValue(sale.debit, sale.pack).packs}</div>
+                                    <div className="text-xs font-semibold">Loose: {convertQuantityValue(sale.debit, sale.pack).loose}</div>
                                 </td>
                                 <td className="px-4 py-2">
                                     <ChevronRight className="w-4 h-4 text-gray-400" />

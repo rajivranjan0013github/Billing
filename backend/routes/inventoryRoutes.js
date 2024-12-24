@@ -48,6 +48,7 @@ router.post('/manage-batch', verifyToken, async (req, res) => {
             batchNumber: details.batchNumber,
             expiry: details.expiry,
             user : req.user._id,
+            pack : details.pack,
             userName : req.user?.name
         });
 

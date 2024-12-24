@@ -91,7 +91,7 @@ export default function InventoryDetails({inventoryId}) {
   }
 
   return (
-    <ScrollArea className="h-[100vh]">
+    <ScrollArea className="h-[100vh] pr-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex gap-6">

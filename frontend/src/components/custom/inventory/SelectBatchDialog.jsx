@@ -114,46 +114,60 @@ export default function SelectBatchDialog({open, setOpen, batchNumber, setBatchN
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredData.map((batch) => (
-                <TableRow
-                  key={batch.batchNumber}
-                  className={cn(
-                    "cursor-pointer transition-colors hover:bg-slate-100 relative group",
-                    selectedId === batch.batchNumber && "bg-muted"
-                  )}
-                  onClick={() => {
-                    onSelect?.(batch);
-                    setOpen(false);
-                  }}
-                >
-                  <TableCell className="font-medium">
-                    {batch.batchNumber}
-                  </TableCell>
-                  <TableCell>{batch.pack}</TableCell>
-                  <TableCell>{batch.expiry}</TableCell>
-                  <TableCell>{batch.mrp}</TableCell>
-                  <TableCell>
-                    {batch.status && (
-                      <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-                        {batch.status}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>{batch.purchaseRate}</TableCell>
-                  <TableCell>{batch.hsnCode}</TableCell>
-                  <TableCell>{batch.gstPer}%</TableCell>
-                  <TableCell>
-                    <div
-                      className={cn(
-                        "absolute inset-y-0 right-4 flex items-center text-blue-600 font-medium",
-                        "opacity-0 group-hover:opacity-100 transition-all duration-150"
-                      )}
-                    >
-                      Select <span className="ml-1">→</span>
+              {
+                filteredData.length === 0 ? (
+                  <>
+                  {batchNumber.length >= 3 ? (
+                      <div className="p-4">Create New Batch "{batchNumber}"</div>
+                  ) : (
+                    <div>
+                      batch not found
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                  )}
+                  </>
+                ) : (
+                  filteredData.map((batch) => (
+                    <TableRow
+                      key={batch.batchNumber}
+                      className={cn(
+                        "cursor-pointer transition-colors hover:bg-slate-100 relative group",
+                        selectedId === batch.batchNumber && "bg-muted"
+                      )}
+                      onClick={() => {
+                        onSelect?.(batch);
+                        setOpen(false);
+                      }}
+                    >
+                      <TableCell className="font-medium">
+                        {batch.batchNumber}
+                      </TableCell>
+                      <TableCell>{batch.pack}</TableCell>
+                      <TableCell>{batch.expiry}</TableCell>
+                      <TableCell>{batch.mrp}</TableCell>
+                      <TableCell>
+                        {batch.status && (
+                          <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                            {batch.status}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>{batch.purchaseRate}</TableCell>
+                      <TableCell>{batch.hsnCode}</TableCell>
+                      <TableCell>{batch.gstPer}%</TableCell>
+                      <TableCell>
+                        <div
+                          className={cn(
+                            "absolute inset-y-0 right-4 flex items-center text-blue-600 font-medium",
+                            "opacity-0 group-hover:opacity-100 transition-all duration-150"
+                          )}
+                        >
+                          Select <span className="ml-1">→</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )
+              }
             </TableBody>
           </Table>
         </ScrollArea>

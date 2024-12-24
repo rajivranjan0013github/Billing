@@ -26,19 +26,19 @@ export default function SelectPartyDialog({open, setOpen, search, setSearch, onS
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-4xl p-0 gap-0">
-        <DialogHeader className="p-6 flex flex-row items-center justify-between border-b">
-          <div className="space-y-1">
-            <DialogTitle className="text-xl">Select a Distributor</DialogTitle>
-            <p className="text-sm text-muted-foreground">
+        <DialogHeader className="p-4 flex flex-row items-center justify-between border-b">
+          <div className="space-y-0.5">
+            <DialogTitle className="text-lg">Select a Distributor</DialogTitle>
+            <p className="text-xs text-muted-foreground">
               Select an option from the below list
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button className="bg-gray-800">Create New (F2)</Button>
+            <Button size="sm" className="bg-gray-800">Create New (F2)</Button>
             <Button 
               variant="ghost" 
               size="icon"
-              className="h-9 w-9"
+              className="h-8 w-8"
               onClick={() => setOpen(false)}
             >
               <X className="h-4 w-4" />
@@ -46,16 +46,16 @@ export default function SelectPartyDialog({open, setOpen, search, setSearch, onS
           </div>
         </DialogHeader>
 
-        <div className="p-6 border-b space-y-4">
-          <div className="flex gap-4">
-            <div className="flex-1 space-y-2">
-              <div className="text-sm">SEARCH DISTRIBUTOR</div>
+        <div className="p-4 border-b">
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <div className="text-xs mb-1.5">SEARCH DISTRIBUTOR</div>
               <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
                 <Input
                   autoFocus
                   placeholder="Search..."
-                  className="pl-9"
+                  className="pl-8 h-9"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -64,15 +64,15 @@ export default function SelectPartyDialog({open, setOpen, search, setSearch, onS
           </div>
         </div>
 
-        <div className="min-h-[300px]">
+        <div className="min-h-[300px] overflow-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>DISTRIBUTOR NAME/ADDRESS</TableHead>
-                <TableHead>MOBILE NO</TableHead>
-                <TableHead>GSTIN / DRUG LIC</TableHead>
-                <TableHead>BALANCE</TableHead>
-                <TableHead>ACTIONS</TableHead>
+                <TableHead className="py-2">DISTRIBUTOR NAME/ADDRESS</TableHead>
+                <TableHead className="py-2">MOBILE NO</TableHead>
+                <TableHead className="py-2">GSTIN / DRUG LIC</TableHead>
+                <TableHead className="py-2">BALANCE</TableHead>
+                <TableHead className="py-2">ACTIONS</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -85,43 +85,43 @@ export default function SelectPartyDialog({open, setOpen, search, setSearch, onS
                     setOpen(false);
                   }}
                 >
-                  <TableCell>
+                  <TableCell className="py-2">
                     <div>
-                      <div className="font-medium flex items-center gap-2">
+                      <div className="font-medium flex items-center gap-1">
                         {distributor.name}
                         {distributor.verified && (
-                          <Badge variant="secondary" className="bg-emerald-100">
+                          <Badge variant="secondary" className="bg-emerald-100 h-5 px-1">
                             ✓
                           </Badge>
                         )}
                       </div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-xs text-muted-foreground">
                         {distributor.address}
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>{distributor.mobile}</TableCell>
-                  <TableCell>
+                  <TableCell className="py-2">{distributor.mobile}</TableCell>
+                  <TableCell className="py-2">
                     <div>
                       <div>{distributor.gstin}</div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-xs text-muted-foreground">
                         {distributor.drugLic}
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-2">
                     <div>
                       <div>{distributor.balance}</div>
-                      <div className="text-sm text-muted-foreground">-</div>
+                      <div className="text-xs text-muted-foreground">-</div>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500">
-                        <Edit className="h-4 w-4" />
+                  <TableCell className="py-2">
+                    <div className="flex items-center gap-1">
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-rose-500">
+                        <Edit className="h-3.5 w-3.5" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500">
-                        <Trash2 className="h-4 w-4" />
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-rose-500">
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </TableCell>
@@ -131,7 +131,7 @@ export default function SelectPartyDialog({open, setOpen, search, setSearch, onS
           </Table>
         </div>
 
-        <div className="p-3 bg-gray-50 text-sm text-muted-foreground flex items-center justify-center gap-3">
+        <div className="p-2 bg-gray-50 text-xs text-muted-foreground flex items-center justify-center gap-2">
           <span>Create New - F2</span>
           <span>|</span>
           <span>Edit Selected - F4</span>

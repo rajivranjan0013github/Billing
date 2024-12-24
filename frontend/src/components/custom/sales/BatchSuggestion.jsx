@@ -1,75 +1,9 @@
 import React, { useState, useEffect, useRef, forwardRef } from 'react';
-import { Input } from "../../ui/input";
-import { Badge } from "../../ui/badge"; // Add this import
-import { ChevronsUpDown } from "lucide-react";
 import { ScrollArea } from "../../ui/scroll-area";
 import { Backend_URL, convertQuantity } from '../../../assets/Data';
 import { useToast } from '../../../hooks/use-toast';
 
-// const suggestions  = [
-//     {
-//       batchNumber: "B2024001",
-//       HSN: "30049099",
-//       quantity: 1000,
-//       expiry: "12/25",
-//       mrp: 156.50,
-//       gstPer: 12,
-//       purchaseRate: 85.00,
-//       netRate: 95.20,
-//       ptr: 120.00,
-//       pack: 10
-//     },
-//     {
-//       batchNumber: "B2024002",
-//       HSN: "30042033",
-//       quantity: 500,
-//       expiry: "06/26",
-//       mrp: 245.75,
-//       gstPer: 18,
-//       purchaseRate: 125.00,
-//       netRate: 147.50,
-//       ptr: 180.00,
-//       pack: 15
-//     },
-//     {
-//       batchNumber: "B2024003",
-//       HSN: "30043100",
-//       quantity: 2000,
-//       expiry: "03/25",
-//       mrp: 89.99,
-//       gstPer: 5,
-//       purchaseRate: 45.00,
-//       netRate: 47.25,
-//       ptr: 65.00,
-//       pack: 20
-//     },
-//     {
-//       batchNumber: "B2024004",
-//       HSN: "30044100",
-//       quantity: 750,
-//       expiry: "09/25",
-//       mrp: 325.00,
-//       gstPer: 12,
-//       purchaseRate: 180.00,
-//       netRate: 201.60,
-//       ptr: 250.00,
-//       pack: 5
-//     },
-//     {
-//       batchNumber: "B2024005",
-//       HSN: "30045090",
-//       quantity: 1500,
-//       expiry: "12/26",
-//       mrp: 199.99,
-//       gstPer: 18,
-//       purchaseRate: 95.00,
-//       netRate: 112.10,
-//       ptr: 150.00,
-//       pack: 30
-//     }
-//   ];
-  
-export const SearchSuggestion = forwardRef(({value, setValue, onSuggestionSelect, inventoryId, inputRef}, ref) => {
+export const SearchSuggestion = forwardRef(({value, setValue, onSuggestionSelect, inventoryId, inputRef, disabled}, ref) => {
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -149,6 +83,7 @@ export const SearchSuggestion = forwardRef(({value, setValue, onSuggestionSelect
     <div className="relative w-full">
       <div className="relative ">
         <input
+          disabled={disabled}
           ref={(el) => (inputRef.current["batchNumber"] = el)}
           type="text"
           value={value}
@@ -171,7 +106,7 @@ export const SearchSuggestion = forwardRef(({value, setValue, onSuggestionSelect
                 <li
                   key={suggestion._id}
                   onClick={() => handleSuggestionClick(suggestion)}
-                  className={`w-full grid grid-cols-7 border-b-[1px] border-muted px-4 py-2 hover:bg-blue-200 ${index === selectedIndex ? 'bg-blue-200' : ''}`}
+                  className={`w-full grid grid-cols-8 border-b-[1px] border-muted px-4 py-2 hover:bg-blue-200 ${index === selectedIndex ? 'bg-blue-200' : ''}`}
                 >
                     <div>
                         <div className='text-xs text-gray-500'>BATCH NO</div>
@@ -189,7 +124,7 @@ export const SearchSuggestion = forwardRef(({value, setValue, onSuggestionSelect
                         <div className='text-xs text-gray-500'>MRP</div>
                         <div className='text-sm uppercase font-medium'>₹{suggestion?.mrp}</div>
                     </div>
-                    <div>
+                    <div className='col-span-2'>
                         <div className='text-xs text-gray-500'>STOCKS</div>
                         <div className='text-sm uppercase font-medium'>{convertQuantity(suggestion?.quantity, suggestion?.pack)}</div>
                     </div>
@@ -201,6 +136,7 @@ export const SearchSuggestion = forwardRef(({value, setValue, onSuggestionSelect
                         <div className='text-xs text-gray-500'>SALE RATE</div>
                         <div className='text-sm uppercase font-medium'>₹{suggestion?.ptr}</div>
                     </div>
+                   
                 </li>
               ))}
             </ul>

@@ -17,7 +17,8 @@ import SelectPartyDialog from '../components/custom/party/SelectPartyDialog'
 import { enIN } from 'date-fns/locale'
 import { useDispatch } from 'react-redux'
 import { fetchItems } from '../redux/slices/inventorySlice';
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom' 
+import {fetchBills} from '../redux/slices/SellBillSlice'
 
 // for sale only
 export const calculateTotals = (products) => {
@@ -62,7 +63,7 @@ export default function CreateSellInvoice() {
   const navigate = useNavigate();
   const inputRef = useRef([]);
   const dispatch = useDispatch();
-  const [invoiceDate, setInvoiceDate] = useState();
+  const [invoiceDate, setInvoiceDate] = useState(new Date());
   const [dueDate, setDueDate] = useState();
   const [products, setProducts] = useState([]);
   const [partySelectDialog, setPartySelectDialog] = useState(false);
@@ -140,8 +141,6 @@ export default function CreateSellInvoice() {
         amountPaid: 0
       };
 
-      console.log(finalData);
-
       const response = await fetch(`${Backend_URL}/api/sales`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -156,10 +155,11 @@ export default function CreateSellInvoice() {
 
       const data = await response.json();
       toast({
-        title: "Purchase invoice saved successfully",
+        title: "Sell invoice created successfully",
         variant: "success"
       });
-      dispatch(fetchItems());
+      dispatch(fetchItems()); // updating inventory
+      dispatch(fetchBills); // updating sales list
       // Reset form
       setFormData({
         purchaseType: 'invoice',
@@ -169,6 +169,7 @@ export default function CreateSellInvoice() {
         paymentDueDate: "",
         overallDiscount: ""
       });
+      setPartyName("");
       setInvoiceDate(null);
       setDueDate(null);
       setProducts([]);

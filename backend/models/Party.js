@@ -15,6 +15,7 @@ const partySchema = new mongoose.Schema({
   shipping_address: { type: String },
   credit_period: { type: Number, default: 30 },
   credit_limit: { type: Number, default: 0 },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 });
 
 partySchema.plugin(hospitalPlugin);

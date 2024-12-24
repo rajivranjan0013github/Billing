@@ -20,7 +20,6 @@ export default function PurchasesTransactions() {
     }
   }, [fetchStatus])
 
-  console.log(purchaseBills);
   
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -123,77 +122,82 @@ export default function PurchasesTransactions() {
       </div>
 
       <div className="relative overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>INVOICE NO</TableHead>
-              <TableHead>DISTRIBUTOR / GSTIN</TableHead>
-              <TableHead>GRN NO</TableHead>
-              <TableHead>GST</TableHead>
-              <TableHead>BILLED ON</TableHead>
-              <TableHead>INV AMT</TableHead>
-              <TableHead>ADJ AMT</TableHead>
-              <TableHead>PAYABLE</TableHead>
-              <TableHead>BALANCE</TableHead>
-              <TableHead>PAID / DUE</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {purchaseBills.map((bill) => (
-              <TableRow key={bill._id} className="group cursor-pointer" onClick={()=> navigate(`/purchase/${bill._id}`)}>
-                <TableCell>{bill.invoiceNumber}</TableCell>
-                <TableCell>
-                  <div>{bill.partyName}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {bill.mob}
-                  </div>
-                </TableCell>
-                <TableCell>{bill.grnNo || '-'}</TableCell>
-                <TableCell>{bill.withGst ? 'With GST' : 'Without GST'}</TableCell>
-                <TableCell>
-                  <div>{new Date(bill.invoiceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {new Date(bill.invoiceDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                  </div>
-                </TableCell>
-                <TableCell>{formatCurrency(bill.grandTotal)}</TableCell>
-                <TableCell>{formatCurrency(bill.adjustmentAmount || 0)}</TableCell>
-                <TableCell>{formatCurrency(bill.payableAmount || bill.grandTotal)}</TableCell>
-                <TableCell>
-                  {formatCurrency(bill.grandTotal - (bill.amountPaid || 0))}
-                  {bill.paymentDueDate && (
-                    <div className="text-sm text-muted-foreground">
-                      {new Date(bill.paymentDueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
-                    </div>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium",
-                        {
-                          "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20":
-                            bill.paymentStatus === "paid",
-                          "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20":
-                            bill.paymentStatus === "due",
-                        }
-                      )}
-                    >
-                      {bill.paymentStatus === 'paid' ? 'Paid' : 'Due'}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="opacity-0 group-hover:opacity-100 text-pink-500 transition-opacity">
-                    →
-                  </div>
-                </TableCell>
+        {purchaseBills.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <Users className="h-12 w-12 mb-4" />
+            <p className="text-lg">No purchase bills found</p>
+            <p className="text-sm">Create a new purchase invoice to get started</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>INVOICE NO</TableHead>
+                <TableHead>DISTRIBUTOR / GSTIN</TableHead>
+                <TableHead>GRN NO</TableHead>
+                <TableHead>GST</TableHead>
+                <TableHead>BILLED ON</TableHead>
+                <TableHead>INV AMT</TableHead>
+                <TableHead>ADJ AMT</TableHead>
+                <TableHead>PAYABLE</TableHead>
+                <TableHead>BALANCE</TableHead>
+                <TableHead>PAID / DUE</TableHead>
+                <TableHead />
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {purchaseBills.map((bill) => (
+                <TableRow key={bill._id} className="group cursor-pointer" onClick={()=> navigate(`/purchase/${bill._id}`)}>
+                  <TableCell>{bill.invoiceNumber}</TableCell>
+                  <TableCell>
+                    <div>{bill.partyName}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {bill.mob}
+                    </div>
+                  </TableCell>
+                  <TableCell>{bill.grnNo || '-'}</TableCell>
+                  <TableCell>{bill.withGst ? 'With GST' : 'Without GST'}</TableCell>
+                  <TableCell>
+                    <div>{new Date(bill.invoiceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}</div>
+                  </TableCell>
+                  <TableCell>{formatCurrency(bill.grandTotal)}</TableCell>
+                  <TableCell>{formatCurrency(bill.adjustmentAmount || 0)}</TableCell>
+                  <TableCell>{formatCurrency(bill.payableAmount || bill.grandTotal)}</TableCell>
+                  <TableCell>
+                    {formatCurrency(bill.grandTotal - (bill.amountPaid || 0))}
+                    {bill.paymentDueDate && (
+                      <div className="text-sm text-muted-foreground">
+                        {new Date(bill.paymentDueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium",
+                          {
+                            "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20":
+                              bill.paymentStatus === "paid",
+                            "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20":
+                              bill.paymentStatus === "due",
+                          }
+                        )}
+                      >
+                        {bill.paymentStatus === 'paid' ? 'Paid' : 'Due'}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="opacity-0 group-hover:opacity-100 text-pink-500 transition-opacity">
+                      →
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </div>
 
       <div className="fixed  bottom-2 flex justify-between items-center">

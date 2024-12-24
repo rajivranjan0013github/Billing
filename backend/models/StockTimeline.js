@@ -3,7 +3,7 @@ import {hospitalPlugin} from '../plugins/hospitalPlugin.js'
 
 const stockTimelineSchema = new mongoose.Schema({
   inventoryId: { 
-    type: mongoose.Schema.Types.ObjectId, 
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Inventory',
     required: true
   },

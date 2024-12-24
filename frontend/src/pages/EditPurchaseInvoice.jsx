@@ -55,8 +55,8 @@ export default function EditPurchaseInvoice() {
             const {partyName, partyId, invoiceNumber, products, invoiceDate, paymentDueDate, withGst} = data;
             const tempData = products.map((p) => ({...p, quantity : p.quantity/(p.pack||1)}));
             setProducts(tempData);
-            setInvoiceDate(new Date(invoiceDate));
-            setDueDate(new Date(paymentDueDate));
+            setInvoiceDate(invoiceDate ? new Date(invoiceDate) : null);
+            setDueDate(paymentDueDate ? new Date(paymentDueDate) : null);
             setFormData({
                 ...formData, 
                 partyName, 
@@ -143,7 +143,9 @@ export default function EditPurchaseInvoice() {
         amountPaid: 0
       };
 
-      const response = await fetch(`${Backend_URL}/api/purchase`, {
+      console.log(finalData);
+
+      const response = await fetch(`${Backend_URL}/api/purchase/edit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -157,7 +159,7 @@ export default function EditPurchaseInvoice() {
 
       const data = await response.json();
       toast({
-        title: "Purchase invoice saved successfully",
+        title: "Purchase invoice updated successfully",
         variant: "success"
       });
 

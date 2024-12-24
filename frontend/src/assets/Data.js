@@ -257,10 +257,19 @@ export const convertToFraction = (num) => {
 
 export const convertQuantity = (qty, pack=1) => {
   if(!qty) return '-'
-  const packs = Math.floor(qty/pack);
-  const loose = qty%pack;
+  const packs = Math.floor(Number(qty)/Number(pack));
+  const loose = qty%Number(pack);
   if(loose) {
       return `${packs} packs, ${loose} units`
   } 
   return `${packs} packs`
 }
+
+export const convertQuantityValue = (qty, pack=1) => {
+  if(!qty) return 0;
+  const packs = Math.floor(Number(qty)/Number(pack));
+  const loose = qty%Number(pack);
+  console.log(packs, loose);
+  
+  return {packs, loose};
+} 

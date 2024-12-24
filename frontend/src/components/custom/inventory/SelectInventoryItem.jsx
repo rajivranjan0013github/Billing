@@ -54,7 +54,7 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
       }
     } else if (e.key === "Enter" && selectedId) {
       // Handle selection
-      console.log("Selected product:", filteredProducts.find(p => p._id === selectedId))
+      // console.log("Selected product:", filteredProducts.find(p => p._id === selectedId))
       handleSelect(filteredProducts.find(p => p._id === selectedId))
       onOpenChange(false)
     } else if (e.key === "Escape") {

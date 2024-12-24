@@ -20,7 +20,6 @@ const Settings = () => {
   const handleProductSelect = (product) => {
     setSelectedItem(product);
     setSearch(product.name);
-    console.log(product);
   };
 
   return (

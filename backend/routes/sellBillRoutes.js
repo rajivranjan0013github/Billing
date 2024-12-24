@@ -58,6 +58,7 @@ router.post("/", verifyToken, async (req, res) => {
         inventoryId: inventoryId,
         invoiceId: newInvoice._id,
         type: 'SALE',
+        pack,
         invoiceNumber: details.invoiceNumber,
         debit: quantity,
         balance: inventorySchema.quantity,

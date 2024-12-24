@@ -152,14 +152,6 @@ export default function SaleTable({inputRef, products, setProducts, viewMode}) {
           <div className="col-span-3 grid grid-cols-6">
             <div></div>
             <div className="col-span-5">
-              {/* <input
-                ref={(el) => (inputRef.current["product"] = el)}
-                onChange={handleProductNameChange}
-                value={productSearch}
-                type="text"
-                placeholder="Type or Press Space"
-                className="h-8 w-full border-[1px] border-gray-300 px-2"
-              /> */}
               <InventorySuggestion
                 inputRef={inputRef}
                 value={productSearch}
@@ -169,14 +161,6 @@ export default function SaleTable({inputRef, products, setProducts, viewMode}) {
             </div>
           </div>
           <div className="col-span-2">
-            {/* <input
-              ref={(el) => (inputRef.current["batchNumber"] = el)}
-              type="text"
-              onChange={handleBatchNameChange}
-              value={batchNumber || ""}
-              placeholder="batch no"
-              className="h-8 w-full border-[1px] border-gray-300 px-1"
-            /> */}
             <BatchSuggestion
                 inputRef={inputRef}
                 value={batchNumber}
@@ -195,13 +179,16 @@ export default function SaleTable({inputRef, products, setProducts, viewMode}) {
             />
           </div>
           <div>
-            <input
-              ref={(el) => (inputRef.current["pack"] = el)}
-              onChange={(e) => handleInputChange("pack", e.target.value)}
-              value={newProduct.pack || ""}
-              type="text"
-              className="h-8 w-full border-[1px] border-gray-300 px-1"
-            />
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 tracking-widest opacity-80">1x</span>
+              <input
+                ref={(el) => (inputRef.current["pack"] = el)}
+                onChange={(e) => handleInputChange("pack", e.target.value)}
+                value={newProduct.pack || ""}
+                type="text"
+                className="h-8 w-full border-[1px] border-gray-300 px-1 pl-7"
+              />
+            </div>
           </div>
           <div>
             <input
@@ -327,12 +314,17 @@ export default function SaleTable({inputRef, products, setProducts, viewMode}) {
                 />
               </div>
               <div>
-                <input
+                <div className="relative">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 tracking-widest opacity-80">1x</span>
+                  <input
                   disabled={editMode}
-                  value={product?.pack || ""}
-                  type="text"
-                  className="h-8 w-full border-[1px] border-gray-300 px-1"
-                />
+                    ref={(el) => (inputRef.current["pack"] = el)}
+                    onChange={(e) => handleInputChange("pack", e.target.value)}
+                    value={product.pack || ""}
+                    type="text"
+                    className="h-8 w-full border-[1px] border-gray-300 px-1 pl-7"
+                  />
+                </div>
               </div>
               <div>
                 <input
