@@ -1,0 +1,175 @@
+import express from "express";
+import { verifyToken } from "../middleware/authMiddleware.js";
+import AccountDetails from "../models/AccountDetails.js";
+
+const router = express.Router();
+
+// Get all accounts
+router.get("/", verifyToken, async (req, res) => {
+  try {
+    const accounts = await AccountDetails.find().sort({ createdAt: -1 });
+    res.json(accounts);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get account by ID
+router.get("/:id", verifyToken, async (req, res) => {
+  try {
+    const account = await AccountDetails.findById(req.params.id);
+    if (!account) {
+      return res.status(404).json({ message: "Account not found" });
+    }
+    res.json(account);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Create new account
+router.post("/", verifyToken, async (req, res) => {
+  try {
+    const { accountType, bankDetails, upiDetails, cashDetails, otherDetails } =
+      req.body;
+
+    let accountData = {
+      accountType,
+      lastUpdated: new Date(),
+    };
+
+    // Set specific details based on account type
+    switch (accountType) {
+      case "BANK":
+        accountData.bankDetails = {
+          ...bankDetails,
+          openingBalance: bankDetails.openingBalance,
+          openingBalanceDate: bankDetails.openingBalanceDate || new Date(),
+        };
+        accountData.balance = bankDetails.openingBalance;
+        break;
+      case "UPI":
+        accountData.upiDetails = {
+          ...upiDetails,
+          openingBalance: upiDetails.openingBalance,
+          openingBalanceDate: upiDetails.openingBalanceDate || new Date(),
+        };
+        accountData.balance = upiDetails.openingBalance;
+        break;
+      case "CASH":
+        accountData.cashDetails = {
+          ...cashDetails,
+          openingBalance: cashDetails.openingBalance,
+          openingBalanceDate: cashDetails.openingBalanceDate || new Date(),
+        };
+        accountData.balance = cashDetails.openingBalance;
+        break;
+      case "OTHERS":
+        accountData.otherDetails = {
+          ...otherDetails,
+          openingBalance: otherDetails.openingBalance,
+          openingBalanceDate: otherDetails.openingBalanceDate || new Date(),
+        };
+        accountData.balance = otherDetails.openingBalance;
+        break;
+    }
+
+    const account = new AccountDetails(accountData);
+    const savedAccount = await account.save();
+    res.status(201).json(savedAccount);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Update account
+router.patch("/:id", verifyToken, async (req, res) => {
+  try {
+    const account = await AccountDetails.findById(req.params.id);
+    if (!account) {
+      return res.status(404).json({ message: "Account not found" });
+    }
+
+    // Update only allowed fields based on account type
+    const { accountType, bankDetails, upiDetails, balance } = req.body;
+
+    if (accountType && accountType !== account.accountType) {
+      return res.status(400).json({ message: "Cannot change account type" });
+    }
+
+    switch (account.accountType) {
+      case "BANK":
+        if (bankDetails) {
+          Object.assign(account.bankDetails, bankDetails);
+        }
+        break;
+      case "UPI":
+        if (upiDetails) {
+          Object.assign(account.upiDetails, upiDetails);
+        }
+        break;
+      case "CASH":
+      case "OTHERS":
+        if (balance !== undefined) {
+          account.balance = balance;
+        }
+        break;
+    }
+
+    account.lastUpdated = new Date();
+    const updatedAccount = await account.save();
+    res.json(updatedAccount);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Get account transactions
+router.get("/:id/transactions", verifyToken, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const account = await AccountDetails.findById(req.params.id);
+    if (!account) {
+      return res.status(404).json({ message: "Account not found" });
+    }
+
+    // Add logic to fetch transactions for this account
+    // This will depend on how you're storing transactions
+    res.json([]);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Update account balance
+router.post("/:id/update-balance", verifyToken, async (req, res) => {
+  try {
+    const { amount, type } = req.body; // type: 'credit' or 'debit'
+    const account = await AccountDetails.findById(req.params.id);
+    if (!account) {
+      return res.status(404).json({ message: "Account not found" });
+    }
+
+    // Update balance based on account type
+    switch (account.accountType) {
+      case "BANK":
+        account.bankDetails.balance += type === "credit" ? amount : -amount;
+        break;
+      case "UPI":
+        account.upiDetails.balance += type === "credit" ? amount : -amount;
+        break;
+      case "CASH":
+      case "OTHERS":
+        account.balance += type === "credit" ? amount : -amount;
+        break;
+    }
+
+    account.lastUpdated = new Date();
+    const updatedAccount = await account.save();
+    res.json(updatedAccount);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+export default router;

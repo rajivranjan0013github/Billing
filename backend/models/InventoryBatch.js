@@ -9,7 +9,7 @@ const InventoryBatchSchema = new mongoose.Schema({
     },
     batchNumber: String,
     HSN : String,
-    quantity: {type : Number, default : 0}, // always in loose value
+    quantity: {type : Number, default : 0}, 
     expiry : String, // mm/yy
     mrp: Number,
     gstPer: Number,

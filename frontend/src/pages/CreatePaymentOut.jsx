@@ -137,7 +137,6 @@ export default function Component() {
       const data = await response.json();
       setPendingInvoices(data);
     } catch (error) {
-      console.log(error);
     } finally {
       setIsLoadingBills(false);
     }

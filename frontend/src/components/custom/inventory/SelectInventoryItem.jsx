@@ -169,9 +169,9 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
                           </div>
                         )}
                       </TableCell>
-                      <TableCell>₹{product.mrp.toFixed(2)}</TableCell>
-                      <TableCell>{product.expiry}</TableCell>
-                      <TableCell>{product.location}</TableCell>
+                      <TableCell>₹{product?.mrp?.toFixed(2)}</TableCell>
+                      <TableCell>{product?.expiry}</TableCell>
+                      <TableCell>{product?.location}</TableCell>
                       <TableCell>
                         <div className="text-right">›</div>
                       </TableCell>

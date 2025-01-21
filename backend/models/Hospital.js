@@ -7,6 +7,8 @@ const HospitalSchema = new mongoose.Schema({
   contactNumber: String, 
   email: String,
   website: String,
+  gstNumber: String,
+  drugLicenceNumber: String,
   hospitalId: {
     type: String,
     required: true,

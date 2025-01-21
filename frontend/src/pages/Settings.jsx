@@ -1,45 +1,19 @@
-import React, { useState, useRef } from 'react'
-import ProductSelector from '../components/custom/inventory/SelectInventoryItem'
-import { Input } from '../components/ui/input'
+import React from "react";
+import { useNavigate } from "react-router-dom";
 
 const Settings = () => {
-  const [search, setSearch] = useState("");
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  const handleInputChange = (e) => {
-    const value = e.target.value; 
-    if (value.length > 0) {
-      if(value[0] !== ' ') {
-        setSearch(value); 
-      }
-      setIsDialogOpen(true);
-    }
-  };
-
-  const handleProductSelect = (product) => {
-    setSelectedItem(product);
-    setSearch(product.name);
-  };
+  const navigate = useNavigate();
 
   return (
-    <div>
-      <p>Item Name:</p>
-      <Input 
-        type="text" 
-        placeholder="Search" 
-        value={search} 
-        onChange={handleInputChange}
-      />
-      <ProductSelector 
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        onSelect={handleProductSelect}
-        search={search}
-        setSearch={setSearch} 
-      />
+    <div className="p-6">
+      <button
+        onClick={() => navigate("/settings/hospital-info")}
+        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+      >
+        Pharmacy Info
+      </button>
     </div>
-  )
-}
+  );
+};
 
-export default Settings
+export default Settings;

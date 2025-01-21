@@ -6,7 +6,7 @@ const inventorySchema = new mongoose.Schema({
   unit : String,
   pack : Number,
   secondary_unit : String,
-  quantity : {type : Number, default : 0}, // always in loose value
+  quantity : {type : Number, default : 0}, 
   category : String,
   mfcName: String,
   imgUri : String,

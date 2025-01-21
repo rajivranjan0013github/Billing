@@ -6,7 +6,7 @@ export const identifyHospital = async (req, res, next) => {
   const cookies = cookie.parse(req.headers.cookie || '');
   const hospitalId = cookies?.hospitalId;
   if (!hospitalId) {
-    return res.status(400).json({ error: 'hospital not specified' });
+    return res.status(400).json({ error: 'hospitffal not specified' });
   }
 
   try {

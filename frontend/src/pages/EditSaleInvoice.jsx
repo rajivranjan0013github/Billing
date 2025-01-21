@@ -9,7 +9,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "../components/ui/popover";
-import { CalendarIcon, ChevronLeft, Pencil, Save, FileText, Trash2 } from "lucide-react";
+import {
+  CalendarIcon,
+  ChevronLeft,
+  Pencil,
+  Save,
+  FileText,
+  Trash2,
+} from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "../lib/utils";
 import { Backend_URL, convertQuantityValue } from "../assets/Data";
@@ -34,6 +41,7 @@ export default function EditSaleInvoice() {
   const [partyName, setPartyName] = useState("");
   const [invoiceDateOpen, setInvoiceDateOpen] = useState(false);
   const [dueDateOpen, setDueDateOpen] = useState(false);
+  const [completeData, setCompleteData] = useState(null);
 
   const [formData, setFormData] = useState({
     saleType: "invoice",
@@ -52,13 +60,14 @@ export default function EditSaleInvoice() {
       try {
         setLoading(true);
         const response = await fetch(
-          `${Backend_URL}/api/purchase/invoice/${invoiceId}`,
+          `${Backend_URL}/api/sales/invoice/${invoiceId}`,
           { credentials: "include" }
         );
         if (!response.ok) {
           throw new Error("Something went wrong");
         }
         const data = await response.json();
+        setCompleteData(data);
         const {
           partyName,
           partyId,
@@ -119,16 +128,17 @@ export default function EditSaleInvoice() {
       if (products.length === 0) {
         throw new Error("Please add at least one product");
       }
-
       const formattedProducts = products.map((product) => ({
         inventoryId: product.inventoryId,
         productName: product.productName,
         batchNumber: product.batchNumber,
         batchId: product.batchId,
+        HSN: product.HSN,
         expiry: product.expiry,
         mrp: Number(product.mrp),
         quantity: Number(product.quantity),
         pack: Number(product.pack),
+        saleRate: Number(product.saleRate),
         ptr: Number(product.ptr),
         discount: Number(product.discount || 0),
         gstPer: Number(product.gstPer),
@@ -146,18 +156,57 @@ export default function EditSaleInvoice() {
         products: formattedProducts,
         withGst: formData.withGst === "yes",
         grandTotal: amountData.grandTotal,
-        gstSummary: {
+        billSummary: {
           subtotal: amountData.subtotal,
           discountAmount: amountData.discountAmount,
           taxableAmount: amountData.taxable,
           gstAmount: amountData.gstAmount,
+          totalQuantity: amountData.totalQuantity,
+          productCount: amountData.productCount,
+          grandTotal: amountData.grandTotal,
+          gstSummary: {
+            0: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
+            5: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
+            12: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
+            18: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
+            28: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
+          },
         },
         paymentStatus: "due",
         amountPaid: 0,
       };
 
+      // Calculate GST summary
+      products.forEach((product) => {
+        const quantity = Number(product.quantity || 0);
+        const pack = Number(product.pack || 1);
+        const mrp = Number(product.mrp || 0);
+        const discountPercent = Number(product.discount || 0);
+        const gstPer = Number(product.gstPer || 0);
+
+        const subtotal = (quantity * mrp) / pack;
+        const discount = (subtotal * discountPercent) / 100;
+        const taxable = ((subtotal - discount) * 100) / (100 + gstPer);
+        const gstAmount = (taxable * gstPer) / 100;
+
+        if (finalData.billSummary.gstSummary.hasOwnProperty(gstPer)) {
+          finalData.billSummary.gstSummary[gstPer].taxable += Number(
+            taxable.toFixed(2)
+          );
+          finalData.billSummary.gstSummary[gstPer].cgst += Number(
+            (gstAmount / 2).toFixed(2)
+          );
+          finalData.billSummary.gstSummary[gstPer].sgst += Number(
+            (gstAmount / 2).toFixed(2)
+          );
+          finalData.billSummary.gstSummary[gstPer].total += Number(
+            gstAmount.toFixed(2)
+          );
+        }
+      });
+
       const response = await fetch(
-        `${Backend_URL}/api/purchase/invoice/${invoiceId}`,
+        `${Backend_URL}/api/sales/invoice/${invoiceId}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -201,7 +250,6 @@ export default function EditSaleInvoice() {
       setPartySelectDialog(true);
     }
   };
-
   const handleCustomerSelect = (customer) => {
     setPartyName(customer.name);
     setFormData({
@@ -231,6 +279,13 @@ export default function EditSaleInvoice() {
               <>
                 <Button
                   className="gap-2 bg-blue-600"
+                  onClick={() => {
+                    navigate(`/sales/invoice-print`, {
+                      state: {
+                        invoiceData: completeData,
+                      },
+                    });
+                  }}
                 >
                   <FileText className="w-4 h-4" /> Show Invoice
                 </Button>
@@ -240,10 +295,8 @@ export default function EditSaleInvoice() {
                 >
                   <Pencil className="w-4 h-4" /> Edit
                 </Button>
-              
-                <Button
-                  className="gap-2 bg-rose-600"
-                >
+
+                <Button className="gap-2 bg-rose-600">
                   <Trash2 className="w-4 h-4" /> Delete
                 </Button>
               </>
@@ -467,7 +520,7 @@ export default function EditSaleInvoice() {
         </div>
         <div>
           <div className="mb-1 text-gray-400">Subtotal</div>
-          <div>₹{amountData?.subtotal}</div>
+          <div>₹{amountData?.grandTotal}</div>
         </div>
         <div>
           <div className="mb-1 text-gray-400">(-) Discount</div>

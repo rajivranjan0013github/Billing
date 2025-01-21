@@ -16,7 +16,7 @@ export const presignedUrl = async () => {
 
   const key = v4();
   const ObjectParams = {
-    Bucket: "thousandwayshospital",
+    Bucket: "thousandwayspharmacy",
     Key: key,
   };
   const expiresIn = 3600;

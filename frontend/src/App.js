@@ -1,26 +1,32 @@
 import "./App.css";
 import React, { useEffect, useState } from "react";
-import { Route, BrowserRouter as Router, Routes, Navigate } from "react-router-dom";
-import { Provider } from 'react-redux';
-import { store } from './redux/store';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchStaffMembers } from './redux/slices/staffSlice';
-import Home from './pages/Home';
-import VerticalNav from './components/custom/Navigations/VerticalNav';
-import Dashboard from './pages/Dashboard';
-import Staffs from './pages/Staffs';
-import Settings from './pages/Settings';
-import StaffProfile from './pages/StaffProfile';
-import AddStaff from './pages/AddStaff';
+import {
+  Route,
+  BrowserRouter as Router,
+  Routes,
+  Navigate,
+} from "react-router-dom";
+import { Provider } from "react-redux";
+import { store } from "./redux/store";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchStaffMembers } from "./redux/slices/staffSlice";
+import Home from "./pages/Home";
+import VerticalNav from "./components/custom/Navigations/VerticalNav";
+import Dashboard from "./pages/Dashboard";
+import Staffs from "./pages/Staffs";
+import Settings from "./pages/Settings";
+import StaffProfile from "./pages/StaffProfile";
+import AddStaff from "./pages/AddStaff";
 import { fetchUserData } from "./redux/slices/userSlice";
 import { fetchHospitalInfo } from "./redux/slices/HospitalSlice";
-import { setLoading } from './redux/slices/loaderSlice';
-import HospitalInfo from './pages/HospitalInfo';
-import AboutPage from './pages/About';
-import ContactPage from './pages/ContactUs';
-import Expenses from './pages/Expenses';
+import { setLoading } from "./redux/slices/loaderSlice";
+import HospitalInfo from "./pages/HospitalInfo";
+import AboutPage from "./pages/About";
+import ContactPage from "./pages/ContactUs";
+import Expenses from "./pages/Expenses";
 import Sales from "./pages/Sales";
 import Purchase from "./pages/Purchase";
+import PurchaseReturnList from "./pages/PurchaseReturnList";
 import Parties from "./pages/Parties";
 import CreateParty from "./pages/CreateParty";
 import CreateSellInvoice from "./pages/CreateSellInvoice";
@@ -38,6 +44,11 @@ import PaymentDetailsIn from "./pages/PaymentDetailsIn";
 import SalesReturn from "./pages/SalesReturn";
 import PurchaseReturn from "./pages/PurchaseReturn";
 import Inventory from "./pages/Inventory";
+import SalesInvoicePrint from "./pages/SalesInvoicePrint";
+import PharmacyInfo from "./pages/PharmacyInfo";
+import AccountDetails from "./pages/AccountDetails";
+import SalesReturnList from "./pages/SalesReturnList";
+import Customers from "./pages/Customers";
 
 const AppContent = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -53,7 +64,7 @@ const AppContent = () => {
         if (isAuthenticated) {
           return Promise.all([
             dispatch(fetchStaffMembers()),
-            dispatch(fetchHospitalInfo())
+            dispatch(fetchHospitalInfo()),
           ]);
         }
       })
@@ -61,7 +72,7 @@ const AppContent = () => {
         dispatch(setLoading(false));
         setIsInitializing(false);
       });
-  }, [dispatch,isAuthenticated]);
+  }, [dispatch, isAuthenticated]);
 
   if (isInitializing) {
     return (
@@ -79,46 +90,93 @@ const AppContent = () => {
     <div className="flex relative">
       {isLoading && <div className="youtube-loader"></div>}
       {isAuthenticated && (
-        <VerticalNav isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+        <VerticalNav
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
+        />
       )}
       <main
         className={`${
           isAuthenticated ? (isCollapsed ? "md:ml-16" : "md:ml-56") : ""
-        } flex-1 px-0 sm:px-4 w-full h-screen overflow-y-auto bg-gray-50 transition-all duration-300`}
+        } flex-1 px-0 sm:px-4 w-full h-screen overflow-y-auto transition-all duration-300`}
       >
         <Routes>
-          <Route path="/" element={isAuthenticated ? <Dashboard /> : <Home />} />
+          <Route
+            path="/"
+            element={isAuthenticated ? <Dashboard /> : <Home />}
+          />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
 
           {isAuthenticated && (
             <>
               <Route path="/staff" element={<Staffs />} />
+              <Route path="/accounts" element={<AccountDetails />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/staff/:staffId" element={<StaffProfile />} />
               <Route path="/addstaff" element={<AddStaff />} />
               <Route path="/editstaff/:staffId" element={<AddStaff />} />
-              <Route path="/settings/hospital-info" element={<HospitalInfo />} />
+              <Route
+                path="/settings/hospital-info"
+                element={<HospitalInfo />}
+              />
               <Route path="/expenses" element={<Expenses />} />
               <Route path="/sales" element={<Sales />} />
               <Route path="/purchase" element={<Purchase />} />
               <Route path="/items-master" element={<Inventory />} />
               <Route path="/parties" element={<Parties />} />
+              <Route path="/customers" element={<Customers />} />
               <Route path="/parties/create-party" element={<CreateParty />} />
-              <Route path="/sales/create-sell-invoice" element={<CreateSellInvoice />} />
-              <Route path="/sales/:billId" element={<ViewSalesBill />} />
-              <Route path="/purchase/create-purchase-invoice" element={<CreatePurchaseInvoice />} />
-              <Route path="/purchase/:invoiceId" element={<EditPurchaseInvoice />} />
+              <Route
+                path="/sales/create-sell-invoice"
+                element={<CreateSellInvoice />}
+              />
+              {/* <Route path="/sales/:billId" element={<ViewSalesBill />} /> */}
+              <Route
+                path="/purchase/create-purchase-invoice"
+                element={<CreatePurchaseInvoice />}
+              />
+              <Route
+                path="/purchase/:invoiceId"
+                element={<EditPurchaseInvoice />}
+              />
               <Route path="/sale/:invoiceId" element={<EditSaleInvoice />} />
-              <Route path="/party-details/:partyId" element={<PartyDetails />} />
+              <Route
+                path="/party-details/:partyId"
+                element={<PartyDetails />}
+              />
               <Route path="/purchase/payment-out" element={<PaymentOut />} />
-              <Route path="/purchase/payment-out/:paymentId" element={<PaymentDetails />} />
-              <Route path="/purchase/create-payment-out" element={<CreatePaymentOut />} />
+              <Route
+                path="/purchase/payment-out/:paymentId"
+                element={<PaymentDetails />}
+              />
+              <Route
+                path="/purchase/create-payment-out"
+                element={<CreatePaymentOut />}
+              />
               <Route path="/sales/payment-in" element={<PaymentIn />} />
-              <Route path="/sales/create-payment-in" element={<CreatePaymentIn />} />
-              <Route path="/sales/payment-in/:paymentId" element={<PaymentDetailsIn />} />
+              <Route
+                path="/sales/create-payment-in"
+                element={<CreatePaymentIn />}
+              />
+              <Route
+                path="/sales/payment-in/:paymentId"
+                element={<PaymentDetailsIn />}
+              />
               <Route path="/sales/return" element={<SalesReturn />} />
-              <Route path="/purchase/return" element={<PurchaseReturn />} />
+              <Route path="/sales/return/list" element={<SalesReturnList />} />
+              <Route
+                path="/purchase/return/list"
+                element={<PurchaseReturnList />}
+              />
+              <Route
+                path="/purchase/return/create"
+                element={<PurchaseReturn />}
+              />
+              <Route
+                path="/sales/invoice-print"
+                element={<SalesInvoicePrint />}
+              />
             </>
           )}
         </Routes>

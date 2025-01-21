@@ -1,152 +1,173 @@
-import mongoose from 'mongoose';
-import { hospitalPlugin } from '../plugins/hospitalPlugin.js';
-
-const salesBillSchema = new mongoose.Schema({
-  // Bill Details
-  bill_number: {
-    type: String,
-    unique: true
-  },
-  invoice_counter: {
-    type: Number
-  },
-  bill_date: {
-    type: Date,
-    required: true,
-    default: Date.now
-  },
-
-  // Party/Customer Details
-  party: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Party',
-    required: function() {
-      return !this.is_cash_customer;
-    }
-  },
-  is_cash_customer: {
-    type: Boolean,
-    default: true
-  },
-
-  partyName:String,
-
-  // Items
-  items: [{
-    item: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Inventory',
-      required: true
-    },
-    batchNumber: String,
-    expiry_date: Date,
-    quantity: {
-      type: Number,
-      required: true
-    },
-    unit: String,
-    price_per_unit: {
-      type: Number,
-      required: true
-    },
-    secondary_unit: {
-      unit: String,
-      conversion_rate: Number,
-    },
-    discount_percentage: {
-      type: Number,
-      default: 0
-    },
-    gstPer: {
-      type: Number,
-      default: 0
-    },
-    HSN: String
-  }],
-
-  // Bill Level Discount
-  bill_discount: {
+import mongoose from "mongoose";
+import { hospitalPlugin } from "../plugins/hospitalPlugin.js";
+const SalesBillCounterSchema = new mongoose.Schema({
+  year: {
     type: Number,
-    default: 0
   },
-
-  // Payment Details
-  payment: {
-    amount_paid: {
-      type: Number,
-      required: true
-    },
-    payment_method: {
+  invoice_number: {
+    type: Number,
+    default: 0,
+  },
+});
+const SalesBillCounter = mongoose.model(
+  "SalesBillCounter",
+  SalesBillCounterSchema
+);
+const salesBillSchema = new mongoose.Schema(
+  {
+    saleType: {
       type: String,
-      enum: ['cash', 'upi', 'card', 'bank_transfer'],
-      required: true
-    }
+      enum: ["invoice", "deliveryChallan", "Quotation"],
+      required: true,
+    },
+
+    invoiceNumber: {
+      type: String,
+      required: true,
+    },
+    partyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Customer",
+      required: function () {
+        return !this.is_cash_customer;
+      },
+    },
+    is_cash_customer: {
+      type: Boolean,
+      default: true,
+    },
+    partyName: String,
+    mob: String,
+    invoiceDate: {
+      type: Date,
+      default: Date.now,
+    },
+    paymentDueDate: Date,
+    products: [
+      {
+        inventoryId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Inventory",
+        },
+        productName: String,
+        batchNumber: String,
+        batchId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "InventoryBatch",
+        },
+        expiry: String,
+        HSN: String,
+        mrp: Number,
+        quantity: Number,
+        pack: Number,
+        purchaseRate: Number,
+        saleRate: Number,
+        discount: Number,
+        gstPer: Number,
+        amount: Number,
+      },
+    ],
+    grandTotal: Number,
+    withGst: {
+      type: Boolean,
+      default: true,
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["paid", "due"],
+      required: true,
+    },
+    amountPaid: {
+      type: Number,
+      default: 0,
+    },
+    payments: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Payment",
+      },
+    ],
+    status: {
+      type: String,
+      enum: ["active", "cancelled", "returned"],
+      default: "active",
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Staff",
+    },
+    billSummary: {
+      subtotal: { type: Number, required: true },
+      discountAmount: { type: Number, required: true },
+      taxableAmount: { type: Number, required: true },
+      gstAmount: { type: Number, required: true },
+      gstSummary: {
+        0: {
+          taxable: Number,
+          cgst: Number,
+          sgst: Number,
+          igst: Number,
+          total: Number,
+        },
+        5: {
+          taxable: Number,
+          cgst: Number,
+          sgst: Number,
+          igst: Number,
+          total: Number,
+        },
+        12: {
+          taxable: Number,
+          cgst: Number,
+          sgst: Number,
+          igst: Number,
+          total: Number,
+        },
+        18: {
+          taxable: Number,
+          cgst: Number,
+          sgst: Number,
+          igst: Number,
+          total: Number,
+        },
+        28: {
+          taxable: Number,
+          cgst: Number,
+          sgst: Number,
+          igst: Number,
+          total: Number,
+        },
+      },
+      totalQuantity: { type: Number, required: true },
+      productCount: { type: Number, required: true },
+      grandTotal: { type: Number, required: true },
+    },
   },
-
-  payment_status: {
-    type: String,
-    enum: ['pending', 'paid'],
-    default: 'pending'
-  },
-
-  payment_details: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Payment',
-  }],
-
-  is_round_off: {
-    type: Boolean,
-    default: false
-  },
-
-  // Final Amount
-  grand_total: {type: Number, required: true},
-  tax_summary: {type: Object},
-
-  // Metadata
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Staff',
-    required: true
-  },
-  status: {
-    type: String,
-    enum: ['draft', 'final', 'cancelled'],
-    default: 'final'
+  {
+    timestamps: true,
   }
-}, {
-  timestamps: true // This will add created_at and updated_at fields
-});
-
-// Update the pre-save middleware
-salesBillSchema.pre('save', async function(next) {
-  try {
-    if (this.isNew) {
-      // Find the latest counter for this hospital
-      const lastBill = await this.constructor.findOne(
-        { hospital: this.hospital },
-        { invoice_counter: 1 }
-      ).sort({ createdAt: -1 });
-
-      // Set the counter
-      const counter = lastBill ? lastBill.invoice_counter + 1 : 1;
-      this.invoice_counter = counter;
-
-      // Generate bill number format: INV/FY/COUNTER
-      const today = new Date();
-      const fiscalYear = today.getMonth() >= 3 ? 
-        `${today.getFullYear()}-${(today.getFullYear() + 1).toString().slice(2)}` : 
-        `${today.getFullYear() - 1}-${today.getFullYear().toString().slice(2)}`;
-      
-      this.bill_number = `INV/${fiscalYear}/${counter.toString().padStart(6, '0')}`;
-    }
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
+);
+salesBillSchema.statics.getNextInvoiceNumber = async function (session) {
+  const currentYear = new Date().getFullYear();
+  const yearSuffix = currentYear.toString().slice(-2);
+  const counter = await SalesBillCounter.findOneAndUpdate(
+    { year: currentYear },
+    { $inc: { invoice_number: 1 } },
+    { upsert: true, new: true, setDefaultsOnInsert: true, session }
+  );
+  return `INV/${yearSuffix}/${counter.invoice_number}`;
+};
+salesBillSchema.statics.getCurrentInvoiceNumber = async function (session) {
+  const currentYear = new Date().getFullYear();
+  const yearSuffix = currentYear.toString().slice(-2);
+  const counter = await SalesBillCounter.findOneAndUpdate(
+    { year: currentYear },
+    {},
+    { upsert: true, new: true, setDefaultsOnInsert: true, session }
+  );
+  return `INV/${yearSuffix}/${counter.invoice_number + 1}`;
+};
 // Apply hospital plugin
 salesBillSchema.plugin(hospitalPlugin);
 
-export const SalesBill = mongoose.model('SalesBill', salesBillSchema);
+export const SalesBill = mongoose.model("SalesBill", salesBillSchema);

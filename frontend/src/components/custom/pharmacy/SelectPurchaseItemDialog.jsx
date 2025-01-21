@@ -1,9 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter} from "../../ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../../ui/dialog";
 import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
 import { Search } from "lucide-react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "../../ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../ui/table";
 import { Separator } from "../../ui/separator";
 import { Checkbox } from "../../ui/checkbox";
 import { useDispatch, useSelector } from "react-redux";
@@ -14,7 +27,7 @@ import { calculateQuantityValue } from "../../../assets/utils";
 
 const SelectPurchaseItemDialog = ({ open, onOpenChange, onSelectItem }) => {
   const dispatch = useDispatch();
-  const { items, itemsStatus } = useSelector((state) => state.inventory);  
+  const { items, itemsStatus } = useSelector((state) => state.inventory);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredItems, setFilteredItems] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
@@ -39,52 +52,58 @@ const SelectPurchaseItemDialog = ({ open, onOpenChange, onSelectItem }) => {
     setSelectedItems((prev) => {
       const isSelected = prev.find((i) => i._id === item._id);
       if (isSelected) {
-        setQuantities(prevQuantities => {
+        setQuantities((prevQuantities) => {
           const { [item._id]: removed, ...rest } = prevQuantities;
           return rest;
         });
         return prev.filter((i) => i._id !== item._id);
       }
-      setQuantities(prev => ({
+      setQuantities((prev) => ({
         ...prev,
-        [item._id]: ''
+        [item._id]: "",
       }));
       return [...prev, item];
     });
   };
 
   const handleQuantityChange = (inventoryId, value) => {
-    setQuantities(prev => ({
+    setQuantities((prev) => ({
       ...prev,
-      [inventoryId]: value
+      [inventoryId]: value,
     }));
   };
 
   const handleDone = () => {
-    const itemsWithQuantities = selectedItems.map(item => ({
+    const itemsWithQuantities = selectedItems.map((item) => ({
       ...item,
-      qty: quantities[item._id]?.toString() || "1"
+      qty: quantities[item._id]?.toString() || "1",
     }));
-    
+
     onSelectItem(itemsWithQuantities);
     setSelectedItems([]);
     setQuantities({});
     onOpenChange(false);
   };
 
-  const calculateTotalAmount = () => 
+  const calculateTotalAmount = () =>
     selectedItems.reduce((total, item) => {
       let value = 0;
       let price = item.purchase_info?.price_per_unit || 0;
-      if(quantities[item._id]){
-        value = calculateQuantityValue(quantities[item._id], item?.secondary_unit?.conversion_rate) * price;
+      if (quantities[item._id]) {
+        value =
+          calculateQuantityValue(
+            quantities[item._id],
+            item?.secondary_unit?.conversion_rate
+          ) * price;
       }
       return total + value;
     }, 0);
 
-  const getDisplayItems = () => 
-    showSelectedOnly 
-      ? filteredItems.filter(item => selectedItems.some(selected => selected._id === item._id))
+  const getDisplayItems = () =>
+    showSelectedOnly
+      ? filteredItems.filter((item) =>
+          selectedItems.some((selected) => selected._id === item._id)
+        )
       : filteredItems;
 
   return (
@@ -94,7 +113,7 @@ const SelectPurchaseItemDialog = ({ open, onOpenChange, onSelectItem }) => {
           <DialogTitle>Select Items for Purchase</DialogTitle>
         </DialogHeader>
         <Separator />
-        
+
         <div className="px-4 flex-grow overflow-y-auto space-y-4">
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
@@ -106,7 +125,13 @@ const SelectPurchaseItemDialog = ({ open, onOpenChange, onSelectItem }) => {
                 className="pl-8"
               />
             </div>
-            <Button size="sm"className="shrink-0"onClick={() => setShowAddItemDialog(true)}>Create New Item</Button>
+            <Button
+              size="sm"
+              className="shrink-0"
+              onClick={() => setShowAddItemDialog(true)}
+            >
+              Create New Item
+            </Button>
           </div>
 
           <div className="rounded-md border">
@@ -128,8 +153,8 @@ const SelectPurchaseItemDialog = ({ open, onOpenChange, onSelectItem }) => {
                     <TableCell colSpan={7} className="text-center py-8">
                       <div className="flex flex-col items-center gap-2">
                         <p className="text-gray-500">No items found</p>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           onClick={() => setShowAddItemDialog(true)}
                         >
                           Create New Item
@@ -139,39 +164,60 @@ const SelectPurchaseItemDialog = ({ open, onOpenChange, onSelectItem }) => {
                   </TableRow>
                 ) : (
                   getDisplayItems().map((item) => {
-                    const isSelected = selectedItems.some((i) => i._id === item._id);
-                    const purchasePrice = item.purchase_info?.price_per_unit || 0;
-                    const taxIncluded = item.purchase_info?.is_tax_included || false;
-                    
+                    const isSelected = selectedItems.some(
+                      (i) => i._id === item._id
+                    );
+                    const purchasePrice =
+                      item.purchase_info?.price_per_unit || 0;
+                    const taxIncluded =
+                      item.purchase_info?.is_tax_included || false;
+
                     return (
-                      <TableRow   key={item._id}  className="cursor-pointer hover:bg-gray-50"  onClick={() => handleItemSelect(item)}>
+                      <TableRow
+                        key={item._id}
+                        className="cursor-pointer hover:bg-gray-50"
+                        onClick={() => handleItemSelect(item)}
+                      >
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={() => handleItemSelect(item)}
                           />
                         </TableCell>
-                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell className="font-medium">
+                          {item.name}
+                        </TableCell>
                         <TableCell>{item?.manufacturer_name || "_"}</TableCell>
                         <TableCell>{item?.pack || "_"}</TableCell>
-                        <TableCell>₹{purchasePrice} {taxIncluded ? "(GST Incl.)" : ""}</TableCell>
-                        <TableCell>{formatQuantityDisplay(item.quantity, item.unit, item?.secondary_unit, true)}</TableCell>
+                        <TableCell>
+                          ₹{purchasePrice} {taxIncluded ? "(GST Incl.)" : ""}
+                        </TableCell>
+                        <TableCell>
+                          {formatQuantityDisplay(
+                            item.quantity,
+                            item.unit,
+                            item?.secondary_unit,
+                            true
+                          )}
+                        </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           {isSelected ? (
-                           <div className="flex items-center gap-2">
-                             <Input
-                              type="text"
-                              value={quantities[item._id] || ""}
-                              onChange={(e) => handleQuantityChange(item._id, e.target.value)}
-                              className="w-20 text-center"
-                              min="1"
-                              step="1"
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                            <p>{item.unit}</p>
-                           </div>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="text"
+                                value={quantities[item._id] || ""}
+                                onChange={(e) =>
+                                  handleQuantityChange(item._id, e.target.value)
+                                }
+                                className="w-20 text-center"
+                                min="1"
+                                step="1"
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                              <p>{item.unit}</p>
+                            </div>
                           ) : (
-                            <Button 
+                            <Button
                               size="sm"
                               variant="outline"
                               className="h-8"
@@ -197,33 +243,33 @@ const SelectPurchaseItemDialog = ({ open, onOpenChange, onSelectItem }) => {
         <DialogFooter className="px-4 py-2 shrink-0">
           <div className="flex justify-between w-full">
             <div className="space-y-1">
-              <div 
+              <div
                 className="text-sm text-blue-600 cursor-pointer hover:text-blue-700"
                 onClick={() => setShowSelectedOnly(!showSelectedOnly)}
               >
-                {showSelectedOnly 
-                  ? "View all items" 
-                  : `Show ${selectedItems.length} items selected`
-                }
+                {showSelectedOnly
+                  ? "View all items"
+                  : `Show ${selectedItems.length} items selected`}
               </div>
               {selectedItems.length > 0 && (
                 <div className="text-sm font-medium">
-                  Total Amount: ₹{calculateTotalAmount().toLocaleString('en-IN', {
+                  Total Amount: ₹
+                  {calculateTotalAmount().toLocaleString("en-IN", {
                     minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
+                    maximumFractionDigits: 2,
                   })}
                 </div>
               )}
             </div>
             <div className="space-x-2">
-              <Button 
-                size="sm" 
-                variant="outline" 
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => onOpenChange(false)}
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 size="sm"
                 onClick={handleDone}
                 disabled={selectedItems.length === 0}
@@ -235,12 +281,12 @@ const SelectPurchaseItemDialog = ({ open, onOpenChange, onSelectItem }) => {
         </DialogFooter>
       </DialogContent>
 
-      <AddItemDialog 
-        isOpen={showAddItemDialog} 
-        onClose={() => setShowAddItemDialog(false)} 
+      <AddItemDialog
+        isOpen={showAddItemDialog}
+        onClose={() => setShowAddItemDialog(false)}
       />
     </Dialog>
   );
 };
 
-export default SelectPurchaseItemDialog; 
+export default SelectPurchaseItemDialog;

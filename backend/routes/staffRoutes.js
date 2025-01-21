@@ -10,7 +10,6 @@ const router = express.Router();
 router.post('/', verifyToken, checkPermission('write:all'), async (req, res) => {
   try {
     const staffData = { ...req.body };
-    console.log(staffData);
 
     // Hash password if provided
     if (staffData.password) {

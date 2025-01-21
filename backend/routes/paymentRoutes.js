@@ -50,7 +50,6 @@ router.get("/pending-invoices/:partyId", async (req, res) => {
     res.status(200).json(pendingInvoices);
   } catch (error) {
     await session.abortTransaction();
-    console.log('error', error);
     res.status(500).json({ message: "Error fetching pending invoices", error: error.message });
   } finally {
     session.endSession();

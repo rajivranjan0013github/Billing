@@ -41,15 +41,11 @@ const HospitalInfo = () => {
     contactNumber: "",
     email: "",
     website: "",
-    doctorName: "",
-    doctorInfo: "",
     hospitalId: "",
-    pharmacyName: "",
-    pharmacyAddress: "",
-    pharmacyContactNumber: "",
-    pharmacyLogo: "",
-    pharmacyExpiryThreshold: "",
-    pharmacyItemCategories: [],
+    gstNumber: "",
+    drugLicenceNumber: "",
+    itemExpiryThreshold: 3,
+    itemCategories: [],
   });
 
   const [newCategory, setNewCategory] = useState("");
@@ -68,6 +64,7 @@ const HospitalInfo = () => {
         ...prevData,
         ...hospitalInfo,
       }));
+      setLogoPreview(null);
     }
   }, [hospitalInfo]);
   const handleChange = (e) => {
@@ -215,9 +212,12 @@ const HospitalInfo = () => {
               <span className="hidden sm:inline">Hospital Information</span>
               <span className="sm:hidden">Hospital</span>
             </TabsTrigger>
-            <TabsTrigger value="pharmacy" className="text-sm font-medium">
-              <span className="hidden sm:inline">Pharmacy Information</span>
-              <span className="sm:hidden">Pharmacy</span>
+            <TabsTrigger
+              value="hospitalSetting"
+              className="text-sm font-medium"
+            >
+              <span className="hidden sm:inline">Detailed Setting</span>
+              <span className="sm:hidden">Detailed Setting</span>
             </TabsTrigger>
           </TabsList>
 
@@ -261,15 +261,15 @@ const HospitalInfo = () => {
                   onChange={handleChange}
                 />
                 <InputField
-                  label="Doctor Name"
-                  name="doctorName"
-                  value={formData.doctorName}
+                  label="GST Number"
+                  name="gstNumber"
+                  value={formData.gstNumber}
                   onChange={handleChange}
                 />
-                <TextareaField
-                  label="Doctor Information"
-                  name="doctorInfo"
-                  value={formData.doctorInfo}
+                <InputField
+                  label="Drug Licence Number"
+                  name="drugLicenceNumber"
+                  value={formData.drugLicenceNumber}
                   onChange={handleChange}
                 />
                 <TextareaField
@@ -290,10 +290,22 @@ const HospitalInfo = () => {
                     onClick={triggerLogoUpload}
                   >
                     <div className="text-center">
-                      {logoPreview || formData.logo ? (
+                      {logoPreview ? (
                         <img
-                          src={logoPreview || formData.logo}
+                          src={logoPreview}
                           alt="Logo Preview"
+                          className="mx-auto h-32 w-32 object-cover"
+                        />
+                      ) : hospitalInfo?.logoUsable ? (
+                        <img
+                          src={hospitalInfo.logoUsable}
+                          alt="Hospital Logo"
+                          className="mx-auto h-32 w-32 object-cover"
+                        />
+                      ) : formData.logo ? (
+                        <img
+                          src={formData.logo}
+                          alt="Hospital Logo"
                           className="mx-auto h-32 w-32 object-cover"
                         />
                       ) : (
@@ -332,55 +344,7 @@ const HospitalInfo = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="pharmacy">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <InputField
-                  label="Pharmacy Name"
-                  name="pharmacyName"
-                  value={formData.pharmacyName}
-                  onChange={handleChange}
-                />
-                <InputField
-                  label="Pharmacy Contact Number"
-                  name="pharmacyContactNumber"
-                  value={formData.pharmacyContactNumber}
-                  onChange={handleChange}
-                />
-                <InputField
-                  label="Pharmacy Logo URL"
-                  name="pharmacyLogo"
-                  value={formData.pharmacyLogo}
-                  onChange={handleChange}
-                />
-                <TextareaField
-                  label="Pharmacy Address"
-                  name="pharmacyAddress"
-                  value={formData.pharmacyAddress}
-                  onChange={handleChange}
-                />
-                <InputField
-                  label="Item Expiry Threshold (months)"
-                  name="pharmacyExpiryThreshold"
-                  type="number"
-                  value={formData.pharmacyExpiryThreshold}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="col-span-1">
-                <CategoryField
-                  label="Pharmacy Item Categories"
-                  categories={formData.pharmacyItemCategories}
-                  newCategory={newCategory}
-                  setNewCategory={setNewCategory}
-                  onAdd={() => handleAddCategory("pharmacyItemCategories")}
-                  onRemove={(index) =>
-                    handleRemoveCategory("pharmacyItemCategories", index)
-                  }
-                />
-              </div>
-            </div>
-          </TabsContent>
+          <TabsContent value="hospitalSetting"></TabsContent>
         </Tabs>
       </CardContent>
     </Card>

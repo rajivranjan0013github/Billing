@@ -14,6 +14,7 @@ import {
   LogOut,
   Users,
   ChevronRight,
+  Wallet,
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Button } from "../../ui/button";
@@ -40,21 +41,26 @@ import { useToast } from "../../../hooks/use-toast";
 export const navItems = [
   { name: "Dashboard", icon: Home, path: "/" },
   { name: "Parties", icon: Users, path: "/parties" },
+  { name: "Customers", icon: Users, path: "/customers" },
+  { name: "Accounts", icon: Wallet, path: "/accounts" },
   { name: "Expenses", icon: IndianRupee, path: "/expenses" },
-  { name: "Sales", icon: ShoppingCart, path: "/sales",
+  {
+    name: "Sales",
+    icon: ShoppingCart,
+    path: "/sales",
     submenu: [
       { name: "Sales List", path: "/sales" },
-      { name: "Sales Return", path: "/sales/return" },
+      { name: "Sales Return", path: "/sales/return/list" },
       { name: "Payment In", path: "/sales/payment-in" },
     ],
-   },
+  },
   {
     name: "Purchase",
     icon: Truck,
     path: "/purchase",
     submenu: [
       { name: "Purchase List", path: "/purchase" },
-      { name: "Purchase Return", path: "/purchase/return" },
+      { name: "Purchase Return", path: "/purchase/return/list" },
       { name: "Payment Out", path: "/purchase/payment-out" },
     ],
   },
@@ -109,12 +115,14 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
     if (itemPath === "/") {
       return location.pathname === "/";
     }
-    
+
     // If this is a parent menu with submenu
     if (submenuPaths.length > 0) {
-      return submenuPaths.some(subPath => location.pathname.startsWith(subPath));
+      return submenuPaths.some((subPath) =>
+        location.pathname.startsWith(subPath)
+      );
     }
-    
+
     // For regular menu items and submenu items
     return location.pathname === itemPath;
   };
@@ -122,8 +130,8 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
   const handleLogout = async () => {
     try {
       const response = await fetch(`${Backend_URL}/api/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
+        method: "POST",
+        credentials: "include",
       });
 
       if (response.ok) {
@@ -136,7 +144,7 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
           variant: "success",
         });
         // Redirect to login page
-        navigate('/');
+        navigate("/");
       } else {
         // Show error toast
         toast({
@@ -182,7 +190,9 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
         {!isCollapsed && (
           <div className="flex items-center">
             <ColorfulLogo className="h-6 w-6" />
-            <span className="ml-2 text-lg font-bold text-gray-800">The Invoice</span>
+            <span className="ml-2 text-lg font-bold text-gray-800">
+              The Invoice
+            </span>
           </div>
         )}
       </div>
@@ -201,7 +211,7 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
                         "w-full justify-start",
                         isActive(
                           item.path,
-                          item.submenu?.map(sub => sub.path) || []
+                          item.submenu?.map((sub) => sub.path) || []
                         )
                           ? "bg-blue-100 text-blue-900"
                           : "text-gray-600 hover:bg-blue-50 hover:text-blue-900",
@@ -240,13 +250,15 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
                   )}
                 </Tooltip>
               </TooltipProvider>
-              
+
               {/* Submenu items - Updated with animation */}
               {!isCollapsed && item.submenu && (
                 <div
                   className={cn(
                     "overflow-hidden transition-all duration-300 ease-in-out",
-                    expandedItems.includes(item.name) ? "max-h-[500px]" : "max-h-0"
+                    expandedItems.includes(item.name)
+                      ? "max-h-[500px]"
+                      : "max-h-0"
                   )}
                 >
                   <ul className="ml-6 mt-1 space-y-1">
@@ -278,9 +290,15 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
       <div className="p-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="w-full flex items-center justify-start">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full flex items-center justify-start"
+            >
               <Avatar className="h-6 w-6 mr-2">
-                <AvatarFallback>{(user?.name?.charAt(0))?.toUpperCase()}</AvatarFallback>
+                <AvatarFallback>
+                  {user?.name?.charAt(0)?.toUpperCase()}
+                </AvatarFallback>
               </Avatar>
               {!isCollapsed && (
                 <>
@@ -293,8 +311,16 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => navigate(`/staff/${user?._id}`, { state: { staffData: user } })}>Profile</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate("/settings")}>Settings</DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() =>
+                navigate(`/staff/${user?._id}`, { state: { staffData: user } })
+              }
+            >
+              Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => navigate("/settings")}>
+              Settings
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />

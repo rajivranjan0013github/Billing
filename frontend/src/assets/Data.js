@@ -7,20 +7,16 @@ import {
 } from "../components/ui/popover";
 import { Calendar } from "../components/ui/calendar";
 import { CalendarIcon } from "@radix-ui/react-icons";
-import {
-  format,
-  subMonths,
-  isBefore,
-} from "date-fns";
+import { format, subMonths, isBefore } from "date-fns";
 import { cn } from "../lib/utils";
 
 // backend url
-export const Backend_URL = "http://localhost:3000";
+export const Backend_URL = "https://thebilling.in";
 
 export const formatDate = (dateString) => {
   if (!dateString) return "N/A";
   const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", { 
+  return date.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -144,7 +140,6 @@ export const calculatePercentageChange = (current, previous) => {
   return Number(change.toFixed(2)); // Round to 2 decimal places
 };
 
-
 export const convertTo12Hour = (time24) => {
   const [hours, minutes] = time24.split(":");
   let hour = parseInt(hours, 10);
@@ -247,29 +242,107 @@ export function numberToWords(number) {
   return words.trim();
 }
 
-export const s3Domain="https://thousandwayshospital.s3.ap-south-1.amazonaws.com"
+export const s3Domain =
+  "https://thousandwayspharmacy.s3.ap-south-1.amazonaws.com";
 
 export const convertToFraction = (num) => {
   const value = Number(num);
   const ans = Math.round(value * 100) / 100;
   return ans;
-}
+};
 
-export const convertQuantity = (qty, pack=1) => {
-  if(!qty) return '-'
-  const packs = Math.floor(Number(qty)/Number(pack));
-  const loose = qty%Number(pack);
-  if(loose) {
-      return `${packs} packs, ${loose} units`
-  } 
-  return `${packs} packs`
-}
+export const convertQuantity = (qty, pack = 1) => {
+  if (!qty) return "-";
+  const packs = Math.floor(Number(qty) / Number(pack));
+  const loose = qty % Number(pack);
+  if (loose) {
+    return `${packs} packs, ${loose} units`;
+  }
+  return `${packs} packs`;
+};
 
-export const convertQuantityValue = (qty, pack=1) => {
-  if(!qty) return 0;
-  const packs = Math.floor(Number(qty)/Number(pack));
-  const loose = qty%Number(pack);
-  console.log(packs, loose);
-  
-  return {packs, loose};
-} 
+export const convertQuantityValue = (qty, pack = 1) => {
+  if (!qty) return 0;
+  const packs = Math.floor(Number(qty) / Number(pack));
+  const loose = qty % Number(pack);
+
+  return { packs, loose };
+};
+
+export const MEDICINE_FORMS = [
+  {
+    medicine_form: "Tablet",
+    short_medicine_form: "Tab",
+    form_primary_pack: 10,
+  },
+  {
+    medicine_form: "Syrup",
+    short_medicine_form: null,
+    form_primary_pack: 1,
+  },
+  {
+    medicine_form: "Capsule",
+    short_medicine_form: "Cap",
+    form_primary_pack: 10,
+  },
+  {
+    medicine_form: "Injection",
+    short_medicine_form: null,
+    form_primary_pack: 1,
+  },
+  {
+    medicine_form: "Cream",
+    short_medicine_form: null,
+    form_primary_pack: 1,
+  },
+  {
+    medicine_form: "Drops",
+    short_medicine_form: "Drop",
+    form_primary_pack: 1,
+  },
+  {
+    medicine_form: "Powder",
+    short_medicine_form: null,
+    form_primary_pack: 1,
+  },
+  {
+    medicine_form: "Paint",
+    short_medicine_form: null,
+    form_primary_pack: 1,
+  },
+  {
+    medicine_form: "Gel",
+    short_medicine_form: null,
+    form_primary_pack: 1,
+  },
+  {
+    medicine_form: "Suspension",
+    short_medicine_form: "Susp",
+    form_primary_pack: 1,
+  },
+  {
+    medicine_form: "Liquid",
+    short_medicine_form: null,
+    form_primary_pack: 1,
+  },
+  {
+    medicine_form: "Lotion",
+    short_medicine_form: null,
+    form_primary_pack: 1,
+  },
+  {
+    medicine_form: "Ointment",
+    short_medicine_form: "Oint",
+    form_primary_pack: 1,
+  },
+  {
+    medicine_form: "Oil",
+    short_medicine_form: null,
+    form_primary_pack: 1,
+  },
+  {
+    medicine_form: "Solution",
+    short_medicine_form: "Sol",
+    form_primary_pack: 1,
+  },
+];

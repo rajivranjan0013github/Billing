@@ -53,7 +53,6 @@ export default function Component() {
       // console.log('data', data);
       setPendingInvoices(data);
     } catch (error) {
-      console.log(error);
     } finally {
       setIsLoadingBills(false);
     }

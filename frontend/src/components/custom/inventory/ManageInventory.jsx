@@ -14,7 +14,7 @@ import {
 } from "../../ui/select";
 import ProductSelector from "./SelectInventoryItem";
 import { Backend_URL } from "../../../assets/Data";
-import {fetchItems} from '../../../redux/slices/inventorySlice'
+import { fetchItems } from "../../../redux/slices/inventorySlice";
 
 const INITIAL_FORM_DATA = {
   inventoryId: "",
@@ -29,7 +29,7 @@ const INITIAL_FORM_DATA = {
   ptr: "",
   pack: "",
   packs: "",
-  loose:""
+  loose: "",
 };
 
 export default function ManageInventory({
@@ -46,7 +46,6 @@ export default function ManageInventory({
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
-  // creating new batch
   useEffect(() => {
     if (inventoryDetails && open) {
       setFormData({ ...formData, inventoryId: inventoryDetails._id });
@@ -74,8 +73,10 @@ export default function ManageInventory({
         purchaseGstType: "Excl gst",
         ptr: batchDetails.ptr,
         pack: batchDetails.pack,
-        packs: Math.floor(Number(batchDetails.quantity)/Number(batchDetails.pack|| 1)),
-        loose : Number(batchDetails.quantity) % Number(batchDetails.pack || 1)
+        packs: Math.floor(
+          Number(batchDetails.quantity) / Number(batchDetails.pack || 1)
+        ),
+        loose: Number(batchDetails.quantity) % Number(batchDetails.pack || 1),
       });
       // Set product name if inventoryDetails is available
       if (inventoryDetails) {
@@ -115,7 +116,8 @@ export default function ManageInventory({
         ? formData.purchaseRate
         : formData.purchaseRate / (1 + formData.gstPer / 100);
 
-    const quantity = Number(formData.packs) * Number(formData.pack) + Number(formData.loose);
+    const quantity =
+      Number(formData.packs) * Number(formData.pack) + Number(formData.loose);
     const finalFormData = {
       inventoryId: formData.inventoryId,
       batchNumber: formData.batchNumber,
@@ -126,14 +128,14 @@ export default function ManageInventory({
       purchaseRate: Number(parseFloat(purchaseRate).toFixed(2)),
       ptr: Number(parseFloat(formData.ptr).toFixed(2)),
       pack: parseInt(formData.pack),
-      quantity
+      quantity,
     };
 
     // Add batch ID if editing existing batch
     if (batchDetails?._id) {
       finalFormData._id = batchDetails._id;
     }
-    
+
     setIsLoading(true);
     try {
       const response = await fetch(
@@ -150,7 +152,9 @@ export default function ManageInventory({
         return;
       }
       const data = await response.json();
-      setItemDetails(data); // here batch are fetching from the server
+      if (setItemDetails) {
+        setItemDetails(); // Just trigger the callback without passing data
+      }
       dispatch(fetchItems());
       onOpenChange(false);
       toast({ title: "Batch Added", variant: "success" });

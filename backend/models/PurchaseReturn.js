@@ -1,149 +1,184 @@
-import mongoose from 'mongoose';
-import { hospitalPlugin } from '../plugins/hospitalPlugin.js';
+import mongoose from "mongoose";
+import { hospitalPlugin } from "../plugins/hospitalPlugin.js";
+const debitNoteNumber = new mongoose.Schema({
 
-const purchaseReturnSchema = new mongoose.Schema({
-  // Return Details
-  bill_number: {
-    type: String,
-    required: true,
-  },
-  invoice_counter: {
-    type: Number,
-    required: true
-  },
-  bill_date: {
-    type: Date,
-    required: true,
-    default: Date.now
-  },
-
-  return_type : {
-    type: String,
-    enum: ['exchange', 'refund'],
-  },
-
-  // Reference to original purchase bill
-  original_bill: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'PurchaseBill',
-    required: true
-  },
-
-  // Supplier Details
-  supplier: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Party',
-    required: true
-  },
-  supplier_name: {
-    type: String,
-    required: true
-  },
-
-  // Items being returned
-  items: [{
-    item: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Inventory',
-      required: true
-    },
-    type : {
-      type: String,
-      enum: ['return', 'normal'],
-      required: true
-    },
-    batchNumber: {
-      type: String,
-    },
-    expiry_date: {
-      type: Date,
-    },
-    quantity: {
-      type: Number,
-      required: true
-    },
-    unit: String,
-    purchase_price: {
-      type: Number,
-      required: true
-    },
-    discount_percentage: {
-      type: Number,
-      default: 0
-    },
-    gstPer: {
-      type: Number,
-      default: 0
-    },
-    reason: {
+  debitNoteNumber: Number,
+});
+debitNoteNumber.plugin(hospitalPlugin);
+export const DebitNoteNumber = mongoose.model("DebitNoteNumber", debitNoteNumber);
+const purchaseReturnSchema = new mongoose.Schema(
+  {
+    // Basic Info
+    debitNoteNumber: {
       type: String,
       required: true,
-      enum: ['damaged', 'expired', 'wrong_item', 'excess_stock', 'other']
-    }
-  }],
+    },
+  
+    returnDate: {
+      type: Date,
+      required: true,
+      default: Date.now,
+    },
+
+    // Party Details
+    partyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Party",
+      required: true,
+    },
+    partyName: {
+      type: String,
+      required: true,
+    },
+    mob: String,
+
+    // Original Invoice Reference
+    originalInvoice: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Invoice",
+      required: true,
+    },
+    originalInvoiceNumber: {
+      type: String,
+      required: true,
+    },
+    originalInvoiceDate: {
+      type: Date,
+      required: true,
+    },
+
+    // Return Items
+    products: [
+      {
+        inventoryId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Inventory",
+          required: true,
+        },
+        productName: String,
+        batchNumber: String,
+        batchId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "InventoryBatch",
+        },
+        expiry: String,
+        HSN: String,
+        mrp: Number,
+        quantity: Number,
+        pack: Number,
+        purchaseRate: Number,
+        schemeInput1: Number,
+        schemeInput2: Number,
+        discount: Number,
+        gstPer: Number,
+        amount: Number,
+        reason: {
+          type: String,
+          enum: ["damaged", "expired", "wrong_item", "excess_stock", "other"],
+        },
+      },
+    ],
+
+    // Return Settings
+    claimGSTInReturn: {
+      type: Boolean,
+      default: true,
+    },
+    adjustRateForDisc: {
+      type: Boolean,
+      default: true,
+    },
+
+    // Bill Summary
+    billSummary: {
+      subtotal: { type: Number, required: true },
+      discountAmount: { type: Number, required: true },
+      taxableAmount: { type: Number, required: true },
+      gstAmount: { type: Number, required: true },
+      gstSummary: {
+        0: {
+          taxable: Number,
+          cgst: Number,
+          sgst: Number,
+          igst: Number,
+          total: Number,
+        },
+        5: {
+          taxable: Number,
+          cgst: Number,
+          sgst: Number,
+          igst: Number,
+          total: Number,
+        },
+        12: {
+          taxable: Number,
+          cgst: Number,
+          sgst: Number,
+          igst: Number,
+          total: Number,
+        },
+        18: {
+          taxable: Number,
+          cgst: Number,
+          sgst: Number,
+          igst: Number,
+          total: Number,
+        },
+        28: {
+          taxable: Number,
+          cgst: Number,
+          sgst: Number,
+          igst: Number,
+          total: Number,
+        },
+      },
+      totalQuantity: { type: Number, required: true },
+      productCount: { type: Number, required: true },
+      grandTotal: { type: Number, required: true },
+    },
+
+    // Payment Details
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "completed"],
+      default: "pending",
+    },
+    amountPaid: {
+      type: Number,
+      default: 0,
+    },
+    payments: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Payment",
+      },
+    ],
+
+    // Metadata
+    status: {
+      type: String,
+      enum: ["draft", "final", "cancelled"],
+      default: "final",
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Staff",
+      required: true,
+    },
 
   
-
-  // Return Amount Details
-  total_amount: {
-    type: Number,
-    required: true
   },
-  tax_summary: {
-    type: Object
-  },
-
-  // Payment Details
-  payment_status: {
-    type: String,
-    enum: ['pending', 'completed'],
-    default: 'pending'
-  },
-  payment_details: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Payment'
-  }],
-
-  // Metadata
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Staff',
-    required: true
-  },
-  status: {
-    type: String,
-    enum: ['draft', 'final', 'cancelled'],
-    default: 'final'
-  },
-  notes: {
-    type: String
+  {
+    timestamps: true,
   }
-}, {
-  timestamps: true
-});
+);
 
-// Generate return number on creation
-purchaseReturnSchema.pre('validate', async function(next) {
-  try {
-    if (this.isNew) {
-      // Find the latest return
-      const lastReturn = await this.constructor.findOne({
-        hospital: this.hospital
-      }).sort({ invoice_counter: -1 });
 
-      // Set the counter
-      this.invoice_counter = lastReturn ? lastReturn.invoice_counter + 1 : 1;
-      
-      // Generate return number with PR prefix
-      this.return_number = 'PR' + this.invoice_counter.toString().padStart(6, '0');
-    }
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
 
 // Apply hospital plugin
 purchaseReturnSchema.plugin(hospitalPlugin);
 
-export const PurchaseReturn = mongoose.model('PurchaseReturn', purchaseReturnSchema);
+export const PurchaseReturn = mongoose.model(
+  "PurchaseReturn",
+  purchaseReturnSchema
+);

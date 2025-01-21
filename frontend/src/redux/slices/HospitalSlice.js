@@ -10,7 +10,14 @@ export const fetchHospitalInfo = createLoadingAsyncThunk(
     if (!response.ok) {
       throw new Error('Failed to fetch hospital data');
     }
-    return response.json();
+    const pharmacy=await response.json();
+    if(pharmacy.logo){
+      const img=await fetch(pharmacy.logo);
+      const blob=await img.blob();
+      const url=URL.createObjectURL(blob);
+      pharmacy.logoUsable=url;
+    }
+    return pharmacy;
   }, {useGlobalLoading: true}
 );
 
