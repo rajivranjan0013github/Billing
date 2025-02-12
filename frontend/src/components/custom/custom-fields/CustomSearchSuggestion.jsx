@@ -3,7 +3,7 @@ import { Input } from "../../ui/input";
 import { Badge } from "../../ui/badge"; // Add this import
 import { ChevronsUpDown } from "lucide-react";
 
-export const SearchSuggestion = forwardRef(({ suggestions=[], placeholder, value, setValue, onSuggestionSelect, showAmount=false }, ref) => {
+export const SearchSuggestion = forwardRef(({ suggestions=[], placeholder, value, setValue, onSuggestionSelect, showAmount=false, onKeyDown }, ref) => {
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -42,11 +42,19 @@ export const SearchSuggestion = forwardRef(({ suggestions=[], placeholder, value
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setSelectedIndex(prev => (prev > 0 ? prev - 1 : -1));
-    } else if (e.key === 'Enter' && selectedIndex >= 0) {
-      setValue(filteredSuggestions[selectedIndex].name);
-      setShowSuggestions(false);
-      if(onSuggestionSelect){
-        onSuggestionSelect(filteredSuggestions[selectedIndex]);
+    } else if (e.key === 'Enter') {
+      if (selectedIndex >= 0) {
+        e.preventDefault();
+        setValue(filteredSuggestions[selectedIndex].name);
+        setShowSuggestions(false);
+        if(onSuggestionSelect){
+          onSuggestionSelect(filteredSuggestions[selectedIndex]);
+        }
+      } else {
+        // If no suggestion is selected, handle the navigation
+        if (onKeyDown) {
+          onKeyDown(e);
+        }
       }
     }
   };

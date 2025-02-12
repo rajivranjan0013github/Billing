@@ -4,7 +4,6 @@ import {
   Route,
   BrowserRouter as Router,
   Routes,
-  Navigate,
 } from "react-router-dom";
 import { Provider } from "react-redux";
 import { store } from "./redux/store";
@@ -27,14 +26,12 @@ import Expenses from "./pages/Expenses";
 import Sales from "./pages/Sales";
 import Purchase from "./pages/Purchase";
 import PurchaseReturnList from "./pages/PurchaseReturnList";
-import Parties from "./pages/Parties";
-import CreateParty from "./pages/CreateParty";
+import Distributors from "./pages/Distributors";
 import CreateSellInvoice from "./pages/CreateSellInvoice";
-import ViewSalesBill from "./pages/ViewSalesBill";
 import CreatePurchaseInvoice from "./pages/CreatePurchaseInvoice";
 import EditPurchaseInvoice from "./pages/EditPurchaseInvoice";
 import EditSaleInvoice from "./pages/EditSaleInvoice";
-import PartyDetails from "./pages/PartyDetails";
+import DistributorDetails from "./pages/DistributorDetails";
 import PaymentOut from "./pages/PaymentOut";
 import CreatePaymentOut from "./pages/CreatePaymentOut";
 import PaymentDetails from "./pages/PaymentDetails";
@@ -45,7 +42,6 @@ import SalesReturn from "./pages/SalesReturn";
 import PurchaseReturn from "./pages/PurchaseReturn";
 import Inventory from "./pages/Inventory";
 import SalesInvoicePrint from "./pages/SalesInvoicePrint";
-import PharmacyInfo from "./pages/PharmacyInfo";
 import AccountDetails from "./pages/AccountDetails";
 import SalesReturnList from "./pages/SalesReturnList";
 import Customers from "./pages/Customers";
@@ -124,9 +120,8 @@ const AppContent = () => {
               <Route path="/sales" element={<Sales />} />
               <Route path="/purchase" element={<Purchase />} />
               <Route path="/items-master" element={<Inventory />} />
-              <Route path="/parties" element={<Parties />} />
+              <Route path="/distributors" element={<Distributors />} />
               <Route path="/customers" element={<Customers />} />
-              <Route path="/parties/create-party" element={<CreateParty />} />
               <Route
                 path="/sales/create-sell-invoice"
                 element={<CreateSellInvoice />}
@@ -142,8 +137,8 @@ const AppContent = () => {
               />
               <Route path="/sale/:invoiceId" element={<EditSaleInvoice />} />
               <Route
-                path="/party-details/:partyId"
-                element={<PartyDetails />}
+                path="/distributor-details/:distributorId"
+                element={<DistributorDetails />}
               />
               <Route path="/purchase/payment-out" element={<PaymentOut />} />
               <Route

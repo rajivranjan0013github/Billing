@@ -13,18 +13,18 @@ import { Button } from "../../ui/button";
 import { Search } from "lucide-react";
 import { Separator } from "../../ui/separator";
 import { ScrollArea } from "../../ui/scroll-area";
-import { fetchParties } from '../../../redux/slices/partySlice';
+import { fetchDistributor } from '../../../redux/slices/distributorSlice';
 
 const SelectPartyDialog = ({ open, onOpenChange, onSelectParty }) => {
   const [searchQuery, setSearchQuery] = useState("");
   
   const dispatch = useDispatch();
-  const { parties, fetchStatus } = useSelector((state) => state.party);
+  const { parties, fetchStatus } = useSelector((state) => state.distributor);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (open && fetchStatus === 'idle') {
-      dispatch(fetchParties());
+      dispatch(fetchDistributor());
     }
   }, [open, fetchStatus, dispatch]);
 

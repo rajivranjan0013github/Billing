@@ -15,7 +15,7 @@ import { cn } from "../lib/utils";
 import PurchaseItemTable from "../components/custom/purchase/PurchaseItemTable";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
-import SelectPartyDialog from "../components/custom/party/SelectPartyDialog";
+import SelectPartyDialog from "../components/custom/distributor/SelectDistributorDlg";
 import { enIN } from "date-fns/locale";
 import { calculateTotals } from "./CreatePurchaseInvoice";
 import { useParams, useNavigate } from "react-router-dom";

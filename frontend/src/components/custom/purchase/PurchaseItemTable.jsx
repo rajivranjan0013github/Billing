@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import ProductSelector from "../inventory/SelectInventoryItem";
+import ProductSelector from "../inventory/SelectInventory";
 import { convertToFraction } from "../../../assets/Data";
 import { Pen, Trash2, Check, X, Plus } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
@@ -151,7 +151,9 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
   
     //   inputRef.current["HSN"].focus();
     // }
-    document.getElementById('batch-number-Input').focus();
+    // document.getElementById('batch-number-Input')?.focus();
+    document.getElementById('HSN')?.focus();
+    
   };
 
   // product seach Input handler
@@ -394,6 +396,7 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
           </div>
           <div>
             <Input
+              id="HSN"
               ref={(el) => (inputRef.current["HSN"] = el)}
               onKeyDown={(e) => handleKeyDown(e, 'batchNumber')}
               onChange={(e) => handleInputChange("HSN", e.target.value)}
@@ -409,6 +412,7 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
               setValue={setBatchNumber}
               onSuggestionSelect={handleBatchSelect}
               inventoryId={newProduct?.inventoryId}
+              ref={(el) => (inputRef.current["batchNumber"] = el)}
             />
           </div>
           <div>
@@ -459,7 +463,7 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
           </div>
           <div>
             <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-10">
                 ₹
               </span>
               <Input
@@ -468,13 +472,13 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
                 onChange={(e) => handleInputChange("mrp", e.target.value)}
                 value={newProduct.mrp || ""}
                 type="text"
-                className="h-8 w-full border-[1px] border-gray-300 pl-5 px-1 rounded-sm"
+                className="h-8 w-full border-[1px] border-gray-300 pl-5 rounded-sm"
               />
             </div>
           </div>
           <div>
             <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-10">
                 ₹
               </span>
               <Input
@@ -485,7 +489,7 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
                 }
                 value={newProduct.purchaseRate || ""}
                 type="text"
-                className="h-8 w-full border-[1px] border-gray-300 pl-5 px-1 rounded-sm"
+                className="h-8 w-full border-[1px] border-gray-300 pl-5 rounded-sm"
               />
             </div>
           </div>
@@ -567,10 +571,15 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
             />
           </div>
           <div className="flex gap-1 items-center ml-2 justify-center">
-            <button onClick={handleAdd} ref={(el) => (inputRef.current["addButton"] = el)} className="bg-primary p-1 rounded-sm">
+            <button 
+              onClick={handleAdd} 
+              ref={(el) => (inputRef.current["addButton"] = el)} 
+              className="bg-primary p-1 rounded-sm"
+              title="Add Item"
+            >
               <Plus className="h-5 w-5 text-white" />
             </button>
-            <button onClick={clearInputRow} >
+            <button onClick={clearInputRow} title="Clear Field" >
               <X className="h-5 w-4" />
             </button>
           </div>
@@ -676,7 +685,7 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
               </div>
               <div>
                 <div className="relative">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-10">
                     ₹
                   </span>
                   <Input
@@ -686,13 +695,13 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
                     }
                     value={product?.mrp || ""}
                     type="text"
-                    className="h-8 w-full border-[1px] border-gray-300 pl-5 px-1 rounded-sm"
+                    className="h-8 w-full border-[1px] border-gray-300 pl-7 rounded-sm"
                   />
                 </div>
               </div>
               <div>
                 <div className="relative">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-10">
                     ₹
                   </span>
                   <Input
@@ -706,7 +715,7 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
                     }
                     value={product?.purchaseRate || ""}
                     type="text"
-                    className="h-8 w-full border-[1px] border-gray-300 pl-5 px-1 rounded-sm"
+                    className="h-8 w-full border-[1px] border-gray-300 pl-5 rounded-sm"
                   />
                 </div>
               </div>

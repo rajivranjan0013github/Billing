@@ -7,7 +7,7 @@ import { Label } from "../components/ui/label";
 import { Checkbox } from "../components/ui/checkbox";
 import { useNavigate } from "react-router-dom";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import SelectPartyDialog from "../components/custom/party/SelectPartyDialog";
+import SelectPartyDialog from "../components/custom/distributor/SelectDistributorDlg";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
 

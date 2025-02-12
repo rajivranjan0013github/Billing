@@ -1,52 +1,23 @@
 import React, { useState, useEffect } from "react";
-import {
-  Calendar,
-  ChevronDown,
-  Filter,
-  Search,
-  Users,
-  X,
-  SearchX,
-} from "lucide-react";
+import { Search, Users, X, ArrowLeft,} from "lucide-react";
 import { Button } from "../components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "../components/ui/select";
 import { Input } from "../components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "../components/ui/table";
 import { cn } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchPurchaseBills,
-  searchPurchaseBills,
-} from "../redux/slices/PurchaseBillSlice";
-import { format, subDays } from "date-fns";
+import { fetchPurchaseBills, searchPurchaseBills,} from "../redux/slices/PurchaseBillSlice";
+import { subDays } from "date-fns";
 import { DateRangePicker } from "../components/ui/date-range-picker";
 
 export default function PurchasesTransactions() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { purchaseBills: initialPurchaseBills } = useSelector(
-    (state) => state.purchaseBill
-  );
+  const { purchaseBills: initialPurchaseBills } = useSelector((state) => state.purchaseBill);
   const [purchaseBills, setPurchaseBills] = useState(initialPurchaseBills);
 
-  const [dateRange, setDateRange] = useState({
-    from: subDays(new Date(), 7),
-    to: new Date(),
-  });
+  const [dateRange, setDateRange] = useState({from: subDays(new Date(), 7),to: new Date()});
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState("invoice");
@@ -139,15 +110,13 @@ export default function PurchasesTransactions() {
   };
 
   return (
-    <div className="relative p-6 rounded-lg space-y-6  ">
-      <div className="flex justify-between items-start">
-        <div className="space-y-1">
+    <div className="relative p-4 rounded-lg space-y-4">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <ArrowLeft className="h-6 w-6 cursor-pointer" onClick={() => navigate(-1)} />
           <h1 className="text-2xl font-semibold">Purchases Transactions</h1>
-          <p className="text-muted-foreground ">
-            View List of all your Purchases Transactions here
-          </p>
         </div>
-        <div className="grid grid-cols-5 gap-4 text-right">
+        <div className="grid grid-cols-4 gap-4 text-right">
           <div>
             <div className="font-semibold">{summary.count}</div>
             <div className="text-sm text-muted-foreground">Purc Count</div>
@@ -156,28 +125,27 @@ export default function PurchasesTransactions() {
             <div className="font-semibold">
               {formatCurrency(summary.purchaseAmount)}
             </div>
-            <div className="text-sm text-muted-foreground">Purc Amt Sum</div>
+            <div className="text-sm text-muted-foreground">Purc Amount</div>
           </div>
           <div>
             <div className="font-semibold">
               {formatCurrency(summary.amountPaid)}
             </div>
-            <div className="text-sm text-muted-foreground">Payable Sum</div>
+            <div className="text-sm text-muted-foreground">Amount Paid</div>
           </div>
           <div>
-            <div className="font-semibold">
-              {formatCurrency(summary.amountPaid)}
+            <div className="font-semibold text-pink-500">
+              {formatCurrency(summary.purchaseAmount - summary.amountPaid)}
             </div>
-            <div className="text-sm text-muted-foreground">Amt Paid Sum</div>
+            <div className="text-sm text-muted-foreground">To Pay</div>
           </div>
-         
         </div>
       </div>
 
-      <div className="flex gap-4 bg-white p-4 rounded-lg shadow-sm border">
+      <div className="flex gap-4">
         <div className="relative flex-1">
           <div className="relative flex items-center bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
-            <div className="relative flex items-center h-11 px-3 border-r border-slate-200 bg-slate-50">
+            <div className="relative flex items-center px-3 border-r border-slate-200">
               <Select
                 defaultValue="invoice"
                 onValueChange={(value) => setSearchType(value)}
@@ -204,7 +172,7 @@ export default function PurchasesTransactions() {
                 <Search className="h-4 w-4 text-slate-400" />
               </div>
               <Input
-                className="w-full pl-10 pr-10 h-11 border-0 focus-visible:ring-0 placeholder:text-slate-400"
+                className="w-full h-9 pl-10 pr-10 border-0 focus-visible:ring-0 placeholder:text-slate-400"
                 placeholder={`Search by ${
                   searchType === "invoice"
                     ? "invoice number"
@@ -232,8 +200,6 @@ export default function PurchasesTransactions() {
               )}
             </div>
           </div>
-
-          {/* Search Results Dropdown */}
         </div>
 
         <div className="relative w-[300px]">
@@ -247,9 +213,9 @@ export default function PurchasesTransactions() {
           />
         </div>
 
-        <div className="relative w-[200px]">
+        <div className="flex gap-2">
           <Button
-            className="w-full justify-start text-left bg-primary hover:bg-primary/90 text-white"
+            className="w-[200px]"
             onClick={() => navigate(`/purchase/create-purchase-invoice`)}
           >
             Create Purchase Invoice

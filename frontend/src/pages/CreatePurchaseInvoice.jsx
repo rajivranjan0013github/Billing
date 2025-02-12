@@ -3,12 +3,12 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import { CalendarIcon, ChevronLeft, Save, Settings2 } from "lucide-react";
+import {  ChevronLeft, Save, Settings2 } from "lucide-react";
 import PurchaseItemTable from "../components/custom/purchase/PurchaseItemTable";
 import { convertToFraction } from "../assets/Data";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
-import SelectPartyDialog from "../components/custom/party/SelectPartyDialog";
+import SelectDistributorDlg from "../components/custom/distributor/SelectDistributorDlg";
 import { useDispatch } from "react-redux";
 import { fetchItems } from "../redux/slices/inventorySlice";
 import { useNavigate } from "react-router-dom";
@@ -614,7 +614,7 @@ export default function PurchaseForm() {
           <div>₹{amountData?.grandTotal}</div>
         </div>
       </div>
-      <SelectPartyDialog
+      <SelectDistributorDlg
         open={partySelectDialog}
         setOpen={setPartySelectDialog}
         search={partyName}

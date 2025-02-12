@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, forwardRef } from "react";
 import { ScrollArea } from "../../ui/scroll-area";
 import { Backend_URL, convertQuantity } from "../../../assets/Data";
 import { useToast } from "../../../hooks/use-toast";
 import { Input } from "../../ui/input";
 
-export default function SearchSuggestion({ value, setValue, onSuggestionSelect, inventoryId, inputRef, disabled }) {
+const BatchSuggestion = forwardRef(({ value, setValue, onSuggestionSelect, inventoryId, inputRef, disabled }, ref) => {
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -112,7 +112,7 @@ export default function SearchSuggestion({ value, setValue, onSuggestionSelect, 
         <Input
           id="batch-number-input"
           disabled={disabled}
-          ref={(el) => (inputRef.current["batchNumber"] = el)}
+          ref={ref}
           type="text"
           value={value}
           onChange={handleInputChange}
@@ -194,4 +194,6 @@ export default function SearchSuggestion({ value, setValue, onSuggestionSelect, 
       )}
     </div>
   );
-}
+});
+
+export default BatchSuggestion;

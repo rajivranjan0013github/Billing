@@ -1,7 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 import createLoadingAsyncThunk from "./createLoadingAsyncThunk";
 import { Backend_URL } from "../../assets/Data";
-import axios from "axios";
 
 // Create new purchase bill
 export const createPurchaseBill = createLoadingAsyncThunk(

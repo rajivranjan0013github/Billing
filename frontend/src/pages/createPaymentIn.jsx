@@ -7,7 +7,7 @@ import { Card } from "../components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect, useState, useRef } from "react";
-import { fetchParties } from "../redux/slices/partySlice";
+import { fetchDistributor } from "../redux/slices/distributorSlice";
 import { SearchSuggestion } from "../components/custom/custom-fields/CustomSearchSuggestion";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
@@ -16,7 +16,7 @@ import { TableContent } from "./CreatePaymentOut";
 
 export default function Component() {
   const navigate = useNavigate();
-  const { parties, fetchStatus } = useSelector((state) => state.party);
+  const { parties, fetchStatus } = useSelector((state) => state.distributor);
   const { createStatus } = useSelector((state) => state.payment);
   const [pendingInvoices, setPendingInvoices] = useState([]);
   const [selectedParty, setSelectedParty] = useState(null);
@@ -41,7 +41,7 @@ export default function Component() {
 
   useEffect(() => {
     if (fetchStatus === "idle") {
-      dispatch(fetchParties());
+      dispatch(fetchDistributor());
     }
   }, [fetchStatus]);
 
@@ -116,7 +116,7 @@ export default function Component() {
 
     dispatch(createPayment(paymentData)).unwrap().then(() => {
         toast({title: "Payment added successfully", variant: "success",});
-        dispatch(fetchParties());
+        dispatch(fetchDistributor());
         navigate('/sales/payment-in');
       })
       .catch((error) => {

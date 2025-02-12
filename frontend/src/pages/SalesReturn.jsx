@@ -14,7 +14,7 @@ import { cn } from "../lib/utils";
 import { convertToFraction } from "../assets/Data";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
-import SelectPartyDialog from "../components/custom/party/SelectPartyDialog";
+import SelectPartyDialog from "../components/custom/distributor/SelectDistributorDlg";
 import PaymentDialog from "../components/custom/payment/PaymentDialog";
 import { enIN } from "date-fns/locale";
 import { useDispatch } from "react-redux";

@@ -45,7 +45,7 @@ export default function Timeline({inventoryId}) {
             {timeline.map((transaction, index) => (
               <tr
                 key={index}
-                className="hover:bg-gray-50 cursor-pointer border-b last:border-0"
+                className="hover:bg-secondary cursor-pointer border-b last:border-0"
               >
                 <td className="px-4 py-2">
                   <div className="text-sm font-medium">

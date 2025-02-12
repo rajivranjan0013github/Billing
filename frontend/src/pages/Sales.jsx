@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchBills } from "../redux/slices/SellBillSlice";
 import { Backend_URL } from "../assets/Data";
-import { Calendar, ChevronDown, Filter, Search, X } from "lucide-react";
+import { Calendar, ChevronDown, Filter, Search, X, ArrowLeft } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import {
@@ -140,13 +140,11 @@ export default function Sales() {
   );
 
   return (
-    <div className="relative p-6 rounded-lg space-y-6">
-      <div className="flex justify-between items-start">
-        <div className="space-y-1">
+    <div className="relative p-4 rounded-lg space-y-4">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <ArrowLeft className="h-6 w-6 cursor-pointer " onClick={()=> navigate(-1)}  />
           <h1 className="text-2xl font-semibold">Sales Transactions</h1>
-          <p className="text-muted-foreground">
-            View List of all your Sales Transactions here
-          </p>
         </div>
         <div className="grid grid-cols-4 gap-4 text-right">
           <div>
@@ -177,7 +175,7 @@ export default function Sales() {
       <div className="flex gap-4">
         <div className="relative flex-1">
           <div className="relative flex items-center bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
-            <div className="relative flex items-center h-11 px-3 border-r border-slate-200 bg-slate-50">
+            <div className="relative flex items-center px-3 border-r border-slate-200">
               <span className="text-sm text-slate-500">INVOICE NO</span>
             </div>
 
@@ -186,7 +184,7 @@ export default function Sales() {
                 <Search className="h-4 w-4 text-slate-400" />
               </div>
               <Input
-                className="w-full pl-10 pr-10 h-11 border-0 focus-visible:ring-0 placeholder:text-slate-400"
+                className="w-full pl-10 pr-10 border-0 focus-visible:ring-0 placeholder:text-slate-400"
                 placeholder="Search by invoice number..."
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
@@ -223,7 +221,7 @@ export default function Sales() {
 
         <div className="flex gap-2">
           <Button
-            className="w-[200px] justify-start text-left"
+            className="w-[200px]"
             onClick={() => navigate("/sales/create-sell-invoice")}
           >
             Create Sales Invoice

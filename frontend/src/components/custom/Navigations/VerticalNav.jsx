@@ -40,7 +40,7 @@ import { useToast } from "../../../hooks/use-toast";
 
 export const navItems = [
   { name: "Dashboard", icon: Home, path: "/" },
-  { name: "Parties", icon: Users, path: "/parties" },
+  { name: "Distributors", icon: Users, path: "/distributors" },
   { name: "Customers", icon: Users, path: "/customers" },
   { name: "Accounts", icon: Wallet, path: "/accounts" },
   { name: "Expenses", icon: IndianRupee, path: "/expenses" },
@@ -178,7 +178,7 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
       )}
     >
       {/* Top section */}
-      <div className="flex items-center p-4">
+      <div className="flex items-center p-4 border-b-[1px] border-b-gray-100">
         <Button
           variant="ghost"
           size="sm"
@@ -191,14 +191,14 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
           <div className="flex items-center">
             <ColorfulLogo className="h-6 w-6" />
             <span className="ml-2 text-lg font-bold text-gray-800">
-              The Invoice
+              The Billing
             </span>
           </div>
         )}
       </div>
 
       {/* Navigation items */}
-      <ScrollArea className="flex-1 overflow-y-auto py-4">
+      <ScrollArea className="flex-1 overflow-y-auto py-2">
         <ul className="space-y-1 px-3">
           {navItems.map((item) => (
             <li key={item.name}>

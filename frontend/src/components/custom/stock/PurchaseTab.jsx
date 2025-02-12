@@ -44,7 +44,7 @@ export default function PurchaseTab({inventoryId}) {
                         {purchases.map((purchase, index) => (
                             <tr
                                 key={purchase._id}
-                                className="hover:bg-pink-50 cursor-pointer border-b last:border-0"
+                                className="hover:bg-secondary cursor-pointer border-b last:border-0"
                                 onClick={() => {navigate(`/purchase/${purchase.invoiceId}`)}}
                             >
                                 <td className="px-4 py-2">

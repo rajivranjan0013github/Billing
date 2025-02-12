@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../ui/select";
-import ProductSelector from "./SelectInventoryItem";
+import ProductSelector from "./SelectInventory";
 import { Backend_URL } from "../../../assets/Data";
 import { fetchItems } from "../../../redux/slices/inventorySlice";
 
