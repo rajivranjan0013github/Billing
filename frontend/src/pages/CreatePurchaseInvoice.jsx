@@ -1,34 +1,21 @@
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo, useEffect } from "react";
 import { Button } from "../components/ui/button";
-import { Calendar } from "../components/ui/calendar";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "../components/ui/popover";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../components/ui/dialog";
 import { CalendarIcon, ChevronLeft, Save, Settings2 } from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "../lib/utils";
 import PurchaseItemTable from "../components/custom/purchase/PurchaseItemTable";
 import { convertToFraction } from "../assets/Data";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
 import SelectPartyDialog from "../components/custom/party/SelectPartyDialog";
-import { enIN } from "date-fns/locale";
 import { useDispatch } from "react-redux";
 import { fetchItems } from "../redux/slices/inventorySlice";
 import { useNavigate } from "react-router-dom";
 import PaymentDialog from "../components/custom/payment/PaymentDialog";
+import AmountSettingsDialog from "../components/custom/purchase/AmountSettingDialog";
+
+const inputKeys = ['distributorName', 'invoiceNo', 'invoiceDate', 'dueDate', 'product', 'HSN', 'batchNumber', 'expiry', 'pack', 'quantity', 'free', 'mrp', 'purchaseRate', 'schemeInput1', 'schemeInput2', 'discount', 'gstPer', 'addButton' ];
 
 const roundToTwo = (num) => {
   return Math.round((num + Number.EPSILON) * 100) / 100;
@@ -87,136 +74,6 @@ export const calculateTotals = (products, amountType) => {
       totalQuantity: 0,
       grandTotal: 0,
     }
-  );
-};
-
-// Create a separate component for the settings dialog
-const AmountSettingsDialog = ({
-  open,
-  onOpenChange,
-  value,
-  onChange,
-  products,
-  setProducts,
-}) => {
-  const handleModeChange = (newMode) => {
-    // First update the mode
-    onChange(newMode);
-
-    // Then recalculate amounts for all existing products
-    if (products && products.length > 0) {
-      setProducts(
-        products.map((product) => {
-          const quantity = Number(product?.quantity || 0);
-          const purchaseRate = Number(product?.purchaseRate || 0);
-          const discount = Number(product?.discount || 0);
-          let schemePercent = 0;
-
-          if (product.schemeInput1 && product.schemeInput2) {
-            const temp1 = Number(product.schemeInput1);
-            const temp2 = Number(product.schemeInput2);
-            schemePercent = (temp2 / (temp1 + temp2)) * 100;
-          }
-
-          const totalDiscountPercent = discount + schemePercent;
-          const effectiveRate =
-            purchaseRate - (purchaseRate * totalDiscountPercent) / 100;
-          const gstAmount =
-            (effectiveRate * Number(product?.gstPer || 0)) / 100;
-
-          let amount;
-          switch (newMode) {
-            case "exclusive":
-              // Just Rate × Quantity
-              amount = purchaseRate * quantity;
-              break;
-            case "inclusive_all":
-              // (Rate - Rate×Discount%) × Quantity
-              amount = effectiveRate * quantity;
-              break;
-            case "inclusive_gst":
-              // (Rate - Rate×Discount% + (Rate - Rate×Discount%)×GST%) × Quantity
-              amount = (effectiveRate + gstAmount) * quantity;
-              break;
-          }
-
-          return {
-            ...product,
-            amount: convertToFraction(amount),
-          };
-        })
-      );
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Amount Calculation Settings</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div>
-            <Label className="text-sm font-medium mb-2 block">
-              How should the amount be calculated for each product?
-            </Label>
-            <RadioGroup
-              className="gap-4"
-              value={value}
-              onValueChange={handleModeChange}
-            >
-              <Label
-                htmlFor="settings-exclusive"
-                className="flex items-center space-x-2 border p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                onClick={() => handleModeChange("exclusive")}
-              >
-                <RadioGroupItem value="exclusive" id="settings-exclusive" />
-                <div className="flex-1">
-                  <div className="font-medium">Rate</div>
-                  <div className="text-sm text-gray-500">
-                    Shows pure rate × quantity without any adjustments
-                  </div>
-                </div>
-              </Label>
-
-              <Label
-                htmlFor="settings-inclusive_all"
-                className="flex items-center space-x-2 border p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                onClick={() => handleModeChange("inclusive_all")}
-              >
-                <RadioGroupItem
-                  value="inclusive_all"
-                  id="settings-inclusive_all"
-                />
-                <div className="flex-1">
-                  <div className="font-medium">Discounted Rate</div>
-                  <div className="text-sm text-gray-500">
-                    Shows rate after applying discount × quantity
-                  </div>
-                </div>
-              </Label>
-
-              <Label
-                htmlFor="settings-inclusive_gst"
-                className="flex items-center space-x-2 border p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                onClick={() => handleModeChange("inclusive_gst")}
-              >
-                <RadioGroupItem
-                  value="inclusive_gst"
-                  id="settings-inclusive_gst"
-                />
-                <div className="flex-1">
-                  <div className="font-medium">Discounted Rate + GST</div>
-                  <div className="text-sm text-gray-500">
-                    Shows rate after discount and GST × quantity
-                  </div>
-                </div>
-              </Label>
-            </RadioGroup>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 };
 
@@ -411,13 +268,49 @@ export default function PurchaseForm() {
     }
   };
 
-  // Handle distributor name input change
+  // Add this new function to handle key press events
+  const handleKeyDown = (e, nextInputId) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        console.log('pressed');
+        
+        const nextInputIndex = inputKeys.indexOf(nextInputId);
+        if(nextInputIndex > 1) {
+          const newInputId = inputKeys[nextInputIndex-2];
+          if (newInputId && inputRef.current[newInputId]) {
+            inputRef.current[newInputId].focus();
+          }
+        }
+      } else {
+        if (nextInputId && inputRef.current[nextInputId]) {
+          inputRef.current[nextInputId].focus();
+        }
+      }
+    }
+  };
+
+  const handleShortcutKeyPressed = (e) => {
+    if(e.ctrlKey && e.key === "s") {
+      e.preventDefault()
+      console.log('ctr');
+    }
+  }
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleShortcutKeyPressed);
+
+    return () => {
+      document.removeEventListener("keydown", handleShortcutKeyPressed);
+    };
+  }, [])
+
+  // Update the distributor name input section
   const handleDistributorNameChange = (e) => {
     e.preventDefault();
     const value = e.target.value;
     setPartyName(value);
 
-    // Only open dialog if space is pressed or text is entered (not on backspace/delete)
     if (value.length === 1) {
       if (value === " ") {
         setPartySelectDialog(true);
@@ -436,10 +329,11 @@ export default function PurchaseForm() {
       partyName: distributor.name,
     });
     setPartySelectDialog(false);
+    if(inputRef.current['invoiceNo']) {
+      inputRef.current['invoiceNo'].focus();
+    }
   };
 
-  const [invoiceDateOpen, setInvoiceDateOpen] = useState(false);
-  const [dueDateOpen, setDueDateOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [invoiceForPayment, setInvoiceForPayment] = useState(null);
@@ -486,7 +380,7 @@ export default function PurchaseForm() {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <ChevronLeft
-            className="w-5 h-5 text-rose-500 cursor-pointer"
+            className="w-5 h-5 cursor-pointer"
             onClick={() => navigate(-1)}
           />
           <h1 className="text-xl font-medium">Add Purchase</h1>
@@ -494,14 +388,13 @@ export default function PurchaseForm() {
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
-            className="border-rose-500 text-rose-500 gap-2"
             onClick={() => setSettingsOpen(true)}
           >
             <Settings2 className="w-4 h-4" />
             Column Settings
           </Button>
           <Button
-            className="gap-2 bg-gray-800"
+            className="gap-2"
             onClick={handleSaveInvoice}
             disabled={loading}
           >
@@ -566,8 +459,10 @@ export default function PurchaseForm() {
               DISTRIBUTOR NAME<span className="text-rose-500">*REQUIRED</span>
             </Label>
             <Input
+              ref={el => inputRef.current['distributorName'] = el}
               value={partyName || ""}
               onChange={handleDistributorNameChange}
+              onKeyDown={(e) => handleKeyDown(e, 'invoiceNo')}
               placeholder="Type or Press space"
               className="appearance-none h-8 w-full border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
             />
@@ -577,10 +472,12 @@ export default function PurchaseForm() {
               INVOICE NO<span className="text-rose-500">*REQUIRED</span>
             </Label>
             <Input
+              ref={el => inputRef.current['invoiceNo'] = el}
               value={formData?.invoiceNumber}
               onChange={(e) =>
                 handleInputChange("invoiceNumber", e.target.value)
               }
+              onKeyDown={(e) => handleKeyDown(e, 'invoiceDate')}
               placeholder="Invoice No"
               className="appearance-none h-8 w-full border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
             />
@@ -589,76 +486,29 @@ export default function PurchaseForm() {
             <Label className="text-sm font-medium">
               INVOICE DATE<span className="text-rose-500">*REQUIRED</span>
             </Label>
-            <Popover open={invoiceDateOpen} onOpenChange={setInvoiceDateOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "appearance-none w-full h-8 justify-start text-left font-normal border-[1px] border-gray-300 px-2 bg-white hover:bg-white focus:outline-none focus:ring-0 focus:border-gray-300 shadow-none",
-                    !invoiceDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="w-4 h-4 mr-2" />
-                  {invoiceDate
-                    ? format(invoiceDate, "dd/MM/yyyy")
-                    : "Select Date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={invoiceDate}
-                  onSelect={(date) => {
-                    setInvoiceDate(
-                      new Date(date)
-                        .toLocaleDateString("en-IN", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                        })
-                        .split("/")
-                        .reverse()
-                        .join("-")
-                    );
-                    setInvoiceDateOpen(false);
-                  }}
-                  captionLayout="dropdown-buttons"
-                  showOutsideDays={false}
-                  ISOWeek={false}
-                />
-              </PopoverContent>
-            </Popover>
+            <Input
+              ref={el => inputRef.current['invoiceDate'] = el}
+              type="date"
+              value={invoiceDate || ''}
+              onChange={(e) => {
+                setInvoiceDate(e.target.value);
+              }}
+              onKeyDown={(e) => handleKeyDown(e, 'dueDate')}
+              className="appearance-none h-8 w-full border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
+            />
           </div>
           <div>
             <Label className="text-sm font-medium">PAYMENT DUE DATE</Label>
-            <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "appearance-none w-full h-8 justify-start text-left font-normal border-[1px] border-gray-300 px-2 bg-white hover:bg-white focus:outline-none focus:ring-0 focus:border-gray-300 shadow-none",
-                    !dueDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="w-4 h-4 mr-2" />
-                  {dueDate ? format(dueDate, "dd/MM/yyyy") : "Select Due Date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={dueDate}
-                  onSelect={(date) => {
-                    setDueDate(date);
-                    setDueDateOpen(false);
-                  }}
-                  locale={enIN}
-                  captionLayout="dropdown-buttons"
-                  showOutsideDays={false}
-                  ISOWeek={false}
-                />
-              </PopoverContent>
-            </Popover>
+            <Input
+              ref={el => inputRef.current['dueDate'] = el}
+              onKeyDown={(e)=> handleKeyDown(e, 'product')}
+              type="date"
+              value={dueDate || ''}
+              onChange={(e) => {
+                setDueDate(e.target.value);
+              }}
+              className="appearance-none h-8 w-full border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
+            />
           </div>
         </div>
 
@@ -681,6 +531,7 @@ export default function PurchaseForm() {
           products={products}
           setProducts={setProducts}
           gstMode={formData.amountType}
+          handleKeyDown={handleKeyDown}
         />
       </div>
 

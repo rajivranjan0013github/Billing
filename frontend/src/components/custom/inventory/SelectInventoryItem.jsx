@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react"
 import { Check, Search, X, PackageX, Plus } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../ui/dialog'
 import { Input } from '../../ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table'
 import { cn } from '../../../lib/utils'
@@ -8,6 +8,8 @@ import { Button } from "../../ui/button"
 import AddNewInventory from './AddNewInventory'
 import {useSelector, useDispatch} from 'react-redux'
 import {fetchItems} from '../../../redux/slices/inventorySlice'
+import { ScrollArea } from "../../ui/scroll-area"
+import { Separator } from "../../ui/separator"
   
 export default function ProductSelector({ open, onOpenChange, onSelect, search, setSearch }) {
   const [selectedId, setSelectedId] = useState(null);
@@ -71,135 +73,108 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl" onKeyDown={handleKeyDown}>
-          <DialogHeader className="flex flex-row items-center justify-between">
+        <DialogContent className="max-w-5xl p-0 gap-0" onKeyDown={handleKeyDown}>
+          <DialogHeader className="px-4 py-2.5 flex flex-row items-center justify-between bg-gray-100 border-b">
             <div>
-              <DialogTitle>Select a Product</DialogTitle>
-              <DialogDescription>Select an option from the below list</DialogDescription>
+              <DialogTitle className="text-base font-semibold">Select a Product</DialogTitle>
             </div>
-            <Button 
-              onClick={() => setNewItemDialogOpen(true)} 
-              variant="outline" 
-              size="sm"
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              New Item
-            </Button>
+            <div className="flex items-center gap-2 mr-6">
+              <Button
+                size="sm"
+                className="bg-blue-600 text-white h-7 px-3 text-xs rounded-md hover:bg-blue-700"
+                onClick={() => setNewItemDialogOpen(true)}
+              >
+                <Plus className="h-3 w-3" />
+                Add Product (F2)
+              </Button>
+            </div>
           </DialogHeader>
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              autoFocus
-              placeholder="Select an option from the below list"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
+          <Separator />
+
+          <div className="p-4 border-b bg-white">
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <div className="text-xs font-medium text-gray-700 mb-1.5">Enter Product Name</div>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2 h-4 w-4 text-gray-400" />
+                  <Input
+                    autoFocus
+                    placeholder="Search products..."
+                    className="pl-8 h-8 text-sm border rounded-md focus:ring-2 focus:ring-blue-500"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="h-[60vh] overflow-auto relative">
-            {filteredProducts.length > 0 ? (
+
+          <div className="relative mx-4 mt-3">
+            <Table>
+              <TableHeader className="sticky top-0 bg-gray-50 z-10">
+                <TableRow>
+                  <TableHead className="w-[30%] text-left text-sm font-semibold text-gray-600">PRODUCT NAME/COMPANY</TableHead>
+                  <TableHead className="w-[10%] text-left text-sm font-semibold text-gray-600">PACK</TableHead>
+                  <TableHead className="w-[15%] text-left text-sm font-semibold text-gray-600">STATUS</TableHead>
+                  <TableHead className="w-[15%] text-left text-sm font-semibold text-gray-600">MRP</TableHead>
+                  <TableHead className="w-[15%] text-left text-sm font-semibold text-gray-600">EXPIRY</TableHead>
+                  <TableHead className="w-[15%] text-left text-sm font-semibold text-gray-600">LOCATION</TableHead>
+                </TableRow>
+              </TableHeader>
+            </Table>
+
+            <ScrollArea className="h-[400px] pr-2">
               <Table>
-                <TableHeader className="sticky top-0 z-10 border-b bg-white shadow-sm">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-[250px] bg-gray-50 py-3 first:rounded-tl-lg">
-                      <div className="font-semibold text-xs uppercase tracking-wider text-gray-700">
-                        Product's Name/Company
-                      </div>
-                    </TableHead>
-                    <TableHead className="bg-gray-50 py-3">
-                      <div className="font-semibold text-xs uppercase tracking-wider text-gray-700">Pack</div>
-                    </TableHead>
-                    <TableHead className="bg-gray-50 py-3">
-                      <div className="font-semibold text-xs uppercase tracking-wider text-gray-700">Status</div>
-                    </TableHead>
-                    <TableHead className="bg-gray-50 py-3">
-                      <div className="font-semibold text-xs uppercase tracking-wider text-gray-700">MRP</div>
-                    </TableHead>
-                    <TableHead className="bg-gray-50 py-3">
-                      <div className="font-semibold text-xs uppercase tracking-wider text-gray-700">Expiry</div>
-                    </TableHead>
-                    <TableHead className="bg-gray-50 py-3">
-                      <div className="font-semibold text-xs uppercase tracking-wider text-gray-700">Location</div>
-                    </TableHead>
-                    <TableHead className="w-[30px] bg-gray-50 py-3 last:rounded-tr-lg"></TableHead>
-                  </TableRow>
-                </TableHeader>
                 <TableBody>
                   {filteredProducts.map((product) => (
                     <TableRow
                       key={product._id}
                       className={cn(
-                        "cursor-pointer",
-                        selectedId === product._id && "bg-muted"
+                        "cursor-pointer hover:bg-gray-100 transition-colors",
+                        selectedId === product._id && "bg-gray-100"
                       )}
                       onClick={() => handleSelect(product)}
                     >
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <div>
-                            <div>{product.name}</div>
-                            <div className="text-sm text-muted-foreground">{product.mfcName}</div>
-                          </div>
+                      <TableCell className="w-[30%] py-3">
+                        <div>
+                          <div className="font-medium">{product.name}</div>
+                          <div className="text-xs text-gray-500">{product.mfcName}</div>
                         </div>
                       </TableCell>
-                      <TableCell>{product.pack}</TableCell>
-                      <TableCell>
+                      <TableCell className="w-[10%] py-3">{product.pack}</TableCell>
+                      <TableCell className="w-[15%] py-3">
                         {product.quantity > 0 ? (
                           <div className="space-y-1">
                             <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
                               In Stock
                             </span>
-                            {product.expiry && (
-                              <div className="text-xs text-muted-foreground">
-                                Expires: {product.expiry}
-                              </div>
-                            )}
                           </div>
                         ) : (
                           <div className="space-y-1">
                             <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20">
                               Out of Stock
                             </span>
-                            {product.expiry && (
-                              <div className="text-xs text-muted-foreground">
-                                Expires: {product.expiry}
-                              </div>
-                            )}
                           </div>
                         )}
                       </TableCell>
-                      <TableCell>₹{product?.mrp?.toFixed(2)}</TableCell>
-                      <TableCell>{product?.expiry}</TableCell>
-                      <TableCell>{product?.location}</TableCell>
-                      <TableCell>
-                        <div className="text-right">›</div>
-                      </TableCell>
+                      <TableCell className="w-[15%] py-3">₹{product?.mrp?.toFixed(2)}</TableCell>
+                      <TableCell className="w-[15%] py-3">{product?.expiry}</TableCell>
+                      <TableCell className="w-[15%] py-3">{product?.location}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                <PackageX className="h-12 w-12 mb-4" />
-                <p className="text-lg font-medium">No products found</p>
-                <p className="text-sm">Try adjusting your search terms</p>
-              </div>
-            )}
+            </ScrollArea>
           </div>
-          <div className="text-sm text-muted-foreground text-center border-t pt-4 space-x-4">
-            <span className="inline-flex items-center gap-1">
-              <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↑↓</kbd>
-              <span>Navigate</span>
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Enter</kbd>
-              <span>Select</span>
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Esc</kbd>
-              <span>Close</span>
-            </span>
+
+          <div className="p-3 bg-gray-100 text-xs text-gray-600 flex items-center justify-center gap-3">
+            <span>Add New - F2</span>
+            <span>|</span>
+            <span>Navigate - ↑↓</span>
+            <span>|</span>
+            <span>Select - Enter</span>
+            <span>|</span>
+            <span>Close - ESC</span>
           </div>
         </DialogContent>
       </Dialog>

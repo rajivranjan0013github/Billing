@@ -121,7 +121,7 @@ export default function LandingPage() {
 
   // Update the page title and description
   const pageTitle = "Streamline Your Business Billing";
-  const pageDescription = "InvoicePro provides a comprehensive solution for efficient billing, invoice management, and financial reporting for businesses of all sizes.";
+  const pageDescription = "The Billing provides a comprehensive solution for efficient billing, invoice management, and financial reporting for businesses of all sizes.";
 
   // Update the features
   const features = [
@@ -198,7 +198,7 @@ export default function LandingPage() {
           <Link className="flex items-center justify-center" to="/">
             <ColorfulLogo className="h-6 w-6 sm:h-7 sm:w-7 text-blue-600" />
             <span className="ml-2 text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
-              InvoicePro
+              The Billing
             </span>
           </Link>
         </div>
@@ -382,7 +382,7 @@ export default function LandingPage() {
         </section>
       </main>
       <footer className="flex flex-col sm:flex-row justify-between items-center py-6 px-4 md:px-6 border-t bg-white">
-        <p className="text-xs text-gray-500 mb-2 sm:mb-0">© 2024 InvoicePro. All rights reserved.</p>
+        <p className="text-xs text-gray-500 mb-2 sm:mb-0">© 2024 The Billing. All rights reserved.</p>
         <nav className="flex gap-4">
           <Link
             className="text-xs hover:underline underline-offset-4"

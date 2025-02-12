@@ -8,7 +8,6 @@ import {
 } from "../components/ui/tabs";
 import Sales from "./Sales";
 import Purchase from "./Purchase";
-import PharmacyReports from "../components/custom/pharmacy/PharmacyReports";
 import PharmacyDashboard from "./PharmacyDashboard";
 import Supplier from "../components/custom/pharmacy/Supplier";
 import ItemsMaster from "../components/custom/pharmacy/ItemsMaster";
@@ -38,7 +37,6 @@ const Pharmacy = () => {
         <TabsContent value="sales"><Sales /></TabsContent>
         <TabsContent value="supplier"><Supplier /></TabsContent>
         <TabsContent value="purchases"><Purchase /></TabsContent>
-        <TabsContent value="reports"><PharmacyReports /></TabsContent>
         <TabsContent value="items-master"><ItemsMaster /></TabsContent>
       </Tabs>
     </div>

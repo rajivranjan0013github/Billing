@@ -482,7 +482,7 @@ const Dashboard = () => {
                           : "text-blue-600 bg-blue-100"
                       }`}
                     >
-                      ₹{transaction.amount.toLocaleString()}
+                      ₹{transaction?.amount?.toLocaleString()}
                     </span>
                   </div>
                 ))}

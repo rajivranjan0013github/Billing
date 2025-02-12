@@ -89,7 +89,7 @@ export default function AboutPage() {
           <Link className="flex items-center justify-center" to="/">
             <ColorfulLogo className="h-6 w-6 sm:h-7 sm:w-7 text-blue-600" />
             <span className="ml-2 text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
-              InvoicePro
+              The Billing
             </span>
           </Link>
         </div>
@@ -135,7 +135,7 @@ export default function AboutPage() {
           <div className="container px-4 md:px-6 mx-auto">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
-                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter">About InvoicePro</h1>
+                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter">About The Billing</h1>
                 <p className="max-w-[900px] text-sm sm:text-base md:text-lg lg:text-xl text-gray-500">
                   Empowering businesses with smart billing and invoice management solutions.
                 </p>
@@ -278,7 +278,7 @@ export default function AboutPage() {
         </section>
       </main>
       <footer className="flex flex-col gap-2 sm:flex-row py-4 sm:py-6 w-full shrink-0 items-center px-4 md:px-6 border-t bg-white">
-        <p className="text-xs text-gray-500">© 2024 InvoicePro. All rights reserved.</p>
+        <p className="text-xs text-gray-500">© 2024 The Billing. All rights reserved.</p>
         <nav className="sm:ml-auto flex gap-4 sm:gap-6">
           <Link className="text-xs hover:underline underline-offset-4" href="#">
             Terms of Service
