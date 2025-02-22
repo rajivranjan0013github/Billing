@@ -103,10 +103,10 @@ export default function ViewSalesBill() {
                         <div className="p-4">
                             <h3 className="font-bold mb-2">BILL TO</h3>
                             <div className="text-sm">
-                                <p className="font-bold">{billData?.partyName}</p>
-                                <p>{billData?.party?.address}</p>
-                                <p>GSTIN: {billData?.party?.gstin}</p>
-                                <p>Mobile: {billData?.party?.mob}</p>
+                                <p className="font-bold">{billData?.distributorName}</p>
+                                <p>{billData?.distributor?.address}</p>
+                                <p>GSTIN: {billData?.distributor?.gstin}</p>
+                                <p>Mobile: {billData?.distributor?.mob}</p>
                             </div>
                         </div>
                     </div>

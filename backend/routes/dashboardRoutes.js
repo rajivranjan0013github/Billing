@@ -3,9 +3,6 @@ import { verifyToken } from "../middleware/authMiddleware.js";
 import { SalesBill } from "../models/SalesBill.js";
 import { Payment } from "../models/Payment.js";
 import { Inventory } from "../models/Inventory.js";
-import { Customer } from "../models/Customer.js";
-import { Party } from "../models/Party.js";
-import { InventoryBatch } from "../models/InventoryBatch.js";
 import { StockTimeline } from "../models/StockTimeline.js";
 
 const router = express.Router();
@@ -93,7 +90,7 @@ router.get("/metrics", verifyToken, async (req, res) => {
     const thirtyDaysAgo = new Date(start);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const activeCustomers = await SalesBill.distinct("partyId", {
+    const activeCustomers = await SalesBill.distinct("distributorId", {
       invoiceDate: { $gte: thirtyDaysAgo },
       status: "active",
       is_cash_customer: false,

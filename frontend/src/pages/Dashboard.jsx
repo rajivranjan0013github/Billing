@@ -12,7 +12,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import {
@@ -30,25 +29,12 @@ import {
 import {
   Activity,
   ShoppingCart,
-  Package,
   IndianRupee,
   Users,
   ArrowUpRight,
   ArrowDownRight,
-  Boxes,
-  RotateCcw,
   AlertTriangle,
 } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../components/ui/table";
-import { Progress } from "../components/ui/progress";
-import axios from "axios";
 import {
   Select,
   SelectContent,

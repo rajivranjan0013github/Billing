@@ -19,7 +19,7 @@ const transactionSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Payment",
   },
-  partyName: String,
+  distributorName: String,
   remarks: String,
   balance: Number,
 });

@@ -136,7 +136,7 @@ const PurchaseReturnList = () => {
             <TableRow>
               <TableHead>Debit Note No.</TableHead>
               <TableHead>Return Date</TableHead>
-              <TableHead>Party Name</TableHead>
+              <TableHead>distributor Name</TableHead>
               <TableHead>Original Invoice</TableHead>
               <TableHead>Total Items</TableHead>
               <TableHead>Total Amount</TableHead>
@@ -154,7 +154,7 @@ const PurchaseReturnList = () => {
                 <TableCell>
                   {format(new Date(returnItem.returnDate), "dd/MM/yyyy")}
                 </TableCell>
-                <TableCell>{returnItem.partyName}</TableCell>
+                <TableCell>{returnItem.distributorName}</TableCell>
                 <TableCell>{returnItem.originalInvoiceNumber}</TableCell>
                 <TableCell>{returnItem.billSummary.productCount}</TableCell>
                 <TableCell>

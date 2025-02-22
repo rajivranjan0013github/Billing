@@ -15,7 +15,7 @@ const salesReturnSchema = new mongoose.Schema(
     originalInvoiceNumber: {
       type: String,
     },
-    partyName: {
+    distributorName: {
       type: String,
       default:"N/A"
     },

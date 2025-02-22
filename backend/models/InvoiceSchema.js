@@ -5,8 +5,8 @@ const invoiceShema = new mongoose.Schema(
   {
     invoiceType: { type: String, enum: ["SALE", "PURCHASE"] }, // sales or purchase
     invoiceNumber: { type: String, required: true },
-    partyId: { type: mongoose.Schema.Types.ObjectId, ref: "Party" },
-    partyName: String,
+    distributorId: { type: mongoose.Schema.Types.ObjectId, ref: "distributor" },
+    distributorName: String,
     mob: String,
     invoiceDate: { type: Date, default: Date.now },
     paymentDueDate: Date,
@@ -42,7 +42,7 @@ const invoiceShema = new mongoose.Schema(
     amountPaid: { type: Number, default: 0 },
     payments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Payment" }],
 
-    status: { type: String },
+    status: { type: String, enum: ["active", "cancelled", "returned", "draft"] },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "Staff" },
     billSummary: {
       subtotal: { type: Number, required: true },

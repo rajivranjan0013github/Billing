@@ -22,11 +22,11 @@ const paymentSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
-    party_id: {
+    distributor_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Party",
+      ref: "distributor",
     },
-    partyName: {
+    distributorName: {
       type: String,
       required: true,
     },

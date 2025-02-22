@@ -7,7 +7,7 @@ import { Card } from "../components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect, useState, useRef } from "react";
-import { fetchDistributor } from "../redux/slices/distributorSlice";
+import { fetchDistributors } from "../redux/slices/distributorSlice";
 import { SearchSuggestion } from "../components/custom/custom-fields/CustomSearchSuggestion";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
@@ -19,9 +19,9 @@ export default function Component() {
   const { parties, fetchStatus } = useSelector((state) => state.distributor);
   const { createStatus } = useSelector((state) => state.payment);
   const [pendingInvoices, setPendingInvoices] = useState([]);
-  const [selectedParty, setSelectedParty] = useState(null);
+  const [selecteddistributor, setSelecteddistributor] = useState(null);
   const [value, setValue] = useState("");
-  const partyNameRef = useRef(null);
+  const distributorNameRef = useRef(null);
   const dispatch = useDispatch();
   const {toast} = useToast();
   const [paymentDate, setPaymentDate] = useState(() => {
@@ -41,14 +41,14 @@ export default function Component() {
 
   useEffect(() => {
     if (fetchStatus === "idle") {
-      dispatch(fetchDistributor());
+      dispatch(fetchDistributors());
     }
   }, [fetchStatus]);
 
-  const handleFetchPendingInvoices = async(partyId) => {
+  const handleFetchPendingInvoices = async(distributorId) => {
     setIsLoadingBills(true);
     try {
-      const response = await fetch(`${Backend_URL}/api/payment/pending-invoices/${partyId}?bill_type=sales`, {credentials: "include"});
+      const response = await fetch(`${Backend_URL}/api/payment/pending-invoices/${distributorId}?bill_type=sales`, {credentials: "include"});
       const data = await response.json();
       // console.log('data', data);
       setPendingInvoices(data);
@@ -58,8 +58,8 @@ export default function Component() {
     }
   }
 
-  const handlePartySuggestionSelect = (suggestion) => {
-    setSelectedParty(suggestion);
+  const handledistributorSuggestionSelect = (suggestion) => {
+    setSelecteddistributor(suggestion);
     setValue(suggestion.name);
     handleFetchPendingInvoices(suggestion._id);
   };
@@ -84,8 +84,8 @@ export default function Component() {
   };
 
   const handleSubmit = async () => {
-    if (!selectedParty) {
-      toast({ title: 'Select Party', variant: 'destructive',});
+    if (!selecteddistributor) {
+      toast({ title: 'Select distributor', variant: 'destructive',});
       return;
     }
 
@@ -101,7 +101,7 @@ export default function Component() {
 
     const paymentData = {
       payment_type: "Payment In",
-      party_id: selectedParty._id,
+      distributor_id: selecteddistributor._id,
       payment_date: paymentDate,
       payment_method: paymentMode,
       amount: paymentAmount,
@@ -116,7 +116,7 @@ export default function Component() {
 
     dispatch(createPayment(paymentData)).unwrap().then(() => {
         toast({title: "Payment added successfully", variant: "success",});
-        dispatch(fetchDistributor());
+        dispatch(fetchDistributors());
         navigate('/sales/payment-in');
       })
       .catch((error) => {
@@ -154,23 +154,23 @@ export default function Component() {
       <div className="grid md:grid-cols-2 gap-6 mb-6">
         <Card className="p-4 space-y-4">
           <div className="space-y-2">
-            <label className="text-sm text-muted-foreground">Party Name</label>
+            <label className="text-sm text-muted-foreground">distributor Name</label>
             <div className="relative">
               <SearchSuggestion
                 suggestions={parties}
-                placeholder='Search party by name'
+                placeholder='Search distributor by name'
                 value={value}
                 setValue={setValue}
-                onSuggestionSelect={handlePartySuggestionSelect}
-                ref={partyNameRef}
+                onSuggestionSelect={handledistributorSuggestionSelect}
+                ref={distributorNameRef}
                 showAmount={true}
               />
             </div>
           </div>
           {
-            selectedParty && (
+            selecteddistributor && (
               <div className="text-sm text-muted-foreground">
-                Current Balance: ₹{selectedParty?.currentBalance.toLocaleString()}
+                Current Balance: ₹{selecteddistributor?.currentBalance.toLocaleString()}
               </div>
             )
           }
@@ -253,7 +253,7 @@ export default function Component() {
           <h2 className="text-lg font-semibold">
             Settle invoices with this payment
           </h2>
-          {selectedParty && pendingInvoices.length > 0 && (
+          {selecteddistributor && pendingInvoices.length > 0 && (
             <div className="relative w-64">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input className="pl-8" placeholder="Search Invoice Number" />
@@ -261,11 +261,11 @@ export default function Component() {
           )}
         </div>
 
-        {!selectedParty ? (
+        {!selecteddistributor ? (
           <div className="border rounded-md">
             <div className="h-[400px] flex flex-col items-center justify-center text-muted-foreground">
               <Store className="h-12 w-12 mb-4" />
-              <p className="text-lg">Select a party to view pending invoices</p>
+              <p className="text-lg">Select a distributor to view pending invoices</p>
             </div>
           </div>
         ) : (

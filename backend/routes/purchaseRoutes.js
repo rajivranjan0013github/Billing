@@ -1,12 +1,11 @@
 import express from "express";
-import { PurchaseBill } from "../models/PurchaseBill.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import mongoose from "mongoose";
 import { InvoiceSchema } from "../models/InvoiceSchema.js";
 import { Inventory } from "../models/Inventory.js";
 import { InventoryBatch } from "../models/InventoryBatch.js";
 import { StockTimeline } from "../models/StockTimeline.js";
-import { Party } from "../models/Party.js";
+import { Distributor } from "../models/Distributor.js";
 import AccountDetails from "../models/AccountDetails.js";
 import { Payment } from "../models/Payment.js";
 import { DebitNoteNumber } from "../models/PurchaseReturn.js";
@@ -14,26 +13,112 @@ import { PurchaseReturn } from "../models/PurchaseReturn.js";
 
 const router = express.Router();
 
+// draft purchase bill - create or update
+router.post("/draft", verifyToken, async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  
+  try {
+    const { distributorId, _id } = req.body;
+    if (!mongoose.isValidObjectId(distributorId)) {
+      throw Error("distributor Id is not valid");
+    }
+
+    let newInvoice;
+    if (_id) {
+      // Update existing draft
+      newInvoice = await InvoiceSchema.findById(_id).session(session);
+      if (!newInvoice) {
+        throw new Error("Draft invoice not found");
+      }
+      if (newInvoice.status !== "draft") {
+        throw new Error("Can only update draft invoices");
+      }
+      Object.assign(newInvoice, {
+        ...req.body,
+        createdBy: req.user._id,
+        status: "draft"
+      });
+    } else {
+      // Create new draft
+      newInvoice = new InvoiceSchema({
+        ...req.body,
+        createdBy: req.user._id,
+        status: "draft",
+      });
+    }
+
+    await newInvoice.save({ session });
+
+    await session.commitTransaction();
+    res.status(201).json(newInvoice);
+  } catch (error) {
+    await session.abortTransaction();
+    res.status(500).json({ message: "Error creating/updating draft purchase bill", error: error.message });
+  } finally {
+    session.endSession();
+  }
+});
+
+// fetch draft purchase bill
+router.get("/draft", verifyToken, async (req, res) => {
+  try {
+    const draftInvoice = await InvoiceSchema.find({
+      status: "draft",
+    });
+    res.status(200).json(draftInvoice);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching draft purchase bill", error: error.message });
+  }
+});
+
+// delete draft purchase bill
+router.delete("/draft/:id", verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      throw Error("Invalid invoice ID");
+    } 
+    await InvoiceSchema.findByIdAndDelete(id);
+    res.status(200).json({ message: "Draft purchase bill deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting draft purchase bill", error: error.message });
+  }
+});
+
 // Create new purchase bill
 router.post("/", verifyToken, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const { invoiceType, partyId, payment, ...details } = req.body;
-    if (!mongoose.isValidObjectId(partyId)) {
-      throw Error("Party Id is not valid");
+    const {_id,  invoiceType, distributorId, payment, ...details } = req.body;
+    if (!mongoose.isValidObjectId(distributorId)) {
+      throw Error("distributor Id is not valid");
     }
 
-    // Fetching party to update current balance of party
-    const partyDetails = await Party.findById(partyId).session(session);
+    // Fetching distributor to update current balance of distributor
+    const distributorDetails = await Distributor.findById(distributorId).session(session);
 
-    // Create the invoice
-    const newInvoice = new InvoiceSchema({
-      ...req.body,
-      createdBy: req.user._id,
-      mob: partyDetails.mob,
-    });
+    // Create or update the invoice
+    let newInvoice;
+    if (_id) {
+      newInvoice = await InvoiceSchema.findById(_id).session(session);
+      if (!newInvoice) {
+        throw new Error("Invoice not found");
+      }
+      Object.assign(newInvoice, {
+        ...req.body,
+        createdBy: req.user._id,
+        mob: distributorDetails.mob,
+      });
+    } else {
+      newInvoice = new InvoiceSchema({
+        ...req.body,
+        createdBy: req.user._id,
+        mob: distributorDetails.mob,
+      });
+    }
 
     // Handle payment if provided
     if (payment && payment.amount > 0) {
@@ -43,8 +128,8 @@ router.post("/", verifyToken, async (req, res) => {
         payment_type: "Payment Out",
         payment_method: payment.payment_method,
         payment_date: payment.chequeDate || new Date(),
-        party_id: partyId,
-        partyName: partyDetails.name,
+        distributor_id: distributorId,
+        distributorName: distributorDetails.name,
         accountId: payment.accountId,
         transactionNumber: payment.transactionNumber,
         chequeNumber: payment.chequeNumber,
@@ -57,10 +142,10 @@ router.post("/", verifyToken, async (req, res) => {
 
       // For cheque payments, we don't need to validate account
       if (payment.payment_method === "CHEQUE") {
-        // Update party balance since it's still a payment promise
-        partyDetails.currentBalance =
-          (partyDetails.currentBalance || 0) - payment.amount;
-        await partyDetails.save({ session });
+        // Update distributor balance since it's still a payment promise
+        distributorDetails.currentBalance =
+          (distributorDetails.currentBalance || 0) - payment.amount;
+        await distributorDetails.save({ session });
       } else {
         // For non-cheque payments, validate and update account
         if (!payment.accountId) {
@@ -85,46 +170,34 @@ router.post("/", verifyToken, async (req, res) => {
           date: new Date(),
           type: "DEBIT",
           paymentId: paymentDoc._id,
-          partyName: partyDetails.name,
+          distributorName: distributorDetails.name,
           remarks: payment.remarks,
           balance: account.balance,
         });
 
         await account.save({ session });
 
-        // Update party balance
-        partyDetails.currentBalance =
-          (partyDetails.currentBalance || 0) - payment.amount;
-        await partyDetails.save({ session });
+        // Update distributor balance
+        distributorDetails.currentBalance = (distributorDetails.currentBalance || 0) - payment.amount;
+        await distributorDetails.save({ session });
       }
 
       await paymentDoc.save({ session });
+      newInvoice.payments.push(paymentDoc._id);
     }
 
     // Process inventory updates
     for (const product of req.body.products) {
-      const {
-        inventoryId,
-        batchNumber,
-        batchId,
-        expiry,
-        quantity,
-        pack,
-        purchaseRate,
-        ptr,
-        gstPer,
-        HSN,
-        mrp,
-      } = product;
+      const { inventoryId, batchNumber, batchId, expiry, quantity, pack, purchaseRate, ptr, gstPer, HSN, mrp} = product;
 
-      const inventorySchema = await Inventory.findById(inventoryId).session(
-        session
-      );
+      const inventorySchema = await Inventory.findById(inventoryId).session(session);
+
       if (!inventorySchema) {
         throw new Error(`Inventory not found : ${inventoryId}`);
       }
 
       const batch = await InventoryBatch.findById(batchId).session(session);
+
       if (batch) {
         Object.assign(batch, { expiry, pack, purchaseRate, gstPer, HSN });
         batch.quantity += quantity;
@@ -135,9 +208,19 @@ router.post("/", verifyToken, async (req, res) => {
           inventoryId: inventoryId,
           ...product,
         });
+        
         await newBatch.save({ session });
         inventorySchema.NewBatchOperation(newBatch);
         inventorySchema.batch.push(newBatch._id);
+        
+        // Update the batchId in the invoice's products array
+        const productIndex = newInvoice.products.findIndex(p => 
+          p.inventoryId.toString() === inventoryId.toString() && 
+          p.batchNumber === batchNumber
+        );
+        if (productIndex !== -1) {
+          newInvoice.products[productIndex].batchId = newBatch._id;
+        }
       }
 
       inventorySchema.quantity += quantity;
@@ -159,8 +242,8 @@ router.post("/", verifyToken, async (req, res) => {
         pack,
         user: req.user._id,
         userName: req?.user?.name,
-        partyName: partyDetails.name,
-        partyMob: partyDetails.mob,
+        distributorName: distributorDetails.name,
+        distributorMob: distributorDetails.mob,
       });
       await timeline.save({ session });
       await inventorySchema.save({ session });
@@ -173,9 +256,7 @@ router.post("/", verifyToken, async (req, res) => {
     res.status(201).json(savedInvoice);
   } catch (error) {
     await session.abortTransaction();
-    res
-      .status(500)
-      .json({ message: "Error creating purchase bill", error: error.message });
+    res.status(500).json({ message: "Error creating purchase bill", error: error.message });
   } finally {
     session.endSession();
   }
@@ -187,12 +268,12 @@ router.post("/edit", verifyToken, async (req, res) => {
   session.startTransaction();
 
   try {
-    const { invoiceType, partyId, _id, ...details } = req.body; // _id => invoice id
-    if (!mongoose.isValidObjectId(partyId)) {
-      throw Error("Party Id is not valid");
+    const { invoiceType, distributorId, _id, ...details } = req.body; // _id => invoice id
+    if (!mongoose.isValidObjectId(distributorId)) {
+      throw Error("distributor Id is not valid");
     }
-    // fetching party to update current balance of party
-    const partyDetails = await Party.findById(partyId).session(session);
+    // fetching distributor to update current balance of distributor
+    const distributorDetails = await Distributor.findById(distributorId).session(session);
     const newInvoice = new InvoiceSchema({
       ...req.body,
       createdBy: req.user._id,
@@ -250,8 +331,8 @@ router.post("/edit", verifyToken, async (req, res) => {
         pack,
         user: req.user._id,
         userName: req?.user?.name,
-        partyName: partyDetails.name,
-        partyMob: partyDetails.mob,
+        distributorName: distributorDetails.name,
+        distributorMob: distributorDetails.mob,
       });
       await timeline.save({ session });
       await inventorySchema.save({ session });
@@ -313,28 +394,6 @@ router.get("/invoice/:invoiceId", verifyToken, async (req, res) => {
   }
 });
 
-// Update this route
-router.get("/next-bill-number", verifyToken, async (req, res) => {
-  try {
-    const lastBill = await PurchaseBill.findOne({
-      hospital: req.user.hospital,
-    }).sort({ createdAt: -1 });
-
-    const nextCounter = lastBill ? (lastBill.invoice_counter || 0) + 1 : 1;
-
-    res.json({
-      success: true,
-      nextBillNumber: nextCounter.toString().padStart(6, "0"),
-      nextCounter,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error getting next bill number",
-      error: error.message,
-    });
-  }
-});
 
 // Add new search route
 router.get("/search", verifyToken, async (req, res) => {
@@ -362,14 +421,14 @@ router.get("/search", verifyToken, async (req, res) => {
 // Add new search route for purchase returns
 router.post("/search-by-invoice", verifyToken, async (req, res) => {
   try {
-    const { partyId, invoiceNumber, invoiceDate } = req.body;
+    const { distributorId, invoiceNumber, invoiceDate } = req.body;
 
     const searchQuery = {
       invoiceType: "PURCHASE",
     };
 
-    if (partyId) {
-      searchQuery.partyId = partyId;
+    if (distributorId) {
+      searchQuery.distributorId = distributorId;
     }
 
     if (invoiceNumber) {
@@ -407,8 +466,8 @@ router.post("/search-by-invoice", verifyToken, async (req, res) => {
         _id: invoice._id,
         invoiceNumber: invoice.invoiceNumber,
         invoiceDate: invoice.invoiceDate,
-        partyName: invoice.partyName,
-        partyId: invoice.partyId,
+        distributorName: invoice.distributorName,
+        distributorId: invoice.distributorId,
       },
       products: invoice.products,
     });
@@ -429,7 +488,7 @@ router.post("/return", verifyToken, async (req, res) => {
   try {
     const {
       returnDate,
-      partyId,
+      distributorId,
       originalInvoice,
       originalInvoiceNumber,
       originalInvoiceDate,
@@ -439,14 +498,14 @@ router.post("/return", verifyToken, async (req, res) => {
       billSummary,
     } = req.body;
 
-    if (!mongoose.isValidObjectId(partyId)) {
-      throw Error("Party Id is not valid");
+    if (!mongoose.isValidObjectId(distributorId)) {
+      throw Error("distributor Id is not valid");
     }
 
-    // Fetch party details
-    const partyDetails = await Party.findById(partyId).session(session);
-    if (!partyDetails) {
-      throw new Error("Party not found");
+    // Fetch distributor details
+    const distributorDetails = await Distributor.findById(distributorId).session(session);
+    if (!distributorDetails) {
+      throw new Error("distributor not found");
     }
 
     // Generate debit note number
@@ -464,9 +523,9 @@ router.post("/return", verifyToken, async (req, res) => {
     const purchaseReturn = new PurchaseReturn({
       debitNoteNumber: nextDebitNoteNumber.toString().padStart(6, "0"),
       returnDate,
-      partyId,
-      partyName: partyDetails.name,
-      mob: partyDetails.mob,
+      distributorId,
+      distributorName: distributorDetails.name,
+      mob: distributorDetails.mob,
       originalInvoice,
       originalInvoiceNumber,
       originalInvoiceDate,
@@ -528,8 +587,8 @@ router.post("/return", verifyToken, async (req, res) => {
         pack,
         user: req.user._id,
         userName: req?.user?.name,
-        partyName: partyDetails.name,
-        partyMob: partyDetails.mob,
+        distributorName: distributorDetails.name,
+        distributorMob: distributorDetails.mob,
       });
       await timeline.save({ session });
     }

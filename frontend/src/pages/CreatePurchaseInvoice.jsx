@@ -3,14 +3,13 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import {  ChevronLeft, Save, Settings2 } from "lucide-react";
+import {  Save, Settings2, ArrowLeft } from "lucide-react";
 import PurchaseItemTable from "../components/custom/purchase/PurchaseItemTable";
-import { convertToFraction } from "../assets/Data";
-import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
 import SelectDistributorDlg from "../components/custom/distributor/SelectDistributorDlg";
 import { useDispatch } from "react-redux";
 import { fetchItems } from "../redux/slices/inventorySlice";
+import { createPurchaseBill } from "../redux/slices/PurchaseBillSlice";
 import { useNavigate } from "react-router-dom";
 import PaymentDialog from "../components/custom/payment/PaymentDialog";
 import AmountSettingsDialog from "../components/custom/purchase/AmountSettingDialog";
@@ -81,17 +80,18 @@ export default function PurchaseForm() {
   const navigate = useNavigate();
   const inputRef = useRef([]);
   const dispatch = useDispatch();
+  
   const [invoiceDate, setInvoiceDate] = useState();
   const [dueDate, setDueDate] = useState();
   const [products, setProducts] = useState([]);
-  const [partySelectDialog, setPartySelectDialog] = useState(false);
-  const [partyName, setPartyName] = useState("");
+  const [distributorSelectDialog, setdistributorSelectDialog] = useState(false);
+  const [distributorName, setdistributorName] = useState("");
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
     purchaseType: "invoice",
-    partyName: "",
-    partyId: "",
+    distributorName: "",
+    distributorId: "",
     invoiceNumber: "",
     invoiceDate: "",
     paymentDueDate: "",
@@ -116,7 +116,7 @@ export default function PurchaseForm() {
     try {
       setLoading(true);
       // Validate required fields
-      if (!formData.partyName || !formData.invoiceNumber || !invoiceDate) {
+      if (!formData.distributorName || !formData.invoiceNumber || !invoiceDate) {
         throw new Error("Please fill all required fields");
       }
 
@@ -126,8 +126,8 @@ export default function PurchaseForm() {
 
       // Instead of saving invoice here, open payment dialog
       setInvoiceForPayment({
-        partyName: formData.partyName,
-        partyId: formData.partyId,
+        distributorName: formData.distributorName,
+        distributorId: formData.distributorId,
         invoiceNumber: formData.invoiceNumber,
         invoiceDate: invoiceDate,
         totalAmount: amountData.grandTotal,
@@ -146,7 +146,6 @@ export default function PurchaseForm() {
 
   const handlePaymentSubmit = async (paymentData) => {
     try {
-      // Format products data to match schema
       const formattedProducts = products.map((product) => ({
         inventoryId: product.inventoryId,
         productName: product.productName,
@@ -166,98 +165,61 @@ export default function PurchaseForm() {
         amount: roundToTwo(Number(product.amount)),
       }));
 
-      // Create a summary object for all the calculated totals with rounded values
-      const billSummary = {
-        subtotal: roundToTwo(amountData.subtotal),
-        discountAmount: roundToTwo(amountData.discountAmount),
-        taxableAmount: roundToTwo(amountData.taxable),
-        gstAmount: roundToTwo(amountData.gstAmount),
-        totalQuantity: amountData.totalQuantity,
-        productCount: amountData.productCount,
-        grandTotal: roundToTwo(amountData.grandTotal),
-      };
-
-      const finalData = {
+      const purchaseData = {
         invoiceType: "PURCHASE",
         invoiceNumber: formData.invoiceNumber,
-        partyName: formData.partyName,
-        partyId: formData.partyId,
-        mob: "", // Add if available
-        invoiceDate: invoiceDate,
-        paymentDueDate:
-          paymentData.status === "due" ? paymentData.dueDate : null,
+        distributorName: formData.distributorName,
+        distributorId: formData.distributorId,
+        mob: "",
+        invoiceDate: new Date(invoiceDate),
+        paymentDueDate: paymentData.status === "due" ? paymentData.dueDate : null,
         products: formattedProducts,
         withGst: formData.withGst === "yes",
-        billSummary,
+        billSummary: {
+          subtotal: roundToTwo(amountData.subtotal),
+          discountAmount: roundToTwo(amountData.discountAmount),
+          taxableAmount: roundToTwo(amountData.taxable),
+          gstAmount: roundToTwo(amountData.gstAmount),
+          totalQuantity: amountData.totalQuantity,
+          productCount: amountData.productCount,
+          grandTotal: roundToTwo(amountData.grandTotal),
+        },
         amountCalculationType: formData.amountType,
         status: "active",
-        // Payment details
         paymentStatus: paymentData.status,
-        amountPaid:
-          paymentData.status === "due" ? 0 : Number(paymentData.amount || 0),
-        // Create separate payment record
-        payment:
-          paymentData.status === "paid"
-            ? {
-                amount: Number(paymentData.amount || 0),
-                payment_type: paymentData.payment_type,
-                payment_method: paymentData.paymentMethod,
-                party_id: formData.partyId,
-                partyName: formData.partyName,
-                remarks: paymentData.notes,
-                // Only include accountId if payment method is not cheque
-                ...(paymentData.paymentMethod !== "cheque" && {
-                  accountId: paymentData.accountId,
-                }),
-                // Include cheque details if payment method is cheque
-                ...(paymentData.paymentMethod === "cheque" && {
-                  chequeNumber: paymentData.chequeNumber,
-                  chequeDate: paymentData.chequeDate,
-                  micrCode: paymentData.micrCode,
-                }),
-              }
-            : null,
+        amountPaid: paymentData.status === "due" ? 0 : Number(paymentData.amount || 0),
+        payment: paymentData.status === "paid" ? {
+          amount: Number(paymentData.amount || 0),
+          payment_type: paymentData.payment_type,
+          payment_method: paymentData.paymentMethod,
+          distributor_id: formData.distributorId,
+          distributorName: formData.distributorName,
+          remarks: paymentData.notes,
+          ...(paymentData.paymentMethod !== "cheque" && {
+            accountId: paymentData.accountId,
+          }),
+          ...(paymentData.paymentMethod === "cheque" && {
+            chequeNumber: paymentData.chequeNumber,
+            chequeDate: paymentData.chequeDate,
+            micrCode: paymentData.micrCode,
+          }),
+        } : null,
       };
 
-      const response = await fetch(`${Backend_URL}/api/purchase`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(finalData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to save invoice");
-      }
-
+      await dispatch(createPurchaseBill(purchaseData)).unwrap();
+      
       toast({
         title: "Purchase invoice saved successfully",
         variant: "success",
       });
 
+      // Refresh inventory items
       dispatch(fetchItems());
 
-      // Reset all form data and states
-      setFormData({
-        purchaseType: "invoice",
-        partyName: "",
-        partyId: "",
-        invoiceNumber: "",
-        invoiceDate: "",
-        paymentDueDate: "",
-        withGst: "yes",
-        overallDiscount: "",
-        amountType: "exclusive",
-      });
-      setInvoiceDate(null);
-      setDueDate(null);
-      setProducts([]);
-      setPaymentDialogOpen(false);
-      setInvoiceForPayment(null); // Reset invoice data for payment
-      setPartyName(""); // Reset party name input
+      // Reset form state
+      resetFormState();
 
-      // Navigate back after successful submission
+      // Navigate back
       navigate(-1);
     } catch (error) {
       toast({
@@ -268,13 +230,31 @@ export default function PurchaseForm() {
     }
   };
 
+  const resetFormState = () => {
+    setFormData({
+      purchaseType: "invoice",
+      distributorName: "",
+      distributorId: "",
+      invoiceNumber: "",
+      invoiceDate: "",
+      paymentDueDate: "",
+      withGst: "yes",
+      overallDiscount: "",
+      amountType: "exclusive",
+    });
+    setInvoiceDate(null);
+    setDueDate(null);
+    setProducts([]);
+    setPaymentDialogOpen(false);
+    setInvoiceForPayment(null);
+    setdistributorName("");
+  };
+
   // Add this new function to handle key press events
   const handleKeyDown = (e, nextInputId) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       if (e.shiftKey) {
-        console.log('pressed');
-        
         const nextInputIndex = inputKeys.indexOf(nextInputId);
         if(nextInputIndex > 1) {
           const newInputId = inputKeys[nextInputIndex-2];
@@ -290,10 +270,11 @@ export default function PurchaseForm() {
     }
   };
 
+  // shortcut for saving invoice
   const handleShortcutKeyPressed = (e) => {
-    if(e.ctrlKey && e.key === "s") {
+    if(e.altKey && e.key === "s") {
       e.preventDefault()
-      console.log('ctr');
+      handleSaveInvoice();
     }
   }
 
@@ -309,26 +290,26 @@ export default function PurchaseForm() {
   const handleDistributorNameChange = (e) => {
     e.preventDefault();
     const value = e.target.value;
-    setPartyName(value);
+    setdistributorName(value);
 
     if (value.length === 1) {
       if (value === " ") {
-        setPartySelectDialog(true);
-      } else if (value[0] !== " " && partyName.length === 0) {
-        setPartySelectDialog(true);
+        setdistributorSelectDialog(true);
+      } else if (value[0] !== " " && distributorName.length === 0) {
+        setdistributorSelectDialog(true);
       }
     }
   };
 
   // Handle distributor selection from dialog
   const handleDistributorSelect = (distributor) => {
-    setPartyName(distributor.name);
+    setdistributorName(distributor.name);
     setFormData({
       ...formData,
-      partyId: distributor._id,
-      partyName: distributor.name,
+      distributorId: distributor._id,
+      distributorName: distributor.name,
     });
-    setPartySelectDialog(false);
+    setdistributorSelectDialog(false);
     if(inputRef.current['invoiceNo']) {
       inputRef.current['invoiceNo'].focus();
     }
@@ -338,48 +319,11 @@ export default function PurchaseForm() {
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [invoiceForPayment, setInvoiceForPayment] = useState(null);
 
-  const calculateItemAmount = (product) => {
-    const quantity = Number(product?.quantity || 0);
-    const purchaseRate = Number(product?.purchaseRate || 0);
-    const discountPercent =
-      Number(product?.discount || 0) + Number(product?.schemePercent || 0);
-    const gstPer = Number(product?.gstPer || 0);
-
-    let amount = 0;
-
-    switch (formData.amountType) {
-      case "exclusive":
-        // Amount is exclusive of both discount and GST
-        const subtotal = quantity * purchaseRate;
-        const discount = (subtotal * discountPercent) / 100;
-        const taxable = subtotal - discount;
-        const gst = (taxable * gstPer) / 100;
-        amount = taxable + gst;
-        break;
-
-      case "inclusive_gst":
-        // Amount is inclusive of GST but exclusive of discount
-        const baseAmount = quantity * purchaseRate;
-        const effectiveRate = baseAmount / (1 + gstPer / 100);
-        const discountAmount = (effectiveRate * discountPercent) / 100;
-        amount = baseAmount - discountAmount;
-        break;
-
-      case "inclusive_all":
-        // Amount is inclusive of both GST and discount
-        const grossAmount = quantity * purchaseRate;
-        amount = grossAmount;
-        break;
-    }
-
-    return convertToFraction(amount);
-  };
-
   return (
     <div className="relative rounded-lg h-[100vh] pt-4">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <ChevronLeft
+          <ArrowLeft
             className="w-5 h-5 cursor-pointer"
             onClick={() => navigate(-1)}
           />
@@ -460,7 +404,7 @@ export default function PurchaseForm() {
             </Label>
             <Input
               ref={el => inputRef.current['distributorName'] = el}
-              value={partyName || ""}
+              value={distributorName || ""}
               onChange={handleDistributorNameChange}
               onKeyDown={(e) => handleKeyDown(e, 'invoiceNo')}
               placeholder="Type or Press space"
@@ -615,10 +559,10 @@ export default function PurchaseForm() {
         </div>
       </div>
       <SelectDistributorDlg
-        open={partySelectDialog}
-        setOpen={setPartySelectDialog}
-        search={partyName}
-        setSearch={setPartyName}
+        open={distributorSelectDialog}
+        setOpen={setdistributorSelectDialog}
+        search={distributorName}
+        setSearch={setdistributorName}
         onSelect={handleDistributorSelect}
       />
       <AmountSettingsDialog

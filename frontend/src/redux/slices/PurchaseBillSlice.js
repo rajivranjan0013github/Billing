@@ -63,8 +63,8 @@ const purchaseBillSlice = createSlice({
   name: "purchaseBill",
   initialState: {
     purchaseBills: [],
-    createPurchaseBillStatus: "idle",
     fetchStatus: "idle",
+    createPurchaseBillStatus: "idle",
     searchStatus: "idle",
     error: null,
   },

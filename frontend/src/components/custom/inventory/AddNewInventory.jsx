@@ -1,10 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "../../ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle} from "../../ui/dialog";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Button } from "../../ui/button";
@@ -45,11 +40,7 @@ const medicineFormSuggestions = MEDICINE_FORMS.map((form) => ({
   ...form,
 }));
 
-export default function AddNewInventory({
-  open,
-  onOpenChange,
-  inventoryDetails,
-}) {
+export default function AddNewInventory({ open, onOpenChange, inventoryDetails}) {
   const inputRef = useRef([]);
   const { toast } = useToast();
   const dispatch = useDispatch();

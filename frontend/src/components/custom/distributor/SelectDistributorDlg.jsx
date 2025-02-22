@@ -18,7 +18,7 @@ import { Edit, Search, Trash2, Plus } from "lucide-react";
 import { Badge } from "../../ui/badge";
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect, useState } from "react";
-import { fetchDistributor } from "../../../redux/slices/distributorSlice";
+import { fetchDistributors } from "../../../redux/slices/distributorSlice";
 import CreateDistributorDlg from "./CreateDistributorDlg";
 import { ScrollArea } from "../../ui/scroll-area";
 import {Separator} from '../../ui/separator'
@@ -32,7 +32,7 @@ export default function SelectDistributorDlg({ open, setOpen, search, setSearch,
 
   useEffect(() => {
     if (fetchStatus === "idle") {
-      dispatch(fetchDistributor());
+      dispatch(fetchDistributors());
     }
   }, [fetchStatus]);
 
@@ -44,7 +44,7 @@ export default function SelectDistributorDlg({ open, setOpen, search, setSearch,
   // Add effect to set initial selection when dialog opens or search changes
   useEffect(() => {
     const filtered = distributors.filter((distributor) =>
-      distributor.name.toLowerCase().includes(search.toLowerCase())
+      distributor.name.toLowerCase().includes(search.trim().toLowerCase())
     );
     if (filtered.length > 0) {
       setSelectedId(filtered[0]._id);

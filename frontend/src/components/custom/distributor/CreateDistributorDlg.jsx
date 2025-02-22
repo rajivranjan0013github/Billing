@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createDistributor } from "../../../redux/slices/distributorSlice";
 import { Button } from "../../ui/button";
@@ -20,7 +20,6 @@ import {
   DialogTitle,
 } from "../../ui/dialog";
 import { Separator } from "../../ui/separator";
-import { Building2, CreditCard, FileText } from "lucide-react";
 
 const INITIAL_FORM_DATA = {
   name: "",
@@ -57,6 +56,7 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
     'save_button'
   ];
 
+  // handling button shortcuts
   const handleKeyDown = (e, currentKey) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -108,6 +108,13 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
       });
     }
   };
+
+  // when dialog is open autofocus on first input
+  useEffect(()=> {
+    if(open && inputRef.current['name']) {
+      inputRef.current['name']?.focus();
+    }
+  }, [open])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -254,7 +254,7 @@ const SalesReturnList = () => {
                     {format(new Date(returnItem.returnDate), "dd/MM/yyyy")}
                   </TableCell>
                   <TableCell>
-                    <div>{returnItem.partyName || "Cash Customer"}</div>
+                    <div>{returnItem.distributorName || "Cash Customer"}</div>
                   </TableCell>
                   <TableCell>
                     {returnItem.originalInvoiceNumber || "-"}

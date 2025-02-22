@@ -1,11 +1,9 @@
 import express from 'express';
 import { Payment } from '../models/Payment.js';
 import mongoose from 'mongoose';
-import { PurchaseBill } from "../models/PurchaseBill.js";
+import { InvoiceSchema } from '../models/InvoiceSchema.js';
 import { SalesBill } from "../models/SalesBill.js";
-import { Ledger } from "../models/Ledger.js";
-import { Party } from "../models/Party.js";
-import { PartyTransaction } from "../models/PartyTransaction.js";
+import { Distributor } from "../models/Distributor.js";
 const router = express.Router();
 
 router.get("/", async (req, res) => {
@@ -19,30 +17,30 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Get pending invoices for a party
-router.get("/pending-invoices/:partyId", async (req, res) => {
+// Get pending invoices for a distributor
+router.get("/pending-invoices/:distributorId", async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const { partyId } = req.params;
+    const { distributorId } = req.params;
     const { bill_type } = req.query;
     
-    if (!mongoose.Types.ObjectId.isValid(partyId)) {
-      return res.status(400).json({ message: "Invalid party ID format" });
+    if (!mongoose.Types.ObjectId.isValid(distributorId)) {
+      return res.status(400).json({ message: "Invalid distributor ID format" });
     }
 
     let pendingInvoices = [];
     
     if (bill_type === "purchase") {
-      pendingInvoices = await PurchaseBill.find(
+      pendingInvoices = await InvoiceSchema.find(
         { 
-          supplier: new mongoose.Types.ObjectId(partyId), 
+          supplier: new mongoose.Types.ObjectId(distributorId), 
           payment_status: "pending" 
         }
       ).session(session)
         .select('bill_number payment payment_status bill_date grand_total');
     } else if (bill_type === "sales") {
-      pendingInvoices = await SalesBill.find({ party: new mongoose.Types.ObjectId(partyId), payment_status: "pending" }).session(session)
+      pendingInvoices = await SalesBill.find({ distributor: new mongoose.Types.ObjectId(distributorId), payment_status: "pending" }).session(session)
         .select('bill_number payment payment_status bill_date grand_total');
     }
     
@@ -62,68 +60,45 @@ router.post("/make-payment", async (req, res) => {
   session.startTransaction();
   
   try {
-    const {bills, party_id, remarks, payment_type,payment_method, amount, payment_date, payment_number} = req.body;
+    const {bills, distributor_id, remarks, payment_type,payment_method, amount, payment_date, payment_number} = req.body;
 
     let payment_amount = amount;
     
     // Validate required fields
-    if (!payment_type || !payment_method || !party_id || !amount) {
+    if (!payment_type || !payment_method || !distributor_id || !amount) {
       return res.status(400).json({ 
         message: "Missing required fields" 
       });
     }
 
-    // Update party balance
-    const partyDoc = await Party.findById(party_id).session(session);
-    if (!partyDoc) {
-      return res.status(404).json({ message: "Party not found" });
+    // Update distributor balance
+    const distributorDoc = await Distributor.findById(distributor_id).session(session);
+    if (!distributorDoc) {
+      return res.status(404).json({ message: "distributor not found" });
     }
 
     // For payment out (paying to supplier) - increase balance
     // For payment in (receiving from customer) - decrease balance
-    partyDoc.currentBalance += payment_type === "Payment Out" ? amount : -amount;
+    distributorDoc.currentBalance += payment_type === "Payment Out" ? amount : -amount;
 
     // Create payment record
     const payment = new Payment({
       payment_number,
       payment_type,
       payment_method,
-      party_id,
-      partyName: partyDoc.name,
+      distributor_id,
+      distributorName: distributorDoc.name,
       remarks,
       amount,
       payment_date
     });
 
-    // Create ledger entry
-    const ledger = new Ledger({
-      party_id,
-      type: payment_type,
-      debit: payment_type === "Payment Out" ? amount : 0,
-      credit: payment_type === "Payment In" ? amount : 0,
-      description: remarks,
-      bill_number: payment_number,
-      balance: partyDoc.currentBalance
-    });
-
-    await ledger.save({ session });
-
-    // Create party transaction
-    const partyTransaction = new PartyTransaction({
-      party_id,
-      type: payment_type,
-      amount,
-      description: remarks,
-      bill_number: payment_number,
-      invoice_id: payment._id
-    });
-    await partyTransaction.save({ session });
 
     // Update bills
     for (const bill of bills) {
       if (payment_amount === 0) break;
 
-      const BillModel = payment_type === "Payment Out" ? PurchaseBill : SalesBill;
+      const BillModel = payment_type === "Payment Out" ? InvoiceSchema : SalesBill;
       const billDoc = await BillModel.findById(bill.bill_id).session(session);
 
       if (!billDoc) {
@@ -163,7 +138,7 @@ router.post("/make-payment", async (req, res) => {
     }
 
     await payment.save({ session });
-    await partyDoc.save({ session });
+    await distributorDoc.save({ session });
     
     await session.commitTransaction();
     res.status(201).json(payment);
@@ -180,6 +155,7 @@ router.post("/make-payment", async (req, res) => {
   }
 });
 
+// 
 router.get("/details/:paymentId", async (req, res) => {
   try {
     const { paymentId } = req.params;
@@ -190,10 +166,5 @@ router.get("/details/:paymentId", async (req, res) => {
   }
 });
 
-router.get("/ledger", async (req, res) => {
-  const { party_id } = req.query;
-  const ledger = await Ledger.find({ party_id });
-  res.status(200).json(ledger);
-});
 
 export default router;

@@ -168,20 +168,20 @@ const SalesInvoicePrint = () => {
               </div>
             </div>
 
-            {/* Party Details - Right Side */}
+            {/* distributor Details - Right Side */}
             <div className="col-span-2 bg-gray-50 p-2 border border-gray-200 rounded">
               <h3 className="text-sm font-medium mb-1 text-gray-700">
-                Party Details
+                distributor Details
               </h3>
               <div className="space-y-0.5 text-sm">
                 <div className="grid grid-cols-3">
-                  <span className="text-gray-600">Party Name:</span>
-                  <span className="col-span-2">{invoiceData.partyName}</span>
+                  <span className="text-gray-600">distributor Name:</span>
+                  <span className="col-span-2">{invoiceData.distributorName}</span>
                 </div>
-                {invoiceData.partyGstin && (
+                {invoiceData.distributorGstin && (
                   <div className="grid grid-cols-3">
                     <span className="text-gray-600">GSTIN:</span>
-                    <span className="col-span-2">{invoiceData.partyGstin}</span>
+                    <span className="col-span-2">{invoiceData.distributorGstin}</span>
                   </div>
                 )}
               </div>

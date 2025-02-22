@@ -33,7 +33,7 @@ export default function Timeline({inventoryId}) {
               <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">TXN DATE</th>
               <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">TXN TYPE</th>
               <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">TXN NO</th>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">PARTY NAME</th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">distributor NAME</th>
               <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">BATCH NO</th>
               <th className="px-4 py-2 text-right text-sm font-medium text-gray-500">CREDIT</th>
               <th className="px-4 py-2 text-right text-sm font-medium text-gray-500">DEBIT</th>
@@ -65,8 +65,8 @@ export default function Timeline({inventoryId}) {
                   <div className="text-xs text-gray-500">User: {transaction.userName || '-'}</div>
                 </td>
                 <td className="px-4 py-2">
-                  <div className="text-sm">{transaction.partyName || '-'}</div>
-                  <div className="text-xs text-gray-500">Mob: {transaction.partyMob || '-'}</div>
+                  <div className="text-sm">{transaction.distributorName || '-'}</div>
+                  <div className="text-xs text-gray-500">Mob: {transaction.distributorMob || '-'}</div>
                 </td>
                 <td className="px-4 py-2">
                   <div className="text-sm font-medium">{transaction.batchNumber}</div>

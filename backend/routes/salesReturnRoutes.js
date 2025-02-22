@@ -94,7 +94,7 @@ router.get("/:id", isAuthenticated, async (req, res) => {
   try {
     const salesReturn = await SalesReturn.findById(req.params.id)
       .populate("createdBy", "name")
-      .populate("partyId", "name address");
+      .populate("distributorId", "name address");
 
     if (!salesReturn) {
       return res.status(404).json({ message: "Sales return not found" });

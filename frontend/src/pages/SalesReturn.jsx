@@ -14,7 +14,7 @@ import { cn } from "../lib/utils";
 import { convertToFraction } from "../assets/Data";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
-import SelectPartyDialog from "../components/custom/distributor/SelectDistributorDlg";
+import SelectdistributorDialog from "../components/custom/distributor/SelectDistributorDlg";
 import PaymentDialog from "../components/custom/payment/PaymentDialog";
 import { enIN } from "date-fns/locale";
 import { useDispatch } from "react-redux";
@@ -74,17 +74,17 @@ export default function SalesReturn() {
       .join("-")
   );
   const [products, setProducts] = useState([]);
-  const [partySelectDialog, setPartySelectDialog] = useState(false);
+  const [distributorSelectDialog, setdistributorSelectDialog] = useState(false);
   const [paymentDialog, setPaymentDialog] = useState(false);
-  const [partyName, setPartyName] = useState("");
+  const [distributorName, setdistributorName] = useState("");
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     originalInvoiceNumber: "",
     returnNumber: "",
-    partyName: "",
-    partyId: "",
+    distributorName: "",
+    distributorId: "",
     returnDate: new Date(),
   });
 
@@ -195,8 +195,8 @@ export default function SalesReturn() {
       const finalData = {
         returnNumber: formData.returnNumber,
         originalInvoiceNumber: formData.originalInvoiceNumber,
-        partyName: formData.partyName || partyName,
-        partyId: formData.partyId,
+        distributorName: formData.distributorName || distributorName,
+        distributorId: formData.distributorId,
         returnDate: returnDate,
         products: formattedProducts,
         billSummary,
@@ -243,30 +243,30 @@ export default function SalesReturn() {
     setPaymentDialog(true);
   };
 
-  // Handle party name input change
-  const handlePartyNameChange = (e) => {
+  // Handle distributor name input change
+  const handledistributorNameChange = (e) => {
     e.preventDefault();
     const value = e.target.value;
 
     if (value.length === 1 && value === " ") {
-      setPartySelectDialog(true);
+      setdistributorSelectDialog(true);
       return;
     }
     if (value.length > 0 && value[0] !== " ") {
-      setPartyName(value);
-      setPartySelectDialog(true);
+      setdistributorName(value);
+      setdistributorSelectDialog(true);
     }
   };
 
-  // Handle party selection from dialog
-  const handlePartySelect = (party) => {
-    setPartyName(party.name);
+  // Handle distributor selection from dialog
+  const handledistributorSelect = (distributor) => {
+    setdistributorName(distributor.name);
     setFormData({
       ...formData,
-      partyId: party._id,
-      partyName: party.name,
+      distributorId: distributor._id,
+      distributorName: distributor.name,
     });
-    setPartySelectDialog(false);
+    setdistributorSelectDialog(false);
   };
 
   const [returnDateOpen, setReturnDateOpen] = useState(false);
@@ -333,8 +333,8 @@ export default function SalesReturn() {
               CUSTOMER NAME<span className="text-rose-500">*REQUIRED</span>
             </Label>
             <Input
-              value={partyName}
-              onChange={handlePartyNameChange}
+              value={distributorName}
+              onChange={handledistributorNameChange}
               placeholder="Type or Press space"
             />
           </div>
@@ -432,12 +432,12 @@ export default function SalesReturn() {
         </div>
       </div>
 
-      <SelectPartyDialog
-        open={partySelectDialog}
-        setOpen={setPartySelectDialog}
-        search={partyName}
-        setSearch={setPartyName}
-        onSelect={handlePartySelect}
+      <SelectdistributorDialog
+        open={distributorSelectDialog}
+        setOpen={setdistributorSelectDialog}
+        search={distributorName}
+        setSearch={setdistributorName}
+        onSelect={handledistributorSelect}
       />
 
       <PaymentDialog
@@ -450,7 +450,7 @@ export default function SalesReturn() {
           }
         }}
         invoiceData={{
-          partyName: formData.partyName || partyName,
+          distributorName: formData.distributorName || distributorName,
           invoiceNumber: formData.returnNumber,
           invoiceDate: returnDate,
           totalAmount: amountData?.grandTotal || 0,

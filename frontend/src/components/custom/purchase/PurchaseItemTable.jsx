@@ -146,13 +146,13 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
       gstPer: product.gstPer,
     }));
     setProductSearch(product.name);
-    
-    // if (inputRef.current["HSN"]) {
-  
-    //   inputRef.current["HSN"].focus();
-    // }
-    // document.getElementById('batch-number-Input')?.focus();
-    document.getElementById('HSN')?.focus();
+    if(product?.batch?.length) {
+      if(inputRef && inputRef.current['batchNumber']) {
+        inputRef.current['batchNumber'].focus();
+      } 
+    } else if(inputRef && inputRef.current['HSN']) {
+      inputRef.current['HSN'].focus();
+    }
     
   };
 

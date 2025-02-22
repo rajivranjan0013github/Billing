@@ -6,8 +6,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Checkbox } from "../components/ui/checkbox";
 import { useNavigate } from "react-router-dom";
-import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import SelectPartyDialog from "../components/custom/distributor/SelectDistributorDlg";
+import SelectDistributorDlg from "../components/custom/distributor/SelectDistributorDlg";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
 
@@ -23,11 +22,11 @@ const PurchaseReturn = () => {
   const [adjustRateForDisc, setAdjustRateForDisc] = useState(true);
   const [loading, setLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [partySelectDialog, setPartySelectDialog] = useState(false);
-  const [partyName, setPartyName] = useState("");
+  const [distributorSelectDialog, setdistributorSelectDialog] = useState(false);
+  const [distributorName, setdistributorName] = useState("");
   const [formData, setFormData] = useState({
-    partyName: "",
-    partyId: "",
+    distributorName: "",
+    distributorId: "",
     invoiceNumber: "",
     invoiceDate: "",
   });
@@ -36,27 +35,27 @@ const PurchaseReturn = () => {
   const handleDistributorNameChange = (e) => {
     e.preventDefault();
     const value = e.target.value;
-    setPartyName(value);
+    setdistributorName(value);
 
     // Only open dialog if space is pressed or text is entered (not on backspace/delete)
     if (value.length === 1) {
       if (value === " ") {
-        setPartySelectDialog(true);
-      } else if (value[0] !== " " && partyName.length === 0) {
-        setPartySelectDialog(true);
+        setdistributorSelectDialog(true);
+      } else if (value[0] !== " " && distributorName.length === 0) {
+        setdistributorSelectDialog(true);
       }
     }
   };
 
   // Handle distributor selection from dialog
   const handleDistributorSelect = (distributor) => {
-    setPartyName(distributor.name);
+    setdistributorName(distributor.name);
     setFormData({
       ...formData,
-      partyId: distributor._id,
-      partyName: distributor.name,
+      distributorId: distributor._id,
+      distributorName: distributor.name,
     });
-    setPartySelectDialog(false);
+    setdistributorSelectDialog(false);
   };
   const tableCalculations = (products) => {
     const formattedProducts = products.map((product, index) => {
@@ -95,9 +94,10 @@ const PurchaseReturn = () => {
     const formattedProducts = tableCalculations(products);
     setItems(formattedProducts);
   }, [adjustRateForDisc]);
+
   // Handle search functionality
   const handleSearch = async () => {
-    if (!formData.partyId || !formData.invoiceNumber) {
+    if (!formData.distributorId || !formData.invoiceNumber) {
       toast({
         title: "Please select distributor and enter invoice number",
         variant: "destructive",
@@ -116,7 +116,7 @@ const PurchaseReturn = () => {
           },
           credentials: "include",
           body: JSON.stringify({
-            partyId: formData.partyId,
+            distributorId: formData.distributorId,
             invoiceNumber: formData.invoiceNumber,
             invoiceDate: formData.invoiceDate,
           }),
@@ -135,8 +135,8 @@ const PurchaseReturn = () => {
       setFormData((prev) => ({
         ...prev,
         invoiceId: invoiceDetails._id,
-        partyName: invoiceDetails.partyName,
-        partyId: invoiceDetails.partyId,
+        distributorName: invoiceDetails.distributorName,
+        distributorId: invoiceDetails.distributorId,
         invoiceNumber: invoiceDetails.invoiceNumber,
         invoiceDate: new Date(invoiceDetails.invoiceDate)
           .toISOString()
@@ -244,7 +244,7 @@ const PurchaseReturn = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.partyId || !formData.invoiceId || items.length === 0) {
+    if (!formData.distributorId || !formData.invoiceId || items.length === 0) {
       toast({
         title: "Please select distributor and enter invoice number",
         variant: "destructive",
@@ -287,7 +287,7 @@ const PurchaseReturn = () => {
 
       const returnData = {
         returnDate,
-        partyId: formData.partyId,
+        distributorId: formData.distributorId,
         originalInvoice: formData.invoiceId,
         originalInvoiceNumber: formData.invoiceNumber,
         originalInvoiceDate: formData.invoiceDate,
@@ -409,7 +409,7 @@ const PurchaseReturn = () => {
                 <Input
                   type="text"
                   placeholder="Type or Press space"
-                  value={partyName}
+                  value={distributorName}
                   onChange={handleDistributorNameChange}
                   className="w-full"
                 />
@@ -760,12 +760,12 @@ const PurchaseReturn = () => {
         </div>
       </div>
 
-      {/* Add SelectPartyDialog */}
-      <SelectPartyDialog
-        open={partySelectDialog}
-        setOpen={setPartySelectDialog}
-        search={partyName}
-        setSearch={setPartyName}
+      {/* Add SelectDistributorDlg */}
+      <SelectDistributorDlg
+        open={distributorSelectDialog}
+        setOpen={setdistributorSelectDialog}
+        search={distributorName}
+        setSearch={setdistributorName}
         onSelect={handleDistributorSelect}
       />
     </div>

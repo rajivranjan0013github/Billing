@@ -241,11 +241,9 @@ export default function PurchasesTransactions() {
                 <TableHead>INVOICE DATE</TableHead>
                 <TableHead>GST</TableHead>
                 <TableHead>BILLED ON</TableHead>
-                <TableHead>AMOUNT</TableHead>
-                
-                <TableHead>BALANCE</TableHead>
+                <TableHead>BILL TOTAL</TableHead>
+                <TableHead>Due Amt</TableHead>
                 <TableHead>PAID / DUE</TableHead>
-                <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -259,7 +257,7 @@ export default function PurchasesTransactions() {
                     {bill.invoiceNumber}
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium">{bill.partyName}</div>
+                    <div className="font-medium">{bill.distributorName}</div>
                     <div className="text-sm text-muted-foreground">
                       {bill.mob}
                     </div>
@@ -287,12 +285,12 @@ export default function PurchasesTransactions() {
                     {formatCurrency(bill.billSummary?.grandTotal||0)}
                   </TableCell>
                  
-                  <TableCell className="font-medium">
+                  {/* <TableCell className="font-medium">
                     {formatCurrency(bill.payableAmount || bill.grandTotal)}
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell>
                     <div className="font-medium">
-                      {formatCurrency(bill.grandTotal - (bill.amountPaid || 0))}
+                      {formatCurrency((bill.billSummary?.grandTotal || 0) - (bill.amountPaid || 0))}
                     </div>
                     {bill.paymentDueDate && (
                       <div className="text-sm text-muted-foreground">
@@ -324,24 +322,11 @@ export default function PurchasesTransactions() {
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="opacity-0 group-hover:opacity-100 text-pink-500 transition-opacity">
-                      →
-                    </div>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         )}
-      </div>
-
-      <div className="fixed  bottom-2 flex justify-between items-center">
-        <div className="text-sm text-muted-foreground">
-          Create New Purchases - <span className="font-medium">F2</span> | Move
-          Up or Down - <span className="font-medium">Arrow Keys</span> | To Open
-          - <span className="font-medium">Enter</span>
-        </div>
       </div>
     </div>
   );

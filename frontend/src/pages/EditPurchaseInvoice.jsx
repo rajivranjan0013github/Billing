@@ -15,7 +15,7 @@ import { cn } from "../lib/utils";
 import PurchaseItemTable from "../components/custom/purchase/PurchaseItemTable";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
-import SelectPartyDialog from "../components/custom/distributor/SelectDistributorDlg";
+import SelectdistributorDialog from "../components/custom/distributor/SelectDistributorDlg";
 import { enIN } from "date-fns/locale";
 import { calculateTotals } from "./CreatePurchaseInvoice";
 import { useParams, useNavigate } from "react-router-dom";
@@ -30,16 +30,16 @@ export default function EditPurchaseInvoice() {
   const [invoiceDate, setInvoiceDate] = useState();
   const [dueDate, setDueDate] = useState();
   const [products, setProducts] = useState([]);
-  const [partySelectDialog, setPartySelectDialog] = useState(false);
-  const [partyName, setPartyName] = useState("");
+  const [distributorSelectDialog, setdistributorSelectDialog] = useState(false);
+  const [distributorName, setdistributorName] = useState("");
   const [invoiceDateOpen, setInvoiceDateOpen] = useState(false);
   const [dueDateOpen, setDueDateOpen] = useState(false);
   const [billSummary, setBillSummary] = useState({});
 
   const [formData, setFormData] = useState({
     purchaseType: "invoice",
-    partyName: "",
-    partyId: "",
+    distributorName: "",
+    distributorId: "",
     invoiceNumber: "",
     invoiceDate: "",
     paymentDueDate: "",
@@ -63,8 +63,8 @@ export default function EditPurchaseInvoice() {
 
         // Update to handle the new data format
         const {
-          partyName,
-          partyId,
+          distributorName,
+          distributorId,
           invoiceNumber,
           products,
           invoiceDate,
@@ -88,8 +88,8 @@ export default function EditPurchaseInvoice() {
 
         setFormData({
           ...formData,
-          partyName,
-          partyId,
+          distributorName,
+          distributorId,
           invoiceDate,
           paymentDueDate,
           invoiceNumber,
@@ -101,7 +101,7 @@ export default function EditPurchaseInvoice() {
         if (billSummary) {
           setBillSummary(billSummary);
         }
-        setPartyName(partyName);
+        setdistributorName(distributorName);
       } catch (error) {
         console.error("Error fetching bill:", error);
         toast({
@@ -133,7 +133,7 @@ export default function EditPurchaseInvoice() {
       setLoading(true);
 
       // Validate required fields
-      if (!formData.partyName || !formData.invoiceNumber || !invoiceDate) {
+      if (!formData.distributorName || !formData.invoiceNumber || !invoiceDate) {
         throw new Error("Please fill all required fields");
       }
 
@@ -166,8 +166,8 @@ export default function EditPurchaseInvoice() {
         _id: invoiceId,
         invoiceType: "PURCHASE",
         invoiceNumber: formData.invoiceNumber,
-        partyName: formData.partyName,
-        partyId: formData.partyId,
+        distributorName: formData.distributorName,
+        distributorId: formData.distributorId,
         mob: formData.mob || "", // Add mobile number
         invoiceDate: invoiceDate,
         paymentDueDate: dueDate,
@@ -209,7 +209,7 @@ export default function EditPurchaseInvoice() {
       // Reset form
       setFormData({
         purchaseType: "invoice",
-        partyName: "",
+        distributorName: "",
         invoiceNumber: "",
         invoiceDate: "",
         paymentDueDate: "",
@@ -237,24 +237,24 @@ export default function EditPurchaseInvoice() {
 
     // Open dialog if space is pressed or text is entered
     if (value.length === 1 && value === " ") {
-      setPartySelectDialog(true);
+      setdistributorSelectDialog(true);
       return;
     }
     if (value.length > 0 && value[0] !== " ") {
-      setPartyName(value);
-      setPartySelectDialog(true);
+      setdistributorName(value);
+      setdistributorSelectDialog(true);
     }
   };
 
   // Handle distributor selection from dialog
   const handleDistributorSelect = (distributor) => {
-    setPartyName(distributor.name);
+    setdistributorName(distributor.name);
     setFormData({
       ...formData,
-      partyId: distributor._id,
-      partyName: distributor.name,
+      distributorId: distributor._id,
+      distributorName: distributor.name,
     });
-    setPartySelectDialog(false);
+    setdistributorSelectDialog(false);
   };
 
   return (
@@ -350,7 +350,7 @@ export default function EditPurchaseInvoice() {
               DISTRIBUTOR NAME<span className="text-rose-500">*REQUIRED</span>
             </Label>
             <Input
-              value={partyName || ""}
+              value={distributorName || ""}
               onChange={handleDistributorNameChange}
               placeholder="Type or Press space"
               disabled={viewMode}
@@ -532,11 +532,11 @@ export default function EditPurchaseInvoice() {
           <div>₹{amountData?.grandTotal}</div>
         </div>
       </div>
-      <SelectPartyDialog
-        open={partySelectDialog}
-        setOpen={setPartySelectDialog}
-        search={partyName}
-        setSearch={setPartyName}
+      <SelectdistributorDialog
+        open={distributorSelectDialog}
+        setOpen={setdistributorSelectDialog}
+        search={distributorName}
+        setSearch={setdistributorName}
         onSelect={handleDistributorSelect}
       />
     </div>

@@ -45,6 +45,7 @@ import SalesInvoicePrint from "./pages/SalesInvoicePrint";
 import AccountDetails from "./pages/AccountDetails";
 import SalesReturnList from "./pages/SalesReturnList";
 import Customers from "./pages/Customers";
+import ScrollRestoration from './utils/ScrollRestoration'
 
 const AppContent = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -184,6 +185,7 @@ const App = () => {
   return (
     <Provider store={store}>
       <Router>
+        <ScrollRestoration />
         <AppContent />
       </Router>
     </Provider>

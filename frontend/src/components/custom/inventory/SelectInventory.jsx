@@ -46,23 +46,31 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
   const handleKeyDown = (e) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
-      const currentIndex = filteredProducts.findIndex(p => p._id === selectedId)
+      const currentIndex = filteredProducts.findIndex(p => p._id === selectedId);
+      let newIndex;
+
       if (e.key === "ArrowDown") {
-        const nextIndex = currentIndex < filteredProducts.length - 1 ? currentIndex + 1 : 0
-        setSelectedId(filteredProducts[nextIndex]._id)
+        newIndex = currentIndex < filteredProducts.length - 1 ? currentIndex + 1 : 0;
       } else {
-        const prevIndex = currentIndex > 0 ? currentIndex - 1 : filteredProducts.length - 1
-        setSelectedId(filteredProducts[prevIndex]._id)
+        newIndex = currentIndex > 0 ? currentIndex - 1 : filteredProducts.length - 1;
       }
+
+      const newSelectedId = filteredProducts[newIndex]._id;
+      setSelectedId(newSelectedId);
+
+      // Scroll the new selected row into view
+      document.getElementById(newSelectedId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
     } else if (e.key === "Enter" && selectedId) {
       // Handle selection
-      // console.log("Selected product:", filteredProducts.find(p => p._id === selectedId))
-      handleSelect(filteredProducts.find(p => p._id === selectedId))
-      onOpenChange(false)
+      handleSelect(filteredProducts.find(p => p._id === selectedId));
+      onOpenChange(false);
     } else if (e.key === "Escape") {
-      onOpenChange(false)
+      onOpenChange(false);
     }
-  }
+  };
 
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
@@ -76,7 +84,7 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
     return () => {
       window.removeEventListener("keydown", handleGlobalKeyDown);
     };
-  }, []);
+  }, [newItemDialogOpen]);
 
   // Add handling for selection
   const handleSelect = (product) => {
@@ -143,6 +151,7 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
                   {filteredProducts.map((product) => (
                     <TableRow
                       key={product._id}
+                      id={product._id}
                       className={cn(
                         "cursor-pointer hover:bg-gray-100 transition-colors",
                         selectedId === product._id && "bg-gray-100"

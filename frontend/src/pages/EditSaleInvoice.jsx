@@ -21,7 +21,7 @@ import { format } from "date-fns";
 import { cn } from "../lib/utils";
 import { Backend_URL, convertQuantityValue } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
-import SelectPartyDialog from "../components/custom/distributor/SelectDistributorDlg";
+import SelectdistributorDialog from "../components/custom/distributor/SelectDistributorDlg";
 import { enIN } from "date-fns/locale";
 import { calculateTotals } from "./CreateSellInvoice";
 import { useParams, useNavigate } from "react-router-dom";
@@ -37,16 +37,16 @@ export default function EditSaleInvoice() {
   const [invoiceDate, setInvoiceDate] = useState();
   const [dueDate, setDueDate] = useState();
   const [products, setProducts] = useState([]);
-  const [partySelectDialog, setPartySelectDialog] = useState(false);
-  const [partyName, setPartyName] = useState("");
+  const [distributorSelectDialog, setdistributorSelectDialog] = useState(false);
+  const [distributorName, setdistributorName] = useState("");
   const [invoiceDateOpen, setInvoiceDateOpen] = useState(false);
   const [dueDateOpen, setDueDateOpen] = useState(false);
   const [completeData, setCompleteData] = useState(null);
 
   const [formData, setFormData] = useState({
     saleType: "invoice",
-    partyName: "",
-    partyId: "",
+    distributorName: "",
+    distributorId: "",
     invoiceNumber: "",
     invoiceDate: "",
     paymentDueDate: "",
@@ -69,8 +69,8 @@ export default function EditSaleInvoice() {
         const data = await response.json();
         setCompleteData(data);
         const {
-          partyName,
-          partyId,
+          distributorName,
+          distributorId,
           invoiceNumber,
           products,
           invoiceDate,
@@ -86,14 +86,14 @@ export default function EditSaleInvoice() {
         setDueDate(paymentDueDate ? new Date(paymentDueDate) : null);
         setFormData({
           ...formData,
-          partyName,
-          partyId,
+          distributorName,
+          distributorId,
           invoiceDate,
           paymentDueDate,
           invoiceNumber,
           withGst: withGst ? "yes" : "no",
         });
-        setPartyName(partyName);
+        setdistributorName(distributorName);
       } catch (error) {
         console.error("Error fetching bill:", error);
         toast({
@@ -121,7 +121,7 @@ export default function EditSaleInvoice() {
     try {
       setLoading(true);
 
-      if (!formData.partyName || !formData.invoiceNumber || !invoiceDate) {
+      if (!formData.distributorName || !formData.invoiceNumber || !invoiceDate) {
         throw new Error("Please fill all required fields");
       }
 
@@ -149,8 +149,8 @@ export default function EditSaleInvoice() {
         _id: invoiceId,
         invoiceType: "SALE",
         invoiceNumber: formData.invoiceNumber,
-        partyName: formData.partyName,
-        partyId: formData.partyId,
+        distributorName: formData.distributorName,
+        distributorId: formData.distributorId,
         invoiceDate: invoiceDate,
         paymentDueDate: dueDate,
         products: formattedProducts,
@@ -242,22 +242,22 @@ export default function EditSaleInvoice() {
     const value = e.target.value;
 
     if (value.length === 1 && value === " ") {
-      setPartySelectDialog(true);
+      setdistributorSelectDialog(true);
       return;
     }
     if (value.length > 0 && value[0] !== " ") {
-      setPartyName(value);
-      setPartySelectDialog(true);
+      setdistributorName(value);
+      setdistributorSelectDialog(true);
     }
   };
   const handleCustomerSelect = (customer) => {
-    setPartyName(customer.name);
+    setdistributorName(customer.name);
     setFormData({
       ...formData,
-      partyId: customer._id,
-      partyName: customer.name,
+      distributorId: customer._id,
+      distributorName: customer.name,
     });
-    setPartySelectDialog(false);
+    setdistributorSelectDialog(false);
   };
 
   return (
@@ -369,7 +369,7 @@ export default function EditSaleInvoice() {
               CUSTOMER NAME<span className="text-rose-500">*REQUIRED</span>
             </Label>
             <Input
-              value={partyName || ""}
+              value={distributorName || ""}
               onChange={handleCustomerNameChange}
               placeholder="Type or Press space"
               disabled={viewMode}
@@ -548,12 +548,12 @@ export default function EditSaleInvoice() {
         </div>
       </div>
 
-      {/* Party Selection Dialog */}
-      <SelectPartyDialog
-        open={partySelectDialog}
-        setOpen={setPartySelectDialog}
-        search={partyName}
-        setSearch={setPartyName}
+      {/* distributor Selection Dialog */}
+      <SelectdistributorDialog
+        open={distributorSelectDialog}
+        setOpen={setdistributorSelectDialog}
+        search={distributorName}
+        setSearch={setdistributorName}
         onSelect={handleCustomerSelect}
       />
     </div>

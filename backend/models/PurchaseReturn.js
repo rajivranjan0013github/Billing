@@ -20,13 +20,13 @@ const purchaseReturnSchema = new mongoose.Schema(
       default: Date.now,
     },
 
-    // Party Details
-    partyId: {
+    // distributor Details
+    distributorId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Party",
+      ref: "distributor",
       required: true,
     },
-    partyName: {
+    distributorName: {
       type: String,
       required: true,
     },

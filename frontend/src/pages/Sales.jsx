@@ -270,7 +270,7 @@ export default function Sales() {
                 >
                   <TableCell>{bill.invoiceNumber}</TableCell>
                   <TableCell>
-                    <div>{bill.partyName || "Cash Sale"}</div>
+                    <div>{bill.distributorName || "Cash Sale"}</div>
                     <div className="text-sm text-muted-foreground">
                       {bill.mob || "-"}
                     </div>

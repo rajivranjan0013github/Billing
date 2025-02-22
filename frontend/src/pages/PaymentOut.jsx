@@ -61,7 +61,7 @@ export default function Component() {
             <TableRow>
               <TableHead className="w-[150px]">Date</TableHead>
               <TableHead>Payment Number</TableHead>
-              <TableHead>Party Name</TableHead>
+              <TableHead>distributor Name</TableHead>
               <TableHead className="text-right">Amount</TableHead>
             </TableRow>
           </TableHeader>
@@ -76,7 +76,7 @@ export default function Component() {
                   })}
                 </TableCell>
                 <TableCell>{payment?.payment_number}</TableCell>
-                <TableCell>{payment.partyName}</TableCell>
+                <TableCell>{payment.distributorName}</TableCell>
                 <TableCell className="text-right">₹ {payment.amount.toLocaleString('en-IN')}</TableCell>
               </TableRow>
             ))}

@@ -25,7 +25,7 @@ const salesBillSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    partyId: {
+    distributorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Customer",
       required: function () {
@@ -36,7 +36,7 @@ const salesBillSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    partyName: String,
+    distributorName: String,
     mob: String,
     invoiceDate: {
       type: Date,

@@ -23,10 +23,11 @@ import {
   Users,
   Search,
   FileQuestion,
+  ArrowLeft,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchDistributor } from "../redux/slices/distributorSlice";
+import { fetchDistributors } from "../redux/slices/distributorSlice";
 import { useNavigate } from "react-router-dom";
 import CreateDistributorDlg from "../components/custom/distributor/CreateDistributorDlg";
 
@@ -39,7 +40,7 @@ export default function Distributors() {
 
   useEffect(() => {
     if (fetchStatus === "idle") {
-      dispatch(fetchDistributor());
+      dispatch(fetchDistributors());
     }
   }, [dispatch, fetchStatus]);
 
@@ -62,9 +63,14 @@ export default function Distributors() {
   });
 
   return (
-    <div className="container mx-auto p-6">
-      <header className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Distributors</h1>
+    <div className="container mx-auto p-4">
+      <header className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-2xl font-bold">Distributors</h1>
+        </div>
         <div className="flex items-center space-x-2">
           <Select>
             <SelectTrigger className="w-[140px]">
@@ -85,7 +91,7 @@ export default function Distributors() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <Card className="bg-purple-50">
           <CardContent className="flex items-center justify-between p-4">
             <div>

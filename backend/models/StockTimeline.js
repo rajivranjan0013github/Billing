@@ -29,8 +29,8 @@ const stockTimelineSchema = new mongoose.Schema(
       ref: "User",
     },
     userName: String,
-    partyName: String,
-    partyMob: String,
+    distributorName: String,
+    distributorMob: String,
     remarks: String,
   },
   { timestamps: true }

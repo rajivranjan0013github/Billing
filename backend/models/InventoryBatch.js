@@ -20,5 +20,5 @@ const InventoryBatchSchema = new mongoose.Schema({
 }, {timestamps : true});
 
 InventoryBatchSchema.plugin(hospitalPlugin);
-``
+
 export const InventoryBatch = mongoose.model("InventoryBatch", InventoryBatchSchema);

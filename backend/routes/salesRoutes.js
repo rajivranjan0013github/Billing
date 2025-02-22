@@ -7,7 +7,7 @@ import { InventoryBatch } from "../models/InventoryBatch.js";
 import { StockTimeline } from "../models/StockTimeline.js";
 import { SalesBill } from "../models/SalesBill.js";
 import { SalesReturn } from "../models/SalesReturn.js";
-import { Party } from "../models/Party.js";
+import { Distributor } from "../models/Distributor.js";
 import { Customer } from "../models/Customer.js";
 import AccountDetails from "../models/AccountDetails.js";
 import { Payment } from "../models/Payment.js";
@@ -29,16 +29,16 @@ router.post("/", verifyToken, async (req, res) => {
 
   try {
     const { payment, ...details } = req.body;
-    let partyDetails = null;
+    let distributorDetails = null;
 
-    // If not a cash customer, validate and fetch party details
+    // If not a cash customer, validate and fetch distributor details
     if (!details.is_cash_customer) {
-      if (!mongoose.isValidObjectId(details.partyId)) {
-        throw Error("Party Id is not valid");
+      if (!mongoose.isValidObjectId(details.distributorId)) {
+        throw Error("distributor Id is not valid");
       }
-      partyDetails = await Customer.findById(details.partyId).session(session);
-      if (!partyDetails) {
-        throw Error("Party not found");
+      distributorDetails = await Customer.findById(details.distributorId).session(session);
+      if (!distributorDetails) {
+        throw Error("distributor not found");
       }
     }
 
@@ -50,7 +50,7 @@ router.post("/", verifyToken, async (req, res) => {
       ...details,
       invoiceNumber,
       createdBy: req.user._id,
-      mob: partyDetails?.mob || "",
+      mob: distributorDetails?.mob || "",
     });
 
     // Handle payment if provided
@@ -61,8 +61,8 @@ router.post("/", verifyToken, async (req, res) => {
         payment_type: "Payment In",
         payment_method: payment.payment_method,
         payment_date: payment.chequeDate || new Date(),
-        party_id: details.partyId,
-        partyName: details.partyName,
+        distributor_id: details.distributorId,
+        distributorName: details.distributorName,
         accountId: payment.accountId,
         transactionNumber: payment.transactionNumber,
         chequeNumber: payment.chequeNumber,
@@ -75,11 +75,11 @@ router.post("/", verifyToken, async (req, res) => {
 
       // For cheque payments, we don't need to validate account
       if (payment.payment_method === "CHEQUE") {
-        // Update party balance since it's still a payment promise
-        if (partyDetails) {
-          partyDetails.currentBalance =
-            (partyDetails.currentBalance || 0) + payment.amount;
-          await partyDetails.save({ session });
+        // Update distributor balance since it's still a payment promise
+        if (distributorDetails) {
+          distributorDetails.currentBalance =
+            (distributorDetails.currentBalance || 0) + payment.amount;
+          await distributorDetails.save({ session });
         }
       } else {
         // For non-cheque payments, validate and update account
@@ -105,18 +105,18 @@ router.post("/", verifyToken, async (req, res) => {
           date: new Date(),
           type: "CREDIT",
           paymentId: paymentDoc._id,
-          partyName: details.partyName,
+          distributorName: details.distributorName,
           remarks: payment.remarks,
           balance: account.balance,
         });
 
         await account.save({ session });
 
-        // Update party balance if not cash customer
-        if (partyDetails) {
-          partyDetails.currentBalance =
-            (partyDetails.currentBalance || 0) + payment.amount;
-          await partyDetails.save({ session });
+        // Update distributor balance if not cash customer
+        if (distributorDetails) {
+          distributorDetails.currentBalance =
+            (distributorDetails.currentBalance || 0) + payment.amount;
+          await distributorDetails.save({ session });
         }
       }
 
@@ -178,8 +178,8 @@ router.post("/", verifyToken, async (req, res) => {
         pack,
         user: req.user._id,
         userName: req?.user?.name,
-        partyName: details.partyName,
-        partyMob: details.mob || "",
+        distributorName: details.distributorName,
+        distributorMob: details.mob || "",
       });
       await timeline.save({ session });
     }
@@ -276,17 +276,17 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
 
   try {
     const { id } = req.params;
-    const { invoiceType, partyId, _id, ...details } = req.body;
+    const { invoiceType, distributorId, _id, ...details } = req.body;
 
-    // Validate party ID
+    // Validate distributor ID
     if (
-      !mongoose.isValidObjectId(partyId) &&
-      partyId !== "Cash/Counter" &&
-      partyId !== undefined &&
-      partyId !== "" &&
-      partyId !== null
+      !mongoose.isValidObjectId(distributorId) &&
+      distributorId !== "Cash/Counter" &&
+      distributorId !== undefined &&
+      distributorId !== "" &&
+      distributorId !== null
     ) {
-      throw Error("Party Id is not valid");
+      throw Error("distributor Id is not valid");
     }
 
     // Find existing invoice
@@ -295,14 +295,14 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
       throw new Error("Invoice not found");
     }
 
-    // Fetch party details
-    const partyDetails =
-      partyId === "Cash/Counter" ||
-      partyId == undefined ||
-      partyId == "" ||
-      partyId == null
+    // Fetch distributor details
+    const distributorDetails =
+      distributorId === "Cash/Counter" ||
+      distributorId == undefined ||
+      distributorId == "" ||
+      distributorId == null
         ? { name: "Cash/Counter", mob: "--" }
-        : await Party.findById(partyId).session(session);
+        : await Distributor.findById(distributorId).session(session);
     // First, reverse the old inventory changes
     for (const oldProduct of existingInvoice.products) {
       const { inventoryId, batchId, quantity, pack } = oldProduct;
@@ -377,8 +377,8 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
         ptr: batch.ptr,
         user: req.user._id,
         userName: req?.user?.name,
-        partyName: partyDetails.name,
-        partyMob: partyDetails.mob,
+        distributorName: distributorDetails.name,
+        distributorMob: distributorDetails.mob,
       });
       await timeline.save({ session });
     }
@@ -388,9 +388,9 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
       id,
       {
         ...details,
-        partyId: partyId === "Cash/Counter" ? null : partyId,
-        partyName: partyDetails.name,
-        is_cash_customer: partyId === "Cash/Counter",
+        distributorId: distributorId === "Cash/Counter" ? null : distributorId,
+        distributorName: distributorDetails.name,
+        is_cash_customer: distributorId === "Cash/Counter",
         createdBy: req.user._id,
         hospital: req.user.hospital,
       },
@@ -463,7 +463,7 @@ router.delete("/invoice/:id", verifyToken, async (req, res) => {
         ptr: batch.ptr,
         user: req.user._id,
         userName: req?.user?.name,
-        partyName: invoice.partyName,
+        distributorName: invoice.distributorName,
       });
       await timeline.save({ session });
     }
@@ -510,7 +510,7 @@ router.post("/return", verifyToken, async (req, res) => {
 
   try {
     const {
-      partyName,
+      distributorName,
       returnDate,
       products,
       billSummary,
@@ -525,7 +525,7 @@ router.post("/return", verifyToken, async (req, res) => {
     const newReturn = new SalesReturn({
       returnNumber: nextReturnNumber,
       originalInvoiceNumber,
-      partyName,
+      distributorName,
       returnDate,
       products,
       billSummary,
@@ -540,7 +540,7 @@ router.post("/return", verifyToken, async (req, res) => {
         payment_type: "Payment Out", // Since we're paying out for returns
         payment_method: payment.paymentMethod,
         payment_date: payment.chequeDate || new Date(),
-        partyName: partyName,
+        distributorName: distributorName,
         accountId: payment.accountId,
         transactionNumber: payment.transactionNumber,
         chequeNumber: payment.chequeNumber,
@@ -552,15 +552,15 @@ router.post("/return", verifyToken, async (req, res) => {
 
       // For cheque payments, we don't need to validate account
       if (payment.payment_method === "CHEQUE") {
-        // Update party balance if party exists
-        if (req.body.partyId) {
-          const partyDetails = await Party.findById(req.body.partyId).session(
+        // Update distributor balance if distributor exists
+        if (req.body.distributorId) {
+          const distributorDetails = await Distributor.findById(req.body.distributorId).session(
             session
           );
-          if (partyDetails) {
-            partyDetails.currentBalance =
-              (partyDetails.currentBalance || 0) - payment.amount;
-            await partyDetails.save({ session });
+          if (distributorDetails) {
+            distributorDetails.currentBalance =
+              (distributorDetails.currentBalance || 0) - payment.amount;
+            await distributorDetails.save({ session });
           }
         }
       } else {
@@ -587,22 +587,22 @@ router.post("/return", verifyToken, async (req, res) => {
           date: new Date(),
           type: "DEBIT",
           paymentId: paymentDoc._id,
-          partyName: partyName,
+          distributorName: distributorName,
           remarks: payment.remarks,
           balance: account.balance,
         });
 
         await account.save({ session });
 
-        // Update party balance if party exists
-        if (req.body.partyId) {
-          const partyDetails = await Party.findById(req.body.partyId).session(
+        // Update distributor balance if distributor exists
+        if (req.body.distributorId) {
+          const distributorDetails = await Distributor.findById(req.body.distributorId).session(
             session
           );
-          if (partyDetails) {
-            partyDetails.currentBalance =
-              (partyDetails.currentBalance || 0) - payment.amount;
-            await partyDetails.save({ session });
+          if (distributorDetails) {
+            distributorDetails.currentBalance =
+              (distributorDetails.currentBalance || 0) - payment.amount;
+            await distributorDetails.save({ session });
           }
         }
       }
@@ -654,7 +654,7 @@ router.post("/return", verifyToken, async (req, res) => {
         ptr: batch.ptr,
         user: req.user._id,
         userName: req?.user?.name,
-        partyName: partyName,
+        distributorName: distributorName,
       });
       await timeline.save({ session });
     }

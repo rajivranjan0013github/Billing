@@ -54,10 +54,10 @@ export default function PurchaseTab({inventoryId}) {
                                 </td>
                                 <td className="px-4 py-2">
                                     <div className="text-sm font-medium flex items-center gap-2">
-                                        {purchase.partyName}
+                                        {purchase.distributorName}
                                     </div>
-                                    {purchase.partyMob && (
-                                        <div className="text-xs text-gray-500">Mobile: {purchase.partyMob}</div>
+                                    {purchase.distributorMob && (
+                                        <div className="text-xs text-gray-500">Mobile: {purchase.distributorMob}</div>
                                     )}
                                 </td>
                                 <td className="px-4 py-2">

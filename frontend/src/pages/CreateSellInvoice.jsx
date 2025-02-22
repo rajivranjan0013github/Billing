@@ -93,8 +93,8 @@ export default function CreateSellInvoice() {
 
   const [formData, setFormData] = useState({
     saleType: "invoice",
-    partyName: "",
-    partyId: "",
+    distributorName: "",
+    distributorId: "",
     invoiceNumber: "",
     invoiceDate: new Date(),
     paymentDueDate: "",
@@ -132,7 +132,7 @@ export default function CreateSellInvoice() {
         !formData.invoiceNumber ||
         !formData.saleType ||
         !invoiceDate ||
-        (!formData.partyName && !isCashCounter)
+        (!formData.distributorName && !isCashCounter)
       ) {
         throw new Error("Please fill all required fields");
       }
@@ -143,8 +143,8 @@ export default function CreateSellInvoice() {
 
       // Instead of saving invoice here, open payment dialog
       setInvoiceForPayment({
-        partyName: isCashCounter ? "Cash/Counter" : formData.partyName,
-        partyId: isCashCounter ? null : formData.partyId,
+        distributorName: isCashCounter ? "Cash/Counter" : formData.distributorName,
+        distributorId: isCashCounter ? null : formData.distributorId,
         invoiceNumber: formData.invoiceNumber,
         invoiceDate: invoiceDate,
         totalAmount: amountData.grandTotal,
@@ -229,8 +229,8 @@ export default function CreateSellInvoice() {
       const finalData = {
         saleType: formData.saleType,
         invoiceNumber: formData.invoiceNumber,
-        partyName: isCashCounter ? "Cash/Counter" : formData.partyName,
-        partyId: isCashCounter ? null : formData.partyId,
+        distributorName: isCashCounter ? "Cash/Counter" : formData.distributorName,
+        distributorId: isCashCounter ? null : formData.distributorId,
         invoiceDate: invoiceDate,
         paymentDueDate:
           paymentData.status === "due" ? paymentData.dueDate : null,
@@ -276,7 +276,7 @@ export default function CreateSellInvoice() {
           // Reset form
           setFormData({
             saleType: "invoice",
-            partyName: "",
+            distributorName: "",
             invoiceNumber: "",
             invoiceDate: "",
             paymentDueDate: "",
@@ -334,8 +334,8 @@ export default function CreateSellInvoice() {
     setCustomerName(customer.name);
     setFormData({
       ...formData,
-      partyId: customer._id,
-      partyName: customer.name,
+      distributorId: customer._id,
+      distributorName: customer.name,
     });
     setCustomerSelectDialog(false);
   };
@@ -530,8 +530,8 @@ export default function CreateSellInvoice() {
                     setCustomerName("");
                     setFormData((prev) => ({
                       ...prev,
-                      partyName: "",
-                      partyId: "",
+                      distributorName: "",
+                      distributorId: "",
                     }));
                   }
                 }}
