@@ -58,23 +58,23 @@ router.post("/", verifyToken, async (req, res) => {
       // Create payment record
       const paymentDoc = new Payment({
         amount: payment.amount,
-        payment_type: "Payment In",
-        payment_method: payment.payment_method,
-        payment_date: payment.chequeDate || new Date(),
-        distributor_id: details.distributorId,
+        paymentType: "Payment In",
+        paymentMethod: payment.paymentMethod,
+        paymentDate: payment.chequeDate || new Date(),
+        distributorId: details.distributorId,
         distributorName: details.distributorName,
         accountId: payment.accountId,
         transactionNumber: payment.transactionNumber,
         chequeNumber: payment.chequeNumber,
         chequeDate: payment.chequeDate,
         micrCode: payment.micrCode,
-        status: payment.payment_method === "CHEQUE" ? "PENDING" : "COMPLETED",
+        status: payment.paymentMethod === "CHEQUE" ? "PENDING" : "COMPLETED",
         remarks: payment.remarks,
         bills: [newSalesBill._id],
       });
 
       // For cheque payments, we don't need to validate account
-      if (payment.payment_method === "CHEQUE") {
+      if (payment.paymentMethod === "CHEQUE") {
         // Update distributor balance since it's still a payment promise
         if (distributorDetails) {
           distributorDetails.currentBalance =
@@ -537,21 +537,21 @@ router.post("/return", verifyToken, async (req, res) => {
       // Create payment record
       const paymentDoc = new Payment({
         amount: payment.amount,
-        payment_type: "Payment Out", // Since we're paying out for returns
-        payment_method: payment.paymentMethod,
-        payment_date: payment.chequeDate || new Date(),
+        paymentType: "Payment Out", // Since we're paying out for returns
+        paymentMethod: payment.paymentMethod,
+        paymentDate: payment.chequeDate || new Date(),
         distributorName: distributorName,
         accountId: payment.accountId,
         transactionNumber: payment.transactionNumber,
         chequeNumber: payment.chequeNumber,
         chequeDate: payment.chequeDate,
         micrCode: payment.micrCode,
-        status: payment.payment_method === "CHEQUE" ? "PENDING" : "COMPLETED",
+        status: payment.paymentMethod === "CHEQUE" ? "PENDING" : "COMPLETED",
         remarks: payment.remarks,
       });
 
       // For cheque payments, we don't need to validate account
-      if (payment.payment_method === "CHEQUE") {
+      if (payment.paymentMethod === "CHEQUE") {
         // Update distributor balance if distributor exists
         if (req.body.distributorId) {
           const distributorDetails = await Distributor.findById(req.body.distributorId).session(

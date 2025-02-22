@@ -8,6 +8,7 @@ import { useState, useEffect } from "react"
 import { Backend_URL } from "../assets/Data"
 import { Badge } from "../components/ui/badge"
 import { Loader2 } from "lucide-react"
+
 export default function PaymentDetails() {
   const navigate = useNavigate();
   const { paymentId } = useParams();
@@ -23,7 +24,6 @@ export default function PaymentDetails() {
         setPaymentDetails(data);
       } catch (error) {
         console.error('Error fetching payment details:', error);
-        // You might want to add error handling UI here
       } finally {
         setIsLoading(false);
       }
@@ -41,24 +41,26 @@ export default function PaymentDetails() {
   if (!paymentDetails) return <div>Payment not found</div>;
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
+    <div className="container mx-auto p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-xl font-semibold">Payment Out Details</h1>
+          <div className="flex items-center">
+            <h1 className="text-xl font-semibold">Payment Out Details</h1>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="text-sm">
+          <Button variant="outline" size="sm" className="text-sm">
             Download PDF
           </Button>
-          <Button variant="outline" className="text-sm">
+          <Button variant="outline" size="sm" className="text-sm">
             Print PDF
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="text-sm">
+              <Button variant="outline" size="sm" className="text-sm">
                 <Share2 className="h-4 w-4 mr-2" />
                 Share
               </Button>
@@ -76,21 +78,30 @@ export default function PaymentDetails() {
           </Button>
         </div>
       </div>
+      
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center gap-4">
           <CardTitle className="text-base font-medium">Payment Details</CardTitle>
+          <Badge variant={
+            paymentDetails.status === "COMPLETED" ? "success" : 
+            paymentDetails.status === "PENDING" ? "warning" :
+            paymentDetails.status === "FAILED" ? "destructive" : 
+            "secondary"
+          }>
+            {paymentDetails.status}
+          </Badge>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-3 gap-6">
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">distributor NAME</p>
+              <p className="text-sm text-muted-foreground">DISTRIBUTOR NAME</p>
               <p className="font-medium">{paymentDetails.distributorName}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">PAYMENT DATE</p>
               <p className="font-medium">
-                {new Date(paymentDetails.createdAt).toLocaleDateString()}
+                {new Date(paymentDetails.paymentDate).toLocaleDateString()}
               </p>
             </div>
             <div className="space-y-1">
@@ -98,21 +109,44 @@ export default function PaymentDetails() {
               <p className="font-medium">₹{paymentDetails.amount.toLocaleString("en-IN")}</p>
             </div>
             <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">PAYMENT TYPE</p>
-            <p className="font-medium">{paymentDetails.payment_type}</p>
+              <p className="text-sm text-muted-foreground">PAYMENT TYPE</p>
+              <p className="font-medium">{paymentDetails.paymentType}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">PAYMENT METHOD</p>
+              <p className="font-medium">{paymentDetails.paymentMethod}</p>
+            </div>
+            {paymentDetails.paymentMethod === "CHEQUE" && (
+              <>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">CHEQUE NUMBER</p>
+                  <p className="font-medium">{paymentDetails.chequeNumber}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">CHEQUE DATE</p>
+                  <p className="font-medium">
+                    {paymentDetails.chequeDate && new Date(paymentDetails.chequeDate).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">MICR CODE</p>
+                  <p className="font-medium">{paymentDetails.micrCode || 'N/A'}</p>
+                </div>
+              </>
+            )}
+            {(paymentDetails.paymentMethod === "UPI" || paymentDetails.paymentMethod === "BANK") && (
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">TRANSACTION NUMBER</p>
+                <p className="font-medium">{paymentDetails.transactionNumber}</p>
+              </div>
+            )}
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">REMARKS</p>
+              <p className="text-sm text-muted-foreground">
+                {paymentDetails.remarks || 'No remarks added'}
+              </p>
+            </div>
           </div>
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">PAYMENT METHOD</p>
-            <p className="font-medium">{paymentDetails.payment_method}</p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">REMARKS</p>
-            <p className="text-sm text-muted-foreground">
-              {paymentDetails.remarks || 'No remarks added'}
-            </p>
-          </div>
-          </div>
-         
         </CardContent>
       </Card>
 
@@ -131,24 +165,24 @@ export default function PaymentDetails() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Bill Number</TableHead>
-                  <TableHead>Supplier Invoice</TableHead>
-                  <TableHead>BILL AMOUNT</TableHead>
-                  <TableHead>Amount Settled</TableHead>
-                  <TableHead>PAYMENT STATUS</TableHead>
+                  <TableHead>Invoice Number</TableHead>
+                  <TableHead>Invoice Type</TableHead>
+                  <TableHead>Grand Total</TableHead>
+                  <TableHead>Amount Paid</TableHead>
+                  <TableHead>Payment Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paymentDetails.bills.map((bill) => (
                   <TableRow key={bill._id} onClick={() => navigate(`/purchase/${bill._id}`)} className="cursor-pointer">
-                    <TableCell>{new Date(bill.bill_date).toLocaleDateString()}</TableCell>
-                    <TableCell>{bill.bill_number}</TableCell>
-                    <TableCell>{bill.supplier_invoice_number}</TableCell>
-                    <TableCell>₹{bill?.grand_total?.toLocaleString("en-IN")}</TableCell>
-                    <TableCell>₹{bill?.payment?.amount_paid?.toLocaleString("en-IN")}</TableCell>
+                    <TableCell>{new Date(bill.invoiceDate).toLocaleDateString()}</TableCell>
+                    <TableCell>{bill.invoiceNumber}</TableCell>
+                    <TableCell>{bill.invoiceType}</TableCell>
+                    <TableCell>₹{bill.grandTotal?.toLocaleString("en-IN")}</TableCell>
+                    <TableCell>₹{bill.amountPaid?.toLocaleString("en-IN")}</TableCell>
                     <TableCell>
-                      <Badge variant={bill.payment_status === "paid" ? "success" : "destructive"}>
-                        {bill.payment_status}
+                      <Badge variant={bill.paymentStatus === "paid" ? "success" : "destructive"} className="capitalize">
+                        {bill.paymentStatus}
                       </Badge>
                     </TableCell>
                   </TableRow>

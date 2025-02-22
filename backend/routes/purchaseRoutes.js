@@ -125,26 +125,25 @@ router.post("/", verifyToken, async (req, res) => {
       // Create payment record
       const paymentDoc = new Payment({
         amount: payment.amount,
-        payment_type: "Payment Out",
-        payment_method: payment.payment_method,
-        payment_date: payment.chequeDate || new Date(),
-        distributor_id: distributorId,
+        paymentType: "Payment Out",
+        paymentMethod: payment.paymentMethod,
+        paymentDate: payment.chequeDate || new Date(),
+        distributorId: distributorId,
         distributorName: distributorDetails.name,
         accountId: payment.accountId,
         transactionNumber: payment.transactionNumber,
         chequeNumber: payment.chequeNumber,
         chequeDate: payment.chequeDate,
         micrCode: payment.micrCode,
-        status: payment.payment_method === "CHEQUE" ? "PENDING" : "COMPLETED",
+        status: payment.paymentMethod === "CHEQUE" ? "PENDING" : "COMPLETED",
         remarks: payment.remarks,
         bills: [newInvoice._id],
       });
 
       // For cheque payments, we don't need to validate account
-      if (payment.payment_method === "CHEQUE") {
+      if (payment.paymentMethod === "CHEQUE") {
         // Update distributor balance since it's still a payment promise
-        distributorDetails.currentBalance =
-          (distributorDetails.currentBalance || 0) - payment.amount;
+        distributorDetails.currentBalance = (distributorDetails.currentBalance || 0) - payment.amount;
         await distributorDetails.save({ session });
       } else {
         // For non-cheque payments, validate and update account
@@ -153,28 +152,14 @@ router.post("/", verifyToken, async (req, res) => {
         }
 
         // Validate account exists
-        const account = await AccountDetails.findById(
-          payment.accountId
-        ).session(session);
+        const account = await AccountDetails.findById(payment.accountId).session(session);
+
         if (!account) {
           throw new Error("Account not found");
         }
 
         // Update account balance
         account.balance -= payment.amount;
-
-        // Add transaction details
-        account.transactions.push({
-          transactionNumber: payment.transactionNumber,
-          amount: payment.amount,
-          date: new Date(),
-          type: "DEBIT",
-          paymentId: paymentDoc._id,
-          distributorName: distributorDetails.name,
-          remarks: payment.remarks,
-          balance: account.balance,
-        });
-
         await account.save({ session });
 
         // Update distributor balance
@@ -385,7 +370,7 @@ router.get("/", verifyToken, async (req, res) => {
 router.get("/invoice/:invoiceId", verifyToken, async (req, res) => {
   try {
     const { invoiceId } = req.params;
-    const bill = await InvoiceSchema.findById(invoiceId);
+    const bill = await InvoiceSchema.findById(invoiceId).populate("payments");
     res.status(200).json(bill);
   } catch (error) {
     res

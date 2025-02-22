@@ -1,30 +1,53 @@
-import { useRef, useState, useMemo, useEffect } from "react";
+import React,{ useRef, useState, useMemo, useEffect } from "react";
 import { Button } from "../components/ui/button";
-import { Calendar } from "../components/ui/calendar";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "../components/ui/popover";
-import { CalendarIcon, ChevronLeft, Pencil, Save } from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "../lib/utils";
+import { ArrowLeft, Pencil, Save, Settings2 } from "lucide-react";
 import PurchaseItemTable from "../components/custom/purchase/PurchaseItemTable";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
 import SelectdistributorDialog from "../components/custom/distributor/SelectDistributorDlg";
-import { enIN } from "date-fns/locale";
 import { calculateTotals } from "./CreatePurchaseInvoice";
 import { useParams, useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { fetchItems } from "../redux/slices/inventorySlice";
+import PaymentDialog from "../components/custom/payment/PaymentDialog";
+import AmountSettingsDialog from "../components/custom/purchase/AmountSettingDialog";
+import MakePaymentDlg from "../components/custom/payment/MakePaymentDlg";
+import { ScrollArea } from "../components/ui/scroll-area";
+import { formatCurrency } from "../utils/Helper";
+import { Separator } from "../components/ui/separator";
+
+const inputKeys = ['distributorName', 'invoiceNo', 'invoiceDate', 'dueDate', 'product', 'HSN', 'batchNumber', 'expiry', 'pack', 'quantity', 'free', 'mrp', 'purchaseRate', 'schemeInput1', 'schemeInput2', 'discount', 'gstPer', 'addButton'];
+
+const roundToTwo = (num) => {
+  return Math.round((num + Number.EPSILON) * 100) / 100;
+};
+
+// Helper function to format date to YYYY-MM-DD
+const formatDateForInput = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  return d.toISOString().split('T')[0];
+};
+
+// Helper function to format date for API
+const formatDateForAPI = (dateString) => {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return null;
+  return date.toISOString();
+};
 
 export default function EditPurchaseInvoice() {
   const inputRef = useRef([]);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { invoiceId } = useParams();
+  const dispatch = useDispatch();
+
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState(true);
   const [invoiceDate, setInvoiceDate] = useState();
@@ -32,9 +55,15 @@ export default function EditPurchaseInvoice() {
   const [products, setProducts] = useState([]);
   const [distributorSelectDialog, setdistributorSelectDialog] = useState(false);
   const [distributorName, setdistributorName] = useState("");
-  const [invoiceDateOpen, setInvoiceDateOpen] = useState(false);
-  const [dueDateOpen, setDueDateOpen] = useState(false);
   const [billSummary, setBillSummary] = useState({});
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [invoiceForPayment, setInvoiceForPayment] = useState(null);
+  const [amountPaid, setAmountPaid] = useState(0);
+  const [paymentStatus, setPaymentStatus] = useState('due');
+  const [payments, setPayments] = useState([]);
+  const [paymentOutDialogOpen, setPaymentOutDialogOpen] = useState(false);
+  const [paymentOutData, setPaymentOutData] = useState(null);
 
   const [formData, setFormData] = useState({
     purchaseType: "invoice",
@@ -45,6 +74,7 @@ export default function EditPurchaseInvoice() {
     paymentDueDate: "",
     withGst: "yes",
     overallDiscount: "", // in percentage
+    amountType: "exclusive", // 'exclusive', 'inclusive_gst', 'inclusive_all'
   });
 
   // fetching invoice data from server
@@ -73,29 +103,32 @@ export default function EditPurchaseInvoice() {
           billSummary,
           mob,
           amountCalculationType,
+          amountPaid,
+          paymentStatus,
+          payments = [],
         } = data;
 
         // Transform products data
         const tempData = products.map((p) => ({
           ...p,
           quantity: p.quantity / (p.pack || 1),
-          ptr: p.ptr || 0, // Add default value for ptr
         }));
 
         setProducts(tempData);
-        setInvoiceDate(invoiceDate ? new Date(invoiceDate) : null);
-        setDueDate(paymentDueDate ? new Date(paymentDueDate) : null);
+        setInvoiceDate(formatDateForInput(invoiceDate));
+        setDueDate(formatDateForInput(paymentDueDate));
+        setAmountPaid(amountPaid || 0);
+        setPaymentStatus(paymentStatus || 'due');
+        setPayments(payments);
 
         setFormData({
           ...formData,
           distributorName,
           distributorId,
-          invoiceDate,
-          paymentDueDate,
           invoiceNumber,
           withGst: withGst ? "yes" : "no",
-          amountType: amountCalculationType || "exclusive", // Add amount calculation type
-          mob: mob || "", // Add mobile number
+          amountType: amountCalculationType || "exclusive",
+          mob: mob || "",
         });
 
         if (billSummary) {
@@ -124,21 +157,57 @@ export default function EditPurchaseInvoice() {
     () => calculateTotals(products, formData.amountType),
     [products]
   );
+
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Handle key navigation
+  const handleKeyDown = (e, nextInputId) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        const nextInputIndex = inputKeys.indexOf(nextInputId);
+        if(nextInputIndex > 1) {
+          const newInputId = inputKeys[nextInputIndex-2];
+          if (newInputId && inputRef.current[newInputId]) {
+            inputRef.current[newInputId].focus();
+          }
+        }
+      } else {
+        if (nextInputId && inputRef.current[nextInputId]) {
+          inputRef.current[nextInputId].focus();
+        }
+      }
+    }
+  };
+
+  // shortcut for saving invoice
+  const handleShortcutKeyPressed = (e) => {
+    if(e.altKey && e.key === "s") {
+      e.preventDefault()
+      handleSaveInvoice();
+    }
+  }
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleShortcutKeyPressed);
+
+    return () => {
+      document.removeEventListener("keydown", handleShortcutKeyPressed);
+    };
+  }, []);
+
   const handleSaveInvoice = async () => {
     try {
       setLoading(true);
-
       // Validate required fields
       if (!formData.distributorName || !formData.invoiceNumber || !invoiceDate) {
         throw new Error("Please fill all required fields");
       }
 
       if (products.length === 0) {
-        throw new Error("Please add atleast one product");
+        throw new Error("Please add at least one product");
       }
 
       // Format products data to match schema
@@ -148,18 +217,17 @@ export default function EditPurchaseInvoice() {
         batchNumber: product.batchNumber,
         batchId: product.batchId,
         expiry: product.expiry,
-        HSN: product.HSN || "", // Add HSN code
-        mrp: Number(product.mrp),
-        quantity: Number(product.quantity) * (Number(product.pack) || 1), // Multiply by pack
+        HSN: product.HSN || "",
+        mrp: roundToTwo(Number(product.mrp)),
+        quantity: Number(product.quantity) * (Number(product.pack) || 1),
         free: Number(product.free || 0),
         pack: Number(product.pack),
-        purchaseRate: Number(product.purchaseRate),
-        ptr: Number(product.ptr || 0),
+        purchaseRate: roundToTwo(Number(product.purchaseRate)),
         schemeInput1: Number(product.schemeInput1 || 0),
         schemeInput2: Number(product.schemeInput2 || 0),
-        discount: Number(product.discount || 0),
-        gstPer: Number(product.gstPer),
-        amount: Number(product.amount),
+        discount: roundToTwo(Number(product.discount || 0)),
+        gstPer: roundToTwo(Number(product.gstPer)),
+        amount: roundToTwo(Number(product.amount)),
       }));
 
       const finalData = {
@@ -168,25 +236,24 @@ export default function EditPurchaseInvoice() {
         invoiceNumber: formData.invoiceNumber,
         distributorName: formData.distributorName,
         distributorId: formData.distributorId,
-        mob: formData.mob || "", // Add mobile number
-        invoiceDate: invoiceDate,
-        paymentDueDate: dueDate,
+        mob: formData.mob || "",
+        invoiceDate: formatDateForAPI(invoiceDate),
+        paymentDueDate: formatDateForAPI(dueDate),
         products: formattedProducts,
         withGst: formData.withGst === "yes",
-        amountCalculationType: formData.amountType || "exclusive",
+        amountCalculationType: formData.amountType,
         billSummary: {
-          subtotal: amountData.subtotal,
-          discountAmount: amountData.discountAmount,
-          taxableAmount: amountData.taxable,
-          gstAmount: amountData.gstAmount,
+          subtotal: roundToTwo(amountData.subtotal),
+          discountAmount: roundToTwo(amountData.discountAmount),
+          taxableAmount: roundToTwo(amountData.taxable),
+          gstAmount: roundToTwo(amountData.gstAmount),
           totalQuantity: amountData.totalQuantity,
           productCount: amountData.productCount,
-          grandTotal: amountData.grandTotal,
+          grandTotal: roundToTwo(amountData.grandTotal),
         },
         paymentStatus: "due",
         amountPaid: 0,
       };
-
 
       const response = await fetch(`${Backend_URL}/api/purchase/edit`, {
         method: "POST",
@@ -200,25 +267,18 @@ export default function EditPurchaseInvoice() {
         throw new Error(errorData.message || "Failed to save invoice");
       }
 
-      const data = await response.json();
+      await response.json();
+      
       toast({
         title: "Purchase invoice updated successfully",
         variant: "success",
       });
 
-      // Reset form
-      setFormData({
-        purchaseType: "invoice",
-        distributorName: "",
-        invoiceNumber: "",
-        invoiceDate: "",
-        paymentDueDate: "",
-        withGst: "yes",
-        overallDiscount: "",
-      });
-      setInvoiceDate(null);
-      setDueDate(null);
-      setProducts([]);
+      // Refresh inventory items
+      dispatch(fetchItems());
+
+      // Navigate back
+      navigate(-1);
     } catch (error) {
       toast({
         title: "Error",
@@ -257,12 +317,113 @@ export default function EditPurchaseInvoice() {
     setdistributorSelectDialog(false);
   };
 
+  const handlePaymentSubmit = async (paymentData) => {
+    try {
+      setLoading(true);
+      // Format products data to match schema
+      const formattedProducts = products.map((product) => ({
+        inventoryId: product.inventoryId,
+        productName: product.productName,
+        batchNumber: product.batchNumber,
+        batchId: product.batchId,
+        expiry: product.expiry,
+        HSN: product.HSN || "",
+        mrp: roundToTwo(Number(product.mrp)),
+        quantity: Number(product.quantity) * (Number(product.pack) || 1),
+        free: Number(product.free || 0),
+        pack: Number(product.pack),
+        purchaseRate: roundToTwo(Number(product.purchaseRate)),
+        schemeInput1: Number(product.schemeInput1 || 0),
+        schemeInput2: Number(product.schemeInput2 || 0),
+        discount: roundToTwo(Number(product.discount || 0)),
+        gstPer: roundToTwo(Number(product.gstPer)),
+        amount: roundToTwo(Number(product.amount)),
+      }));
+
+      const purchaseData = {
+        _id: invoiceId,
+        invoiceType: "PURCHASE",
+        invoiceNumber: formData.invoiceNumber,
+        distributorName: formData.distributorName,
+        distributorId: formData.distributorId,
+        mob: formData.mob || "",
+        invoiceDate: formatDateForAPI(invoiceDate),
+        paymentDueDate: paymentData.status === "due" ? formatDateForAPI(paymentData.dueDate) : null,
+        products: formattedProducts,
+        withGst: formData.withGst === "yes",
+        amountCalculationType: formData.amountType,
+        billSummary: {
+          subtotal: roundToTwo(amountData.subtotal),
+          discountAmount: roundToTwo(amountData.discountAmount),
+          taxableAmount: roundToTwo(amountData.taxable),
+          gstAmount: roundToTwo(amountData.gstAmount),
+          totalQuantity: amountData.totalQuantity,
+          productCount: amountData.productCount,
+          grandTotal: roundToTwo(amountData.grandTotal),
+        },
+        status: "active",
+        paymentStatus: paymentData.status,
+        grandTotal: roundToTwo(amountData.grandTotal),
+        amountPaid: paymentData.status === "due" ? 0 : Number(paymentData.amount || 0),
+        payment: paymentData.status === "paid" ? {
+          amount: Number(paymentData.amount || 0),
+          paymentType: paymentData.paymentType,
+          paymentMethod: paymentData.paymentMethod,
+          distributorId: formData.distributorId,
+          distributorName: formData.distributorName,
+          remarks: paymentData.notes,
+          ...(paymentData.paymentMethod !== "cheque" && {
+            accountId: paymentData.accountId,
+          }),
+          ...(paymentData.paymentMethod === "cheque" && {
+            chequeNumber: paymentData.chequeNumber,
+            chequeDate: formatDateForAPI(paymentData.chequeDate),
+            micrCode: paymentData.micrCode,
+          }),
+        } : null,
+      };
+
+      const response = await fetch(`${Backend_URL}/api/purchase/edit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(purchaseData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to save invoice");
+      }
+
+      await response.json();
+      
+      toast({
+        title: "Purchase invoice updated successfully",
+        variant: "success",
+      });
+
+      // Refresh inventory items
+      dispatch(fetchItems());
+
+      // Navigate back
+      navigate(-1);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save invoice",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className=" relative rounded-lg h-[100vh] pt-4">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <ChevronLeft
-            className="w-5 h-5 text-rose-500 cursor-pointer"
+          <ArrowLeft
+            className="w-5 h-5 cursor-pointer"
             onClick={() => navigate(-1)}
           />
           <h1 className="text-xl font-medium">
@@ -270,19 +431,26 @@ export default function EditPurchaseInvoice() {
           </h1>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="border-rose-500 text-rose-500">
-            PTR, Column Settings
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Settings2 className="w-4 h-4 mr-2" />
+            Column Settings
           </Button>
           {viewMode ? (
             <Button
-              className="gap-2 bg-gray-800"
+              size="sm"
+              className="gap-2 "
               onClick={() => setViewMode(false)}
             >
               <Pencil className="w-4 h-4" /> Edit
             </Button>
           ) : (
             <Button
-              className="gap-2 bg-gray-800"
+              size="sm"
+              className="gap-2"
               onClick={handleSaveInvoice}
               disabled={loading}
             >
@@ -301,6 +469,10 @@ export default function EditPurchaseInvoice() {
           )}
         </div>
       </div>
+
+      <Separator className="my-2" />
+
+      <ScrollArea className="h-[calc(100vh-9rem)] pr-4">
 
       {/* extra information */}
       <div className="grid gap-2">
@@ -350,8 +522,10 @@ export default function EditPurchaseInvoice() {
               DISTRIBUTOR NAME<span className="text-rose-500">*REQUIRED</span>
             </Label>
             <Input
+              ref={el => inputRef.current['distributorName'] = el}
               value={distributorName || ""}
               onChange={handleDistributorNameChange}
+              onKeyDown={(e) => handleKeyDown(e, 'invoiceNo')}
               placeholder="Type or Press space"
               disabled={viewMode}
             />
@@ -361,10 +535,12 @@ export default function EditPurchaseInvoice() {
               INVOICE NO<span className="text-rose-500">*REQUIRED</span>
             </Label>
             <Input
+              ref={el => inputRef.current['invoiceNo'] = el}
               value={formData?.invoiceNumber}
               onChange={(e) =>
                 handleInputChange("invoiceNumber", e.target.value)
               }
+              onKeyDown={(e) => handleKeyDown(e, 'invoiceDate')}
               placeholder="Invoice No"
               disabled={viewMode}
             />
@@ -373,69 +549,29 @@ export default function EditPurchaseInvoice() {
             <Label className="text-sm font-medium">
               INVOICE DATE<span className="text-rose-500">*REQUIRED</span>
             </Label>
-            <Popover open={invoiceDateOpen} onOpenChange={setInvoiceDateOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !invoiceDate && "text-muted-foreground"
-                  )}
-                  disabled={viewMode}
-                >
-                  <CalendarIcon className="w-4 h-4 mr-2" />
-                  {invoiceDate
-                    ? format(invoiceDate, "dd/MM/yyyy")
-                    : "Select Date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={invoiceDate}
-                  onSelect={(date) => {
-                    setInvoiceDate(date);
-                    setInvoiceDateOpen(false);
-                  }}
-                  locale={enIN}
-                  captionLayout="dropdown-buttons"
-                  showOutsideDays={false}
-                  ISOWeek={false}
-                />
-              </PopoverContent>
-            </Popover>
+            <Input
+              ref={el => inputRef.current['invoiceDate'] = el}
+              type="date"
+              value={invoiceDate || ''}
+              onChange={(e) => {
+                setInvoiceDate(e.target.value);
+              }}
+              onKeyDown={(e) => handleKeyDown(e, 'dueDate')}
+              disabled={viewMode}
+            />
           </div>
           <div>
             <Label className="text-sm font-medium">PAYMENT DUE DATE</Label>
-            <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !dueDate && "text-muted-foreground"
-                  )}
-                  disabled={viewMode}
-                >
-                  <CalendarIcon className="w-4 h-4 mr-2" />
-                  {dueDate ? format(dueDate, "dd/MM/yyyy") : "Select Due Date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={dueDate}
-                  onSelect={(date) => {
-                    setDueDate(date);
-                    setDueDateOpen(false);
-                  }}
-                  locale={enIN}
-                  captionLayout="dropdown-buttons"
-                  showOutsideDays={false}
-                  ISOWeek={false}
-                />
-              </PopoverContent>
-            </Popover>
+            <Input
+              ref={el => inputRef.current['dueDate'] = el}
+              type="date"
+              value={dueDate || ''}
+              onChange={(e) => {
+                setDueDate(e.target.value);
+              }}
+              onKeyDown={(e) => handleKeyDown(e, 'product')}
+              disabled={viewMode}
+            />
           </div>
         </div>
 
@@ -459,6 +595,7 @@ export default function EditPurchaseInvoice() {
           setProducts={setProducts}
           viewMode={viewMode}
           gstMode={formData.amountType}
+          handleKeyDown={handleKeyDown}
         />
       </div>
 
@@ -493,9 +630,115 @@ export default function EditPurchaseInvoice() {
         </div>
       </div>
 
+      {/* Payment Details Section */}
+      <div className="mb-10 mt-4">
+        <div className="border rounded-lg overflow-hidden">
+          <div className="flex justify-between items-center p-4 border-b bg-gray-50">
+            <h3 className="text-lg font-medium">Payment History</h3>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setPaymentOutData({
+                  paymentType: "Payment Out",
+                  distributorId: formData.distributorId,
+                  distributorName: formData.distributorName,
+                  amount: roundToTwo(amountData?.grandTotal - amountPaid),
+                  bills: [{
+                    billId: invoiceId,
+                    billNumber: formData.invoiceNumber,
+                    grandTotal: roundToTwo(amountData?.grandTotal),
+                    amountPaid: roundToTwo(amountPaid)
+                  }]
+                });
+                setPaymentOutDialogOpen(true);
+              }}
+            >
+              Add New Payment
+            </Button>
+          </div>
+          
+          {payments.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-100 text-left">
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Date</th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Amount</th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Method</th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Status</th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Reference</th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Remarks</th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map((payment, index) => (
+                    <tr 
+                      key={payment._id || index}
+                      className={`border-t ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                    >
+                      <td className="px-4 py-3 text-sm">
+                        {new Date(payment.paymentDate).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium">
+                        ₹{payment.amount.toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">
+                          {payment.paymentMethod}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          payment.status === "PENDING" 
+                            ? "bg-yellow-100 text-yellow-800"
+                            : payment.status === "COMPLETED"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}>
+                          {payment.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {payment.paymentMethod === "CHEQUE" 
+                          ? `Cheque: ${payment.chequeNumber}`
+                          : payment.paymentMethod === "BANK" || payment.paymentMethod === "UPI"
+                          ? `Txn: ${payment.transactionNumber || 'N/A'}`
+                          : payment.paymentMethod}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {payment.remarks || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {payment.status === "PENDING" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs"
+                            onClick={() => {/* Handle payment action */}}
+                          >
+                            Update Status
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center text-gray-500 py-8">
+              <p className="text-sm">No payment records found</p>
+              <p className="text-xs text-gray-400 mt-1">Click 'Add New Payment' to record a payment</p>
+            </div>
+          )}
+        </div>
+      </div>
+      </ScrollArea>
       {/* footer of purchase */}
-      <div className="fixed bottom-0 w-[cal(100%-200px)] grid grid-cols-8 gap-4 p-4 text-sm text-white bg-gray-800 rounded-lg">
-        <div className="">
+      <div className="fixed bottom-0 w-[cal(100%-200px)] grid grid-cols-9 gap-4 p-4 text-sm text-white bg-gray-800 rounded-lg">
+        <div className="text-center">
           <div className="mb-1 text-gray-400">
             Total Products: {amountData?.productCount}
           </div>
@@ -503,34 +746,39 @@ export default function EditPurchaseInvoice() {
             Total Quantity: {amountData?.totalQuantity}
           </div>
         </div>
-        <div>
+        <div className="text-center">
           <div className="mb-1 text-gray-400">Subtotal</div>
-          <div>₹{amountData?.subtotal}</div>
+          <div>{formatCurrency(amountData?.subtotal)}</div>
         </div>
-        <div>
+        <div className="text-center">
           <div className="mb-1 text-gray-400">(-) Discount</div>
-          <div>₹{amountData?.discountAmount}</div>
+          <div>{formatCurrency(amountData?.discountAmount)}</div>
         </div>
-        <div>
+        <div className="text-center">
           <div className="mb-1 text-gray-400">Taxable</div>
-          <div>₹{amountData?.taxable}</div>
+          <div>{formatCurrency(amountData?.taxable)}</div>
         </div>
-        <div>
+        <div className="text-center">
           <div className="mb-1 text-gray-400">(+) GST Amount</div>
-          <div>₹{amountData?.gstAmount}</div>
+          <div>{formatCurrency(amountData?.gstAmount)}</div>
         </div>
-        <div>
+        <div className="text-center">
           <div className="mb-1 text-gray-400">(-) Adjustment</div>
           <div>₹0</div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">(+) Delivery Charge</div>
-          <div>₹0.00</div>
-        </div>
-        <div className="bg-rose-500 -m-4 p-4 rounded-r-lg">
+        <div className="bg-rose-500 -m-4 p-4 rounded-r-lg text-center">
           <div className="mb-1">Total Amount</div>
-          <div>₹{amountData?.grandTotal}</div>
+          <div>{formatCurrency(amountData?.grandTotal)}</div>
         </div>
+        <div className="text-center">
+          <div className="mb-1 text-gray-400">Amount Paid</div>
+          <div>{formatCurrency(amountPaid)}</div>
+        </div>
+        <div className="text-center">
+          <div className="mb-1 text-gray-400">Due Amount</div>
+          <div>{formatCurrency(amountData?.grandTotal - amountPaid)}</div>
+        </div>
+        
       </div>
       <SelectdistributorDialog
         open={distributorSelectDialog}
@@ -538,6 +786,26 @@ export default function EditPurchaseInvoice() {
         search={distributorName}
         setSearch={setdistributorName}
         onSelect={handleDistributorSelect}
+      />
+      <AmountSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        value={formData.amountType}
+        onChange={(value) => handleInputChange("amountType", value)}
+        products={products}
+        setProducts={setProducts}
+      />
+      <PaymentDialog
+        open={paymentDialogOpen}
+        onOpenChange={setPaymentDialogOpen}
+        invoiceData={invoiceForPayment}
+        onSubmit={handlePaymentSubmit}
+      />
+      <MakePaymentDlg
+        open={paymentOutDialogOpen}
+        onOpenChange={setPaymentOutDialogOpen}
+        paymentData={paymentOutData}
+        showStep1={true}
       />
     </div>
   );

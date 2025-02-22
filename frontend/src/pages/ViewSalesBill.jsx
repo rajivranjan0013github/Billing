@@ -193,7 +193,7 @@ export default function ViewSalesBill() {
                     <div className="grid grid-cols-2 border-t border-gray-300">
                         <div className="p-4">
                             <p className="text-sm">
-                                Paid Amount ({billData?.payment?.payment_method}): 
+                                Paid Amount ({billData?.payment?.paymentMethod}): 
                                 <span className="font-semibold text-green-600">
                                     {formatCurrency(billData?.payment?.amount_paid)}
                                 </span>

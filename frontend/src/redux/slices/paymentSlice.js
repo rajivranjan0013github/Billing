@@ -5,9 +5,9 @@ import { Backend_URL } from "../../assets/Data";
 export const fetchPaymentsOut = createLoadingAsyncThunk(
   "payment/fetchPaymentsOut",
   async () => {
-    const payment_type = "Payment Out";
+    const paymentType = "Payment Out";
     const response = await fetch(
-      `${Backend_URL}/api/payment?payment_type=${payment_type}`,
+      `${Backend_URL}/api/payment?paymentType=${paymentType}`,
       { credentials: "include" }
     );
     return response.json();
@@ -17,9 +17,9 @@ export const fetchPaymentsOut = createLoadingAsyncThunk(
 export const fetchPaymentsIn = createLoadingAsyncThunk(
   "payment/fetchPaymentsIn",
   async () => {
-    const payment_type = "Payment In";
+    const paymentType = "Payment In";
     const response = await fetch(
-      `${Backend_URL}/api/payment?payment_type=${payment_type}`,
+      `${Backend_URL}/api/payment?paymentType=${paymentType}`,
       { credentials: "include" }
     );
     return response.json();
@@ -52,7 +52,7 @@ const paymentSlice = createSlice({
     paymentOut: [],
     paymentInStatus: "idle",
     paymentOutStatus: "idle",
-    createStatus: "idle",
+    createPaymentStatus: "idle",
     error: null,
   },
   reducers: {},
@@ -81,18 +81,18 @@ const paymentSlice = createSlice({
         state.error = action.error.message;
       })
       .addCase(createPayment.pending, (state) => {
-        state.createStatus = "loading";
+        state.createPaymentStatus = "loading";
       })
       .addCase(createPayment.fulfilled, (state, action) => {
-        state.createStatus = "succeeded";
-        if(action.payload.payment_type === "Payment Out") {
+        state.createPaymentStatus = "succeeded";
+        if(action.payload.paymentType === "Payment Out") {
           state.paymentOut.unshift(action.payload);
         } else {
           state.paymentIn.unshift(action.payload);
         }
       })
       .addCase(createPayment.rejected, (state, action) => {
-        state.createStatus = "failed";
+        state.createPaymentStatus = "failed";
         state.error = action.error.message;
       });
   },

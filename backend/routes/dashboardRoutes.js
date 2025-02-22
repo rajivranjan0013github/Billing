@@ -47,17 +47,17 @@ router.get("/metrics", verifyToken, async (req, res) => {
 
     // Get payment methods distribution for the period
     const periodPayments = await Payment.find({
-      payment_date: {
+      paymentDate: {
         $gte: start,
         $lte: end,
       },
-      payment_type: "Payment In",
+      paymentType: "Payment In",
       status: "COMPLETED",
     });
 
     const paymentMethodsDistribution = periodPayments.reduce((acc, payment) => {
-      acc[payment.payment_method] =
-        (acc[payment.payment_method] || 0) + payment.amount;
+      acc[payment.paymentMethod] =
+        (acc[payment.paymentMethod] || 0) + payment.amount;
       return acc;
     }, {});
 
@@ -138,7 +138,7 @@ router.get("/metrics", verifyToken, async (req, res) => {
     });
 
     const duePayments = await Payment.find({
-      payment_type: "Payment Out",
+      paymentType: "Payment Out",
       status: "PENDING",
     });
 
@@ -158,7 +158,7 @@ router.get("/metrics", verifyToken, async (req, res) => {
       ),
       dueThisWeek: duePayments
         .filter((payment) => {
-          const dueDate = new Date(payment.payment_date);
+          const dueDate = new Date(payment.paymentDate);
           const weekFromNow = new Date(start);
           weekFromNow.setDate(weekFromNow.getDate() + 7);
           return dueDate <= weekFromNow;

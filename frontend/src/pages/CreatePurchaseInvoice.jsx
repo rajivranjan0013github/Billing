@@ -187,12 +187,13 @@ export default function PurchaseForm() {
         amountCalculationType: formData.amountType,
         status: "active",
         paymentStatus: paymentData.status,
+        grandTotal: roundToTwo(amountData.grandTotal),
         amountPaid: paymentData.status === "due" ? 0 : Number(paymentData.amount || 0),
         payment: paymentData.status === "paid" ? {
           amount: Number(paymentData.amount || 0),
-          payment_type: paymentData.payment_type,
-          payment_method: paymentData.paymentMethod,
-          distributor_id: formData.distributorId,
+          paymentType: paymentData.paymentType,
+          paymentMethod: paymentData.paymentMethod,
+          distributorId: formData.distributorId,
           distributorName: formData.distributorName,
           remarks: paymentData.notes,
           ...(paymentData.paymentMethod !== "cheque" && {

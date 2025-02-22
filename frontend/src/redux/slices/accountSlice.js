@@ -101,55 +101,52 @@ const accountSlice = createSlice({
   initialState: {
     accounts: [],
     transactions: [],
-    loading: false,
     error: null,
     selectedAccount: null,
+    fetchStatus: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
+    createAccountStatus: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
+    updateAccountStatus: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
+    updateBalanceStatus: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
+    transactionsStatus: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
   },
-  reducers: {
-    setSelectedAccount: (state, action) => {
-      state.selectedAccount = action.payload;
-    },
-    clearError: (state) => {
-      state.error = null;
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
     builder
       // Fetch Accounts
       .addCase(fetchAccounts.pending, (state) => {
-        state.loading = true;
+        state.fetchStatus = 'loading';
         state.error = null;
       })
       .addCase(fetchAccounts.fulfilled, (state, action) => {
-        state.loading = false;
+        state.fetchStatus = 'succeeded';
         state.accounts = action.payload;
       })
       .addCase(fetchAccounts.rejected, (state, action) => {
-        state.loading = false;
+        state.fetchStatus = 'failed';
         state.error = action.payload;
       })
 
       // Add Account
       .addCase(addAccount.pending, (state) => {
-        state.loading = true;
+        state.createAccountStatus = 'loading';
         state.error = null;
       })
       .addCase(addAccount.fulfilled, (state, action) => {
-        state.loading = false;
+        state.createAccountStatus = 'succeeded';
         state.accounts.unshift(action.payload);
       })
       .addCase(addAccount.rejected, (state, action) => {
-        state.loading = false;
+        state.createAccountStatus = 'failed';
         state.error = action.payload;
       })
 
       // Update Account
       .addCase(updateAccount.pending, (state) => {
-        state.loading = true;
+        state.updateAccountStatus = 'loading';
         state.error = null;
       })
       .addCase(updateAccount.fulfilled, (state, action) => {
-        state.loading = false;
+        state.updateAccountStatus = 'succeeded';
         const index = state.accounts.findIndex(
           (account) => account._id === action.payload._id
         );
@@ -158,17 +155,17 @@ const accountSlice = createSlice({
         }
       })
       .addCase(updateAccount.rejected, (state, action) => {
-        state.loading = false;
+        state.updateAccountStatus = 'failed';
         state.error = action.payload;
       })
 
       // Update Balance
       .addCase(updateAccountBalance.pending, (state) => {
-        state.loading = true;
+        state.updateBalanceStatus = 'loading';
         state.error = null;
       })
       .addCase(updateAccountBalance.fulfilled, (state, action) => {
-        state.loading = false;
+        state.updateBalanceStatus = 'succeeded';
         const index = state.accounts.findIndex(
           (account) => account._id === action.payload._id
         );
@@ -177,26 +174,24 @@ const accountSlice = createSlice({
         }
       })
       .addCase(updateAccountBalance.rejected, (state, action) => {
-        state.loading = false;
+        state.updateBalanceStatus = 'failed';
         state.error = action.payload;
       })
 
       // Fetch Transactions
       .addCase(fetchAccountTransactions.pending, (state) => {
-        state.loading = true;
+        state.transactionsStatus = 'loading';
         state.error = null;
       })
       .addCase(fetchAccountTransactions.fulfilled, (state, action) => {
-        state.loading = false;
+        state.transactionsStatus = 'succeeded';
         state.transactions = action.payload;
       })
       .addCase(fetchAccountTransactions.rejected, (state, action) => {
-        state.loading = false;
+        state.transactionsStatus = 'failed';
         state.error = action.payload;
       });
   },
 });
-
-export const { setSelectedAccount, clearError } = accountSlice.actions;
 
 export default accountSlice.reducer;

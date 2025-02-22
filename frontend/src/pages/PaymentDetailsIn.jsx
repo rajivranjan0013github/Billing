@@ -100,11 +100,11 @@ export default function PaymentDetailsIn() {
             </div>
             <div className="space-y-1">
             <p className="text-sm text-muted-foreground">PAYMENT TYPE</p>
-            <p className="font-medium">{paymentDetails.payment_type}</p>
+            <p className="font-medium">{paymentDetails.paymentType}</p>
           </div>
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">PAYMENT METHOD</p>
-            <p className="font-medium">{paymentDetails.payment_method}</p>
+            <p className="font-medium">{paymentDetails.paymentMethod}</p>
           </div>
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">REMARKS</p>
@@ -122,7 +122,7 @@ export default function PaymentDetailsIn() {
           <CardTitle className="text-base font-medium">Sales Invoices settled with this payment</CardTitle>
         </CardHeader>
         <CardContent>
-          {paymentDetails.sales_bills.length === 0 ? (
+          {paymentDetails.salesBills.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <FileX className="h-12 w-12 mb-2" />
               <p>No sales invoices have been settled with this payment</p>
@@ -139,7 +139,7 @@ export default function PaymentDetailsIn() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paymentDetails.sales_bills.map((bill) => (
+                {paymentDetails.salesBills.map((bill) => (
                   <TableRow key={bill._id} onClick={() => navigate(`/sales/${bill._id}`)} className="cursor-pointer">
                     <TableCell>{new Date(bill.bill_date).toLocaleDateString()}</TableCell>
                     <TableCell>{bill.bill_number}</TableCell>

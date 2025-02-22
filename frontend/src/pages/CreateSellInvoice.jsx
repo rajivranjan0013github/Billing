@@ -247,9 +247,9 @@ export default function CreateSellInvoice() {
           paymentData.status === "paid"
             ? {
                 amount: Number(paymentData.amount || 0),
-                payment_type: "Payment In",
-                payment_method: paymentData.paymentMethod,
-                payment_date: paymentData.chequeDate || new Date(),
+                paymentType: "Payment In",
+                paymentMethod: paymentData.paymentMethod,
+                paymentDate: paymentData.chequeDate || new Date(),
                 accountId: paymentData.accountId,
                 transactionNumber: paymentData.transactionNumber,
                 chequeNumber: paymentData.chequeNumber,

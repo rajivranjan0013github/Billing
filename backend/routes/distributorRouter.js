@@ -11,10 +11,9 @@ router.post("/create", async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const distributorData = req.body;;
-
+        const distributorData = req.body;
         // Use session for all database operations
-        const distributor = new Distributor(distributorData);
+        const distributor = new Distributor({...distributorData, currentBalance: distributorData.openBalance});
         await distributor.save({ session });
 
         // Commit the transaction
@@ -44,7 +43,7 @@ router.get("/details/:distributorId", async (req, res) => {
         const [details, invoices, payments] = await Promise.all([
             Distributor.findById(req.params.distributorId),
             InvoiceSchema.find({ distributorId: req.params.distributorId, status: 'active' }),
-            Payment.find({ distributor_id: req.params.distributorId })
+            Payment.find({ distributorId: req.params.distributorId })
         ]);
 
         res.status(200).json({

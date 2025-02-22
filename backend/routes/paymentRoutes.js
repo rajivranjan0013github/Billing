@@ -4,12 +4,18 @@ import mongoose from 'mongoose';
 import { InvoiceSchema } from '../models/InvoiceSchema.js';
 import { SalesBill } from "../models/SalesBill.js";
 import { Distributor } from "../models/Distributor.js";
+import AccountDetails from "../models/AccountDetails.js";
 const router = express.Router();
+
+router.get("/payment-number", async (req, res) => {
+  const paymentNumber = await Payment.getCurrentPaymentNumber();
+  res.json({ paymentNumber });
+});
 
 router.get("/", async (req, res) => {
   try {
-    const { payment_type } = req.query;
-    const payments = await Payment.find({ payment_type }).sort({ createdAt: -1 }).lean();
+    const { paymentType } = req.query;
+    const payments = await Payment.find({ paymentType }).sort({ createdAt: -1 }).lean();
     res.status(200).json(payments);
   } catch (error) {
     console.error("Error fetching payments:", error);
@@ -34,14 +40,27 @@ router.get("/pending-invoices/:distributorId", async (req, res) => {
     if (bill_type === "purchase") {
       pendingInvoices = await InvoiceSchema.find(
         { 
-          supplier: new mongoose.Types.ObjectId(distributorId), 
-          payment_status: "pending" 
+          distributorId: new mongoose.Types.ObjectId(distributorId), 
+          paymentStatus: "due",
+          status: "active"  // Only get active invoices
+        },
+        {
+          _id: 1,
+          invoiceNumber: 1,
+          invoiceDate: 1,
+          paymentDueDate: 1,
+          grandTotal: 1,
+          amountPaid: 1,
+          paymentStatus: 1
         }
-      ).session(session)
-        .select('bill_number payment payment_status bill_date grand_total');
+      ).sort({ invoiceDate: -1 }).session(session);
     } else if (bill_type === "sales") {
-      pendingInvoices = await SalesBill.find({ distributor: new mongoose.Types.ObjectId(distributorId), payment_status: "pending" }).session(session)
-        .select('bill_number payment payment_status bill_date grand_total');
+      pendingInvoices = await SalesBill.find(
+        { 
+          distributor: new mongoose.Types.ObjectId(distributorId), 
+          paymentStatus: "due" 
+        }
+      ).session(session);
     }
     
     await session.commitTransaction();
@@ -60,80 +79,114 @@ router.post("/make-payment", async (req, res) => {
   session.startTransaction();
   
   try {
-    const {bills, distributor_id, remarks, payment_type,payment_method, amount, payment_date, payment_number} = req.body;
+    const {
+      bills, 
+      distributorId, 
+      remarks, 
+      paymentType,
+      paymentMethod, 
+      amount, 
+      paymentDate,
+      paymentNumber,
+      chequeNumber,
+      chequeDate,
+      micrCode,
+      transactionNumber,
+      accountId
+    } = req.body;
 
-    let payment_amount = amount;
-    
-    // Validate required fields
-    if (!payment_type || !payment_method || !distributor_id || !amount) {
-      return res.status(400).json({ 
-        message: "Missing required fields" 
-      });
+    // Enhanced validation
+    if (!paymentType || !paymentMethod || !distributorId || !amount) {
+      return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // Update distributor balance
-    const distributorDoc = await Distributor.findById(distributor_id).session(session);
+    // Validate payment method specific fields
+    if (paymentMethod === "CHEQUE" && (!chequeNumber || !chequeDate)) {
+      return res.status(400).json({ message: "Cheque number and date required for cheque payments" });
+    }
+
+    // Fetch distributor
+    const distributorDoc = await Distributor.findById(distributorId).session(session);
     if (!distributorDoc) {
-      return res.status(404).json({ message: "distributor not found" });
+      return res.status(404).json({ message: "Distributor not found" });
     }
-
-    // For payment out (paying to supplier) - increase balance
-    // For payment in (receiving from customer) - decrease balance
-    distributorDoc.currentBalance += payment_type === "Payment Out" ? amount : -amount;
 
     // Create payment record
     const payment = new Payment({
-      payment_number,
-      payment_type,
-      payment_method,
-      distributor_id,
+      paymentNumber,
+      paymentType,
+      paymentMethod,
+      distributorId,
       distributorName: distributorDoc.name,
       remarks,
       amount,
-      payment_date
+      paymentDate: paymentDate || new Date(),
+      chequeNumber,
+      chequeDate,
+      micrCode,
+      transactionNumber,
+      accountId,
+      status: paymentMethod === "CHEQUE" ? "PENDING" : "COMPLETED"
     });
 
+    // Handle account updates based on payment method
+    if (paymentMethod === "CHEQUE") {
+      // For cheque payments, we only update distributor balance as it's a payment promise
+      distributorDoc.currentBalance += paymentType === "Payment Out" ? amount : -amount;
+    } else {
+      // For non-cheque payments (CASH, BANK, UPI), validate and update account
+      if (!accountId) {
+        throw new Error("Account ID is required for non-cheque payments");
+      }
+
+      // Validate account exists
+      const account = await AccountDetails.findById(accountId).session(session);
+
+      if (!account) {
+        throw new Error("Account not found");
+      }
+
+      // Update account balance
+      const transactionAmount = paymentType === "Payment Out" ? -amount : amount;
+      account.balance += transactionAmount;
+
+      await account.save({ session });
+
+      // Update distributor balance
+      distributorDoc.currentBalance += paymentType === "Payment Out" ? amount : -amount;
+    }
 
     // Update bills
     for (const bill of bills) {
-      if (payment_amount === 0) break;
+      let remainingAmount = amount;
+      if (remainingAmount <= 0) break;
 
-      const BillModel = payment_type === "Payment Out" ? InvoiceSchema : SalesBill;
-      const billDoc = await BillModel.findById(bill.bill_id).session(session);
+      const BillModel = paymentType === "Payment Out" ? InvoiceSchema : SalesBill;
+      const billDoc = await BillModel.findById(bill.billId).session(session);
 
       if (!billDoc) {
-        return res.status(400).json({ message: "Bill not found" });
+        throw new Error(`Bill not found: ${bill.billId}`);
       }
 
-      const due_amount = billDoc.grand_total - (
-        payment_type === "Payment Out" 
-          ? billDoc.payment.amount_paid 
-          : billDoc.payment.amount_paid
-      );
+      const dueAmount = billDoc.grandTotal - billDoc.amountPaid;
 
-      if (due_amount > payment_amount) {
-        if (payment_type === "Payment Out") {
-          billDoc.payment.amount_paid += payment_amount;
-        } else {
-          billDoc.payment.amount_paid += payment_amount;
-        }
-        payment_amount = 0;
+      if (dueAmount > remainingAmount) {
+        billDoc.amountPaid += remainingAmount;
+        billDoc.paymentStatus = "due";
+        remainingAmount = 0;
       } else {
-        if (payment_type === "Payment Out") {
-          billDoc.payment.amount_paid += due_amount;
-        } else {
-          billDoc.payment.amount_paid += due_amount;
-        }
-        billDoc.payment_status = "paid";
-        payment_amount -= due_amount;
+        billDoc.amountPaid += dueAmount;
+        billDoc.paymentStatus = "paid";
+        remainingAmount -= dueAmount;
       }
 
-      billDoc.payment_details.push(payment._id);
-      if(payment_type === "Payment Out") {
-        payment.bills.push(bill.bill_id);
+      billDoc.payments.push(payment._id);
+      if (paymentType === "Payment Out") {
+        payment.bills.push(bill.billId);
       } else {
-        payment.sales_bills.push(bill.bill_id);
+        payment.salesBills.push(bill.billId);
       }
+      
       await billDoc.save({ session });
     }
 
@@ -159,7 +212,7 @@ router.post("/make-payment", async (req, res) => {
 router.get("/details/:paymentId", async (req, res) => {
   try {
     const { paymentId } = req.params;
-    const payment = await Payment.findById(paymentId).populate("bills").populate("sales_bills").lean();
+    const payment = await Payment.findById(paymentId).populate("bills").populate("salesBills").lean();
     res.status(200).json(payment);
   } catch (error) {
     res.status(500).json({ message: "Error fetching payment details", error: error.message });

@@ -1,6 +1,18 @@
 import mongoose from "mongoose";
 import { hospitalPlugin } from "../plugins/hospitalPlugin.js";
 
+const PaymentCounterSchema = new mongoose.Schema({
+  year: {
+    type: Number,
+  },
+  payment_number: {
+    type: Number,
+    default: 0,
+  },
+});
+
+const PaymentCounter = mongoose.model("PaymentCounter", PaymentCounterSchema);
+
 const paymentSchema = new mongoose.Schema(
   {
     amount: {
@@ -8,21 +20,25 @@ const paymentSchema = new mongoose.Schema(
       required: true,
     },
 
-    payment_type: {
+    paymentNumber: {
+      type: String,
+    },
+
+    paymentType: {
       type: String,
       enum: ["Payment In", "Payment Out"],
       required: true,
     },
-    payment_method: {
+    paymentMethod: {
       type: String,
       enum: ["CASH", "UPI", "CHEQUE", "CARD", "BANK"],
       required: true,
     },
-    payment_date: {
+    paymentDate: {
       type: Date,
       default: Date.now,
     },
-    distributor_id: {
+    distributorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "distributor",
     },
@@ -53,7 +69,7 @@ const paymentSchema = new mongoose.Schema(
         ref: "Invoice",
       },
     ],
-    sales_bills: [
+    salesBills: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "SalesBill",
@@ -66,5 +82,27 @@ const paymentSchema = new mongoose.Schema(
 );
 
 paymentSchema.plugin(hospitalPlugin);
+
+paymentSchema.statics.getNextPaymentNumber = async function (session) {
+  const currentYear = new Date().getFullYear();
+  const yearSuffix = currentYear.toString().slice(-2);
+  const counter = await PaymentCounter.findOneAndUpdate(
+    { year: currentYear },
+    { $inc: { payment_number: 1 } },
+    { upsert: true, new: true, setDefaultsOnInsert: true, session }
+  );
+  return `PAY/${yearSuffix}/${counter.payment_number}`;
+};
+
+paymentSchema.statics.getCurrentPaymentNumber = async function (session) {
+  const currentYear = new Date().getFullYear();
+  const yearSuffix = currentYear.toString().slice(-2);
+  const counter = await PaymentCounter.findOneAndUpdate(
+    { year: currentYear },
+    {},
+    { upsert: true, new: true, setDefaultsOnInsert: true, session }
+  );
+  return `PAY/${yearSuffix}/${counter.payment_number + 1}`;
+};
 
 export const Payment = mongoose.model("Payment", paymentSchema);

@@ -2,7 +2,7 @@ import { Button } from "../components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
 import { Input } from "../components/ui/input"
-import { MessageSquare, Search, Settings } from "lucide-react"
+import { MessageSquare, Search, Settings, ArrowLeft } from "lucide-react"
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchPaymentsOut } from "../redux/slices/paymentSlice";
@@ -20,9 +20,14 @@ export default function Component() {
   }, [dispatch, paymentOutStatus]);
   
   return (
-    <div className="w-full max-w-6xl mx-auto p-4 space-y-4">
+    <div className="w-full  p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Payment Out</h1>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-xl font-semibold">Payment Out</h1>
+        </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon">
             <Settings className="h-5 w-5" />
@@ -50,18 +55,20 @@ export default function Component() {
             </SelectContent>
           </Select>
         </div>
-        <Button className="bg-[#6366F1] hover:bg-[#5558DD]" onClick={() => navigate("/purchase/create-payment-out")}>
+        <Button  onClick={() => navigate("/purchase/create-payment-out")}>
           Create Payment Out
         </Button>
       </div>
 
       <div className="border rounded-lg">
-        <Table>
+        <Table >
           <TableHeader>
             <TableRow>
               <TableHead className="w-[150px]">Date</TableHead>
               <TableHead>Payment Number</TableHead>
-              <TableHead>distributor Name</TableHead>
+              <TableHead>Distributor Name</TableHead>
+              <TableHead>Payment Method</TableHead>
+              <TableHead>Remarks</TableHead>
               <TableHead className="text-right">Amount</TableHead>
             </TableRow>
           </TableHeader>
@@ -75,14 +82,16 @@ export default function Component() {
                     year: 'numeric'
                   })}
                 </TableCell>
-                <TableCell>{payment?.payment_number}</TableCell>
-                <TableCell>{payment.distributorName}</TableCell>
-                <TableCell className="text-right">₹ {payment.amount.toLocaleString('en-IN')}</TableCell>
+                <TableCell>{payment?.paymentNumber}</TableCell>
+                <TableCell>{payment?.distributorName}</TableCell>
+                <TableCell>{payment?.paymentMethod}</TableCell>
+                <TableCell>{payment?.remarks || '-'}</TableCell>
+                <TableCell className="text-right">₹ {payment?.amount?.toLocaleString('en-IN')}</TableCell>
               </TableRow>
             ))}
             {paymentOut.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   No payments found
                 </TableCell>
               </TableRow>

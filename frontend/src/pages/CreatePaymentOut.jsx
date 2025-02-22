@@ -2,9 +2,8 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
 import { Checkbox } from "../components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "../components/ui/table";
-import { ArrowLeft, Calendar, MessageSquare, Search, Settings, Store } from "lucide-react";
+import { ArrowLeft, Calendar, Search, Settings, Store } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
@@ -13,7 +12,7 @@ import { fetchDistributors } from "../redux/slices/distributorSlice";
 import { SearchSuggestion } from "../components/custom/custom-fields/CustomSearchSuggestion";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
-import { createPayment } from "../redux/slices/paymentSlice";
+import MakePaymentDlg from "../components/custom/payment/MakePaymentDlg";
 
 // First, let's create a TableContent component for better organization
 export const TableContent = ({ isLoadingBills, pendingInvoices, selectedBills, onBillSelection }) => {
@@ -71,16 +70,16 @@ export const TableContent = ({ isLoadingBills, pendingInvoices, selectedBills, o
                 onCheckedChange={(checked) => onBillSelection(invoice, checked)}
               />
             </TableCell>
-            <TableCell>{new Date(invoice.bill_date).toLocaleDateString()}</TableCell>
-            <TableCell>-</TableCell>
-            <TableCell>{invoice.bill_number}</TableCell>
+            <TableCell>{new Date(invoice.invoiceDate).toLocaleDateString()}</TableCell>
+            <TableCell>{invoice.paymentDueDate ? new Date(invoice.paymentDueDate).toLocaleDateString() : '-'}</TableCell>
+            <TableCell>{invoice.invoiceNumber}</TableCell>
             <TableCell className="text-right">
-              ₹{invoice.grand_total.toLocaleString()}{" "}
+              ₹{invoice.grandTotal.toLocaleString()}{" "}
               <span className="text-red-500 ml-1">
-                (₹{(invoice.grand_total - invoice.payment.amount_paid).toLocaleString()} pending)
+                (₹{(invoice.grandTotal - invoice.amountPaid).toLocaleString()} pending)
               </span>
             </TableCell>
-            <TableCell className="text-right">₹{invoice.payment.amount_paid.toLocaleString()}</TableCell>
+            <TableCell className="text-right">₹{invoice.amountPaid.toLocaleString()}</TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -88,10 +87,10 @@ export const TableContent = ({ isLoadingBills, pendingInvoices, selectedBills, o
         <TableRow>
           <TableCell colSpan={4}>Total</TableCell>
           <TableCell className="text-right">
-            ₹{pendingInvoices.reduce((total, invoice) => total + invoice.grand_total, 0).toLocaleString()}
+            ₹{pendingInvoices.reduce((total, invoice) => total + invoice.grandTotal, 0).toLocaleString()}
           </TableCell>
           <TableCell className="text-right">
-            ₹{pendingInvoices.reduce((total, invoice) => total + invoice.payment.amount_paid, 0).toLocaleString()}
+            ₹{pendingInvoices.reduce((total, invoice) => total + invoice.amountPaid, 0).toLocaleString()}
           </TableCell>
         </TableRow>
       </TableFooter>
@@ -101,8 +100,7 @@ export const TableContent = ({ isLoadingBills, pendingInvoices, selectedBills, o
 
 export default function Component() {
   const navigate = useNavigate();
-  const { parties, fetchStatus } = useSelector((state) => state.distributor);
-  const { createStatus } = useSelector((state) => state.payment);
+  const { distributors, fetchStatus } = useSelector((state) => state.distributor);
   const [pendingInvoices, setPendingInvoices] = useState([]);
   const [selecteddistributor, setSelecteddistributor] = useState(null);
   const [value, setValue] = useState("");
@@ -120,15 +118,24 @@ export default function Component() {
   const [isLoadingBills, setIsLoadingBills] = useState(false);
   const [selectedBills, setSelectedBills] = useState([]);
   const [paymentAmount, setPaymentAmount] = useState();
-  const [paymentMode, setPaymentMode] = useState("cash");
   const [notes, setNotes] = useState("");
   const [paymentOutNumber, setPaymentOutNumber] = useState("");
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
   useEffect(() => {
     if (fetchStatus === "idle") {
       dispatch(fetchDistributors());
     }
   }, [fetchStatus]);
+
+  useEffect(() => {
+    const fetchPaymentNumber = async () => {
+      const response = await fetch(`${Backend_URL}/api/payment/payment-number`, {credentials: "include"});
+      const data = await response.json();
+      setPaymentOutNumber(data.paymentNumber);
+    }
+    fetchPaymentNumber();
+  }, []);
 
   const handleFetchPendingInvoices = async(distributorId) => {
     setIsLoadingBills(true);
@@ -154,14 +161,14 @@ export default function Component() {
       setSelectedBills(newSelectedBills);
       // Calculate total pending amount of selected bills
       const totalPending = newSelectedBills.reduce((total, bill) => 
-        total + (bill.grand_total - bill.payment.amount_paid), 0
+        total + (bill.grandTotal - bill.amountPaid), 0
       );
       setPaymentAmount(totalPending);
     } else {
       const newSelectedBills = selectedBills.filter(bill => bill._id !== invoice._id);
       setSelectedBills(newSelectedBills);
       const totalPending = newSelectedBills.reduce((total, bill) => 
-        total + (bill.grand_total - bill.payment.amount_paid), 0
+        total + (bill.grandTotal - bill.amountPaid), 0
       );
       setPaymentAmount(totalPending);
     }
@@ -183,34 +190,12 @@ export default function Component() {
       return;
     }
 
-    const paymentData = {
-      payment_type: "Payment Out",
-      distributor_id: selecteddistributor._id,
-      payment_date: paymentDate,
-      payment_method: paymentMode,
-      amount: paymentAmount,
-      remarks: notes,
-      payment_number: paymentOutNumber,
-      bills: selectedBills.map(bill => ({
-        bill_id: bill._id,
-        amount: bill.grand_total - bill.payment.amount_paid,
-        bill_number: bill.bill_number
-      }))
-    };
-
-    dispatch(createPayment(paymentData)).unwrap().then(() => {
-        toast({title: "Payment added successfully", variant: "success",});
-        dispatch(fetchDistributors());
-        navigate('/purchase/payment-out');
-      })
-      .catch((error) => {
-        toast({title: "Failed to create payment", variant: "destructive",});
-      });
+    setShowPaymentDialog(true);
   };
 
   return (
     <div className="w-full max-w-7xl mx-auto p-4">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
@@ -218,30 +203,23 @@ export default function Component() {
           <h1 className="text-xl font-semibold">Record Payment Out</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon">
-            <MessageSquare className="h-5 w-5" />
-          </Button>
           <Button variant="outline" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             Settings
           </Button>
-          <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
-          <Button 
-            className="bg-[#6366F1] hover:bg-[#5558DD]"
-            onClick={handleSubmit}
-          >
-            Save
+          <Button onClick={handleSubmit}>
+            Create Payment
           </Button>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6 mb-6">
+      <div className="grid md:grid-cols-2 gap-4 mb-4">
         <Card className="p-4 space-y-4">
           <div className="space-y-2">
-            <label className="text-sm text-muted-foreground">distributor Name</label>
+            <label className="text-sm text-muted-foreground">Distributor Name</label>
             <div className="relative">
               <SearchSuggestion
-                suggestions={parties}
+                suggestions={distributors}
                 placeholder='Search distributor by name'
                 value={value}
                 setValue={setValue}
@@ -276,7 +254,7 @@ export default function Component() {
         </Card>
 
         <Card className="p-4 space-y-4">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm text-muted-foreground">
                 Payment Date
@@ -293,31 +271,14 @@ export default function Component() {
             </div>
             <div className="space-y-2">
               <label className="text-sm text-muted-foreground">
-                Payment Mode
+                Payment Out Number
               </label>
-              <Select value={paymentMode} onValueChange={setPaymentMode}>
-                <SelectTrigger>
-                  <SelectValue>Cash</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="upi">UPI</SelectItem>
-                  <SelectItem value="cheque">Cheque</SelectItem>
-                  <SelectItem value="bank-transfer">Bank Transfer</SelectItem>
-                  <SelectItem value="card">Card</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input 
+                value={paymentOutNumber}
+                onChange={(e) => setPaymentOutNumber(e.target.value)}
+                placeholder="Enter..."
+              />
             </div>
-            <div className="space-y-2">
-            <label className="text-sm text-muted-foreground">
-              Payment Out Number
-            </label>
-            <Input 
-              value={paymentOutNumber}
-              onChange={(e) => setPaymentOutNumber(e.target.value)}
-              placeholder="Enter..."
-            />
-          </div>
           </div>
 
           <div className="space-y-2">
@@ -361,6 +322,24 @@ export default function Component() {
           />
         )}
       </div>
+
+      <MakePaymentDlg
+        open={showPaymentDialog}
+        onOpenChange={setShowPaymentDialog}
+        paymentData={{
+          paymentType: "Payment Out",
+          distributorId: selecteddistributor?._id,
+          paymentDate,
+          amount: paymentAmount,
+          remarks: notes,
+          paymentNumber: paymentOutNumber,
+          bills: selectedBills.map(bill => ({
+            billId: bill._id,
+            amount: bill.grandTotal - bill.amountPaid,
+            billNumber: bill.invoiceNumber
+          }))
+        }}
+      />
     </div>
   );
 }

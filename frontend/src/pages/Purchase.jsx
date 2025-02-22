@@ -10,6 +10,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchPurchaseBills, searchPurchaseBills,} from "../redux/slices/PurchaseBillSlice";
 import { subDays } from "date-fns";
 import { DateRangePicker } from "../components/ui/date-range-picker";
+import { formatCurrency } from "../utils/Helper";
 
 export default function PurchasesTransactions() {
   const navigate = useNavigate();
@@ -56,15 +57,7 @@ export default function PurchasesTransactions() {
     setPurchaseBills(initialPurchaseBills);
   }, [initialPurchaseBills]);
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 2,
-    })
-      .format(amount)
-      .replace(/^(\D+)/, "₹");
-  };
+
 
   const summary = purchaseBills.reduce(
     (acc, bill) => {

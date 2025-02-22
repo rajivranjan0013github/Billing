@@ -160,7 +160,7 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
       amount: paymentData.amount === "" ? 0 : Number(paymentData.amount),
       status: paymentStatus,
       dueDate: paymentStatus === "due" ? dueDate : null,
-      payment_type: "Purchase Invoice",
+      paymentType: "Purchase Invoice",
     };
 
     if (paymentStatus === "due") {

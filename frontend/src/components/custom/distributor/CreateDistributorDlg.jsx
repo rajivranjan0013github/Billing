@@ -92,7 +92,15 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
     e.preventDefault();
     try {
       const distributorData = { ...formData };
-      distributorData.openBalance = Number(distributorData.openBalance);
+      // Convert opening balance to number and adjust sign based on balance_type
+      let openBalance = Number(distributorData.openBalance);
+      if (distributorData.balance_type === "pay" && openBalance > 0) {
+        openBalance = -openBalance;
+      } else if (distributorData.balance_type === "collect" && openBalance < 0) {
+        openBalance = Math.abs(openBalance);
+      }
+      distributorData.openBalance = openBalance;
+      
       const newDistributor = await dispatch(createDistributor(distributorData)).unwrap();
       toast({
         title: "Distributor created successfully",

@@ -158,7 +158,7 @@ export default function DistributorDetails() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <div className="text-sm text-muted-foreground">
-                        distributor Name
+                        Distributor Name
                       </div>
                       <div>{distributorDetails.name}</div>
                     </div>
@@ -226,14 +226,6 @@ export default function DistributorDetails() {
                             : "To Pay"}
                           )
                         </span>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-muted-foreground">
-                        Customer Type
-                      </div>
-                      <div className="capitalize">
-                        {distributorDetails.distributorType}
                       </div>
                     </div>
                   </div>
@@ -465,7 +457,7 @@ export default function DistributorDetails() {
                       <TableRow
                         key={payment._id}
                         onClick={() => {
-                          if (payment.payment_type === "Payment In") {
+                          if (payment.paymentType === "Payment In") {
                             navigate(`/sales/payment-in/${payment._id}`);
                           } else {
                             navigate(`/purchase/payment-out/${payment._id}`);
@@ -474,19 +466,19 @@ export default function DistributorDetails() {
                         className="cursor-pointer hover:bg-muted/50"
                       >
                         <TableCell>
-                          {new Date(payment.payment_date).toLocaleDateString('en-IN', {
+                          {new Date(payment.paymentDate).toLocaleDateString('en-IN', {
                             day: '2-digit',
                             month: 'short',
                             year: 'numeric'
                           })}
                         </TableCell>
                         <TableCell>
-                          <span className={payment.payment_type === "Payment In" ? "text-green-600" : "text-red-600"}>
-                            {payment.payment_type}
+                          <span className={payment.paymentType === "Payment In" ? "text-green-600" : "text-red-600"}>
+                            {payment.paymentType}
                           </span>
                         </TableCell>
                         <TableCell>{payment.payment_number || '-'}</TableCell>
-                        <TableCell>{payment.payment_method}</TableCell>
+                        <TableCell>{payment.paymentMethod}</TableCell>
                         <TableCell className="text-right">₹ {payment.amount.toLocaleString()}</TableCell>
                         <TableCell>
                           <Badge

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { hospitalPlugin } from "../plugins/hospitalPlugin.js";
+
 const SalesBillCounterSchema = new mongoose.Schema({
   year: {
     type: Number,
@@ -9,10 +10,9 @@ const SalesBillCounterSchema = new mongoose.Schema({
     default: 0,
   },
 });
-const SalesBillCounter = mongoose.model(
-  "SalesBillCounter",
-  SalesBillCounterSchema
-);
+
+const SalesBillCounter = mongoose.model("SalesBillCounter", SalesBillCounterSchema);
+
 const salesBillSchema = new mongoose.Schema(
   {
     saleType: {
@@ -147,6 +147,7 @@ const salesBillSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
 salesBillSchema.statics.getNextInvoiceNumber = async function (session) {
   const currentYear = new Date().getFullYear();
   const yearSuffix = currentYear.toString().slice(-2);
@@ -157,6 +158,7 @@ salesBillSchema.statics.getNextInvoiceNumber = async function (session) {
   );
   return `INV/${yearSuffix}/${counter.invoice_number}`;
 };
+
 salesBillSchema.statics.getCurrentInvoiceNumber = async function (session) {
   const currentYear = new Date().getFullYear();
   const yearSuffix = currentYear.toString().slice(-2);

@@ -100,10 +100,10 @@ export default function Component() {
     }
 
     const paymentData = {
-      payment_type: "Payment In",
-      distributor_id: selecteddistributor._id,
-      payment_date: paymentDate,
-      payment_method: paymentMode,
+      paymentType: "Payment In",
+      distributorId: selecteddistributor._id,
+      paymentDate: paymentDate,
+      paymentMethod: paymentMode,
       amount: paymentAmount,
       remarks: notes,
       payment_number: paymentOutNumber,
