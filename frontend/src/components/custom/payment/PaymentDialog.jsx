@@ -14,11 +14,11 @@ import { Separator } from "../../ui/separator";
 
 export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmit}) {
   const dispatch = useDispatch();
-  const { accounts } = useSelector((state) => state.accounts);
+  const { accounts, fetchStatus } = useSelector((state) => state.accounts);
   const { createPurchaseBillStatus } = useSelector((state) => state.purchaseBill);
   const [step, setStep] = useState(1);
   const [paymentStatus, setPaymentStatus] = useState("due");
-  const [dueDate, setDueDate] = useState(new Date());
+  const [dueDate, setDueDate] = useState(new Date(invoiceData?.dueDate || new Date()));
   const [showDetails, setShowDetails] = useState(false);
 
   const [paymentData, setPaymentData] = useState({
@@ -31,17 +31,22 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
     transactionNumber: "",
   });
 
+  useEffect(() => {
+    if(fetchStatus === 'idle') {
+      dispatch(fetchAccounts()).unwrap()
+        .catch(err => setError(err.message));
+    }
+  }, [dispatch, fetchStatus]);
+
   // Add error state
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (open) {
       setError(null);
-      dispatch(fetchAccounts()).unwrap()
-        .catch(err => setError(err.message));
       setStep(1);
       setPaymentStatus("due");
-      setDueDate(new Date());
+      setDueDate(new Date(invoiceData?.dueDate || new Date()));
       setShowDetails(false);
       setPaymentData({
         amount: "",
@@ -59,7 +64,7 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
     if (paymentStatus === "paid") {
       setPaymentData((prev) => ({
         ...prev,
-        amount: invoiceData?.totalAmount || "",
+        amount: invoiceData?.grandTotal || "",
       }));
     } else {
       setPaymentData((prev) => ({
@@ -67,7 +72,7 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
         amount: "",
       }));
     }
-  }, [paymentStatus, invoiceData?.totalAmount]);
+  }, [paymentStatus, invoiceData?.grandTotal]);
 
   const handleBack = () => {
     if (step === 3) {
@@ -136,17 +141,11 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
         return (
           paymentData.chequeNumber &&
           paymentData.chequeNumber.trim() !== "" &&
-          paymentData.micrCode &&
-          paymentData.micrCode.trim() !== "" &&
           paymentData.chequeDate
         );
       case "BANK":
       case "UPI":
-        return (
-          paymentData.accountId &&
-          paymentData.transactionNumber &&
-          paymentData.transactionNumber.trim() !== ""
-        );
+        return paymentData.accountId;  // Only require accountId, transaction number is optional
       case "CASH":
         return paymentData.accountId && paymentData.accountId.trim() !== "";
       default:
@@ -159,7 +158,7 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
       ...paymentData,
       amount: paymentData.amount === "" ? 0 : Number(paymentData.amount),
       status: paymentStatus,
-      dueDate: paymentStatus === "due" ? dueDate : null,
+      dueDate,
       paymentType: "Purchase Invoice",
     };
 
@@ -173,7 +172,7 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
     }
 
     // Remove accountId if payment method is cheque
-    if (finalData.paymentMethod === "cheque") {
+    if (finalData.paymentMethod === "CHEQUE") {
       finalData.accountId = null;
     }
 
@@ -234,7 +233,7 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
               />
             </div>
             <div>
-              <Label>MICR Code</Label>
+              <Label>MICR Code (Optional)</Label>
               <Input
                 placeholder="Enter MICR code"
                 value={paymentData.micrCode}
@@ -244,7 +243,6 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                     micrCode: e.target.value,
                   })
                 }
-                required
               />
             </div>
           </div>
@@ -260,6 +258,7 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                 })
               }
               className="w-full"
+              required
             />
           </div>
         </div>
@@ -306,7 +305,7 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
           </div>
 
           <div>
-            <Label>Transaction Number</Label>
+            <Label>Transaction Number (Optional)</Label>
             <Input
               placeholder="Enter transaction number"
               value={paymentData.transactionNumber}
@@ -316,7 +315,6 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                   transactionNumber: e.target.value,
                 })
               }
-              required
             />
           </div>
         </div>
@@ -382,7 +380,7 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                   </div>
                   <div>
                     <Label className="text-sm text-gray-500">Total Amount</Label>
-                    <div className="font-medium">₹{invoiceData?.totalAmount}</div>
+                    <div className="font-medium">₹{invoiceData?.grandTotal}</div>
                   </div>
                 </div>
 
@@ -453,19 +451,34 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                       />
                     </div>
                   ) : (
-                    <div>
-                      <Label>Amount Paid</Label>
-                      <Input
-                        type="number"
-                        placeholder="Enter amount"
-                        value={paymentData.amount}
-                        onChange={(e) =>
-                          setPaymentData({
-                            ...paymentData,
-                            amount: e.target.value,
-                          })
-                        }
-                      />
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Amount Paid</Label>
+                          <Input
+                            type="number"
+                            placeholder="Enter amount"
+                            value={paymentData.amount}
+                            onChange={(e) =>
+                              setPaymentData({
+                                ...paymentData,
+                                amount: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                        {Number(paymentData.amount) !== Number(invoiceData?.grandTotal) && (
+                          <div>
+                            <Label>Payment Due Date</Label>
+                            <Input
+                              type="date"
+                              value={dueDate ? format(dueDate, "yyyy-MM-dd") : ""}
+                              onChange={(e) => setDueDate(new Date(e.target.value))}
+                              className="w-full"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

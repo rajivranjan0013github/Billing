@@ -3,7 +3,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import { ArrowLeft, Pencil, Save, Settings2 } from "lucide-react";
+import { ArrowLeft, Pencil, Save, Settings2, ChevronRight } from "lucide-react";
 import PurchaseItemTable from "../components/custom/purchase/PurchaseItemTable";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
@@ -422,10 +422,9 @@ export default function EditPurchaseInvoice() {
     <div className=" relative rounded-lg h-[100vh] pt-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <ArrowLeft
-            className="w-5 h-5 cursor-pointer"
-            onClick={() => navigate(-1)}
-          />
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
           <h1 className="text-xl font-medium">
             {viewMode ? "View" : "Edit"} Purchase
           </h1>
@@ -638,6 +637,7 @@ export default function EditPurchaseInvoice() {
             <Button
               variant="outline"
               size="sm"
+              disabled={amountPaid >= amountData?.grandTotal}
               onClick={() => {
                 setPaymentOutData({
                   paymentType: "Payment Out",
@@ -664,6 +664,7 @@ export default function EditPurchaseInvoice() {
                 <thead>
                   <tr className="bg-gray-100 text-left">
                     <th className="px-4 py-3 text-sm font-medium text-gray-600">Date</th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Payment Number</th>
                     <th className="px-4 py-3 text-sm font-medium text-gray-600">Amount</th>
                     <th className="px-4 py-3 text-sm font-medium text-gray-600">Method</th>
                     <th className="px-4 py-3 text-sm font-medium text-gray-600">Status</th>
@@ -680,6 +681,9 @@ export default function EditPurchaseInvoice() {
                     >
                       <td className="px-4 py-3 text-sm">
                         {new Date(payment.paymentDate).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium">
+                        {payment.paymentNumber}
                       </td>
                       <td className="px-4 py-3 text-sm font-medium">
                         ₹{payment.amount.toLocaleString('en-IN')}
@@ -711,16 +715,14 @@ export default function EditPurchaseInvoice() {
                         {payment.remarks || '-'}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        {payment.status === "PENDING" && (
                           <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs"
-                            onClick={() => {/* Handle payment action */}}
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => navigate(`/purchase/payment-out/${payment._id}`)}
+                            className='h-6 w-6'
                           >
-                            Update Status
+                            <ChevronRight className="h-4 w-4" />
                           </Button>
-                        )}
                       </td>
                     </tr>
                   ))}

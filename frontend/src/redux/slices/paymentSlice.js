@@ -1,6 +1,8 @@
 import { createSlice } from "@reduxjs/toolkit";
 import createLoadingAsyncThunk from "./createLoadingAsyncThunk";
 import { Backend_URL } from "../../assets/Data";
+import { setAccountsStatusIdle } from "./accountSlice";
+import { setDistributorStatusIdle } from "./distributorSlice";
 
 export const fetchPaymentsOut = createLoadingAsyncThunk(
   "payment/fetchPaymentsOut",
@@ -11,7 +13,8 @@ export const fetchPaymentsOut = createLoadingAsyncThunk(
       { credentials: "include" }
     );
     return response.json();
-  }
+  },
+  { useGlobalLoader: true }
 );
 
 export const fetchPaymentsIn = createLoadingAsyncThunk(
@@ -23,12 +26,14 @@ export const fetchPaymentsIn = createLoadingAsyncThunk(
       { credentials: "include" }
     );
     return response.json();
-  }
+  },
+  { useGlobalLoader: true }
 );
 
+// Create Payment
 export const createPayment = createLoadingAsyncThunk(
   "payment/createPayment",
-  async (paymentData) => {
+  async (paymentData, { dispatch }) => {
     const response = await fetch(`${Backend_URL}/api/payment/make-payment`, {
       method: 'POST',
       headers: {
@@ -41,8 +46,29 @@ export const createPayment = createLoadingAsyncThunk(
     if (!response.ok) {
       throw new Error('Payment creation failed');
     }
-    return response.json();
-  }
+    const result = await response.json();
+    await dispatch(setAccountsStatusIdle());
+    await dispatch(setDistributorStatusIdle());
+    return result;
+  },
+  { useGlobalLoader: true }
+);
+
+// Delete Payment
+export const deletePayment = createLoadingAsyncThunk(
+  "payment/deletePayment",
+  async (paymentId) => {
+    const response = await fetch(`${Backend_URL}/api/payment/${paymentId}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      throw new Error('Payment deletion failed');
+    }
+    return { paymentId, message: 'Payment deleted successfully' };
+  },
+  { useGlobalLoader: true }
 );
 
 const paymentSlice = createSlice({
@@ -53,6 +79,7 @@ const paymentSlice = createSlice({
     paymentInStatus: "idle",
     paymentOutStatus: "idle",
     createPaymentStatus: "idle",
+    deletePaymentStatus: "idle",
     error: null,
   },
   reducers: {},
@@ -93,6 +120,19 @@ const paymentSlice = createSlice({
       })
       .addCase(createPayment.rejected, (state, action) => {
         state.createPaymentStatus = "failed";
+        state.error = action.error.message;
+      })
+      .addCase(deletePayment.pending, (state) => {
+        state.deletePaymentStatus = "loading";
+      })
+      .addCase(deletePayment.fulfilled, (state, action) => {
+        state.deletePaymentStatus = "succeeded";
+        const paymentId = action.payload.paymentId;
+        state.paymentIn = state.paymentIn.filter(payment => payment._id !== paymentId);
+        state.paymentOut = state.paymentOut.filter(payment => payment._id !== paymentId);
+      })
+      .addCase(deletePayment.rejected, (state, action) => {
+        state.deletePaymentStatus = "failed";
         state.error = action.error.message;
       });
   },

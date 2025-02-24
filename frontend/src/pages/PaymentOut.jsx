@@ -20,13 +20,13 @@ export default function Component() {
   }, [dispatch, paymentOutStatus]);
   
   return (
-    <div className="w-full  p-4 space-y-4">
+    <div className="w-full p-4 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-semibold">Payment Out</h1>
+          <h1 className="text-2xl font-semibold">Payment Out</h1>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon">
@@ -76,7 +76,7 @@ export default function Component() {
             {paymentOut.map((payment) => (
               <TableRow key={payment._id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/purchase/payment-out/${payment._id}`)}>
                 <TableCell>
-                  {new Date(payment.createdAt).toLocaleDateString('en-IN', {
+                  {new Date(payment.paymentDate).toLocaleDateString('en-IN', {
                     day: '2-digit',
                     month: 'short',
                     year: 'numeric'

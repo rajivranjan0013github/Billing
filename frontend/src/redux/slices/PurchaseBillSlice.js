@@ -1,11 +1,14 @@
 import { createSlice } from "@reduxjs/toolkit";
 import createLoadingAsyncThunk from "./createLoadingAsyncThunk";
 import { Backend_URL } from "../../assets/Data";
+import { setAccountsStatusIdle } from "./accountSlice";
+import { setDistributorStatusIdle } from "./distributorSlice";
+import { setItemStatusIdle } from "./inventorySlice";
 
 // Create new purchase bill
 export const createPurchaseBill = createLoadingAsyncThunk(
   "purchaseBill/createPurchaseBill",
-  async (purchaseBillData) => {
+  async (purchaseBillData, { dispatch }) => {
     const response = await fetch(`${Backend_URL}/api/purchase`, {
       method: "POST",
       headers: {
@@ -18,7 +21,11 @@ export const createPurchaseBill = createLoadingAsyncThunk(
     if (!response.ok) {
       throw new Error("Failed to create purchase bill");
     }
-    return response.json();
+    const result = await response.json();
+    await dispatch(setAccountsStatusIdle());
+    await dispatch(setDistributorStatusIdle());
+    await dispatch(setItemStatusIdle());
+    return result;
   },
   { useGlobalLoader: true }
 );

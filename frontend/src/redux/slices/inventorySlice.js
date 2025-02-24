@@ -24,7 +24,8 @@ export const manageInventory = createLoadingAsyncThunk(
       throw new Error("Failed to create new item");
     }
     return response.json();
-  }
+  },
+  { useGlobalLoader: true }
 );
 
 // Thunk for fetching items
@@ -45,7 +46,13 @@ export const fetchItems = createLoadingAsyncThunk(
 const inventorySlice = createSlice({
   name: "inventory",
   initialState,
-  reducers: {},
+  reducers: {
+    setItemStatusIdle: (state) => {
+      state.itemsStatus = "idle";
+      state.manageItemStatus = 'idle';
+      state.error = null;
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchItems.pending, (state) => {
@@ -77,5 +84,7 @@ const inventorySlice = createSlice({
       })
   },
 });
+
+export const { setItemStatusIdle } = inventorySlice.actions;
 
 export default inventorySlice.reducer;

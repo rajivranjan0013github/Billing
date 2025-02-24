@@ -86,7 +86,13 @@ const distributorSlice = createSlice({
   reducers: {
     setTabName: (state, action) => {
       state.currentDistributor.tabName = action.payload;
-    }
+    },
+    setDistributorStatusIdle: (state) => {
+      state.createDistributorStatus = 'idle';
+      state.fetchStatus = 'idle';
+      state.currentDistributor.status = 'idle';
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -129,5 +135,5 @@ const distributorSlice = createSlice({
   },
 });
 
-export const { setTabName } = distributorSlice.actions;
+export const { setTabName, setDistributorStatusIdle } = distributorSlice.actions;
 export default distributorSlice.reducer;

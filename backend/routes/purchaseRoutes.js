@@ -102,6 +102,7 @@ router.post("/", verifyToken, async (req, res) => {
 
     // Create or update the invoice
     let newInvoice;
+    const dueAmount = Number(details.grandTotal) - Number(details.amountPaid);
     if (_id) {
       newInvoice = await InvoiceSchema.findById(_id).session(session);
       if (!newInvoice) {
@@ -111,19 +112,25 @@ router.post("/", verifyToken, async (req, res) => {
         ...req.body,
         createdBy: req.user._id,
         mob: distributorDetails.mob,
+        paymentStatus: dueAmount > 0 ? "due" : "paid",
+        paymentDueDate: dueAmount > 0 ? details.paymentDueDate : null,
       });
     } else {
       newInvoice = new InvoiceSchema({
         ...req.body,
         createdBy: req.user._id,
         mob: distributorDetails.mob,
+        paymentStatus: dueAmount > 0 ? "due" : "paid",
+        paymentDueDate: dueAmount > 0 ? details.paymentDueDate : null,
       });
     }
 
     // Handle payment if provided
     if (payment && payment.amount > 0) {
+      const paymentNumber = await Payment.getNextPaymentNumber(session);
       // Create payment record
       const paymentDoc = new Payment({
+        paymentNumber,
         amount: payment.amount,
         paymentType: "Payment Out",
         paymentMethod: payment.paymentMethod,
@@ -143,7 +150,7 @@ router.post("/", verifyToken, async (req, res) => {
       // For cheque payments, we don't need to validate account
       if (payment.paymentMethod === "CHEQUE") {
         // Update distributor balance since it's still a payment promise
-        distributorDetails.currentBalance = (distributorDetails.currentBalance || 0) - payment.amount;
+        distributorDetails.currentBalance = (distributorDetails.currentBalance || 0) - dueAmount;
         await distributorDetails.save({ session });
       } else {
         // For non-cheque payments, validate and update account
@@ -163,7 +170,7 @@ router.post("/", verifyToken, async (req, res) => {
         await account.save({ session });
 
         // Update distributor balance
-        distributorDetails.currentBalance = (distributorDetails.currentBalance || 0) - payment.amount;
+        distributorDetails.currentBalance = (distributorDetails.currentBalance || 0) - dueAmount;
         await distributorDetails.save({ session });
       }
 
@@ -264,19 +271,7 @@ router.post("/edit", verifyToken, async (req, res) => {
       createdBy: req.user._id,
     });
     for (const product of req.body.products) {
-      const {
-        inventoryId,
-        batchNumber,
-        batchId,
-        expiry,
-        quantity,
-        pack,
-        purchaseRate,
-        ptr,
-        gstPer,
-        HSN,
-        mrp,
-      } = product;
+      const { inventoryId, batchNumber, batchId, expiry, quantity, pack, purchaseRate, ptr, gstPer, HSN, mrp} = product;
       const inventorySchema = await Inventory.findById(inventoryId).session(
         session
       );
@@ -329,10 +324,7 @@ router.post("/edit", verifyToken, async (req, res) => {
     res.status(201).json(ans);
   } catch (error) {
     await session.abortTransaction();
-
-    res
-      .status(500)
-      .json({ message: "Error creating purchase bill", error: error.message });
+    res.status(500).json({ message: "Error creating purchase bill", error: error.message });
   } finally {
     session.endSession();
   }

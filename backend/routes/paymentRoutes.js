@@ -7,11 +7,13 @@ import { Distributor } from "../models/Distributor.js";
 import AccountDetails from "../models/AccountDetails.js";
 const router = express.Router();
 
+// Get current payment number
 router.get("/payment-number", async (req, res) => {
   const paymentNumber = await Payment.getCurrentPaymentNumber();
   res.json({ paymentNumber });
 });
 
+// Get all payments
 router.get("/", async (req, res) => {
   try {
     const { paymentType } = req.query;
@@ -87,7 +89,6 @@ router.post("/make-payment", async (req, res) => {
       paymentMethod, 
       amount, 
       paymentDate,
-      paymentNumber,
       chequeNumber,
       chequeDate,
       micrCode,
@@ -111,9 +112,11 @@ router.post("/make-payment", async (req, res) => {
       return res.status(404).json({ message: "Distributor not found" });
     }
 
+    const paymentNumber1 = await Payment.getNextPaymentNumber(session);
+
     // Create payment record
     const payment = new Payment({
-      paymentNumber,
+      paymentNumber: paymentNumber1,
       paymentType,
       paymentMethod,
       distributorId,
@@ -156,9 +159,9 @@ router.post("/make-payment", async (req, res) => {
       distributorDoc.currentBalance += paymentType === "Payment Out" ? amount : -amount;
     }
 
+    let remainingAmount = amount;
     // Update bills
     for (const bill of bills) {
-      let remainingAmount = amount;
       if (remainingAmount <= 0) break;
 
       const BillModel = paymentType === "Payment Out" ? InvoiceSchema : SalesBill;
@@ -219,5 +222,77 @@ router.get("/details/:paymentId", async (req, res) => {
   }
 });
 
+// Delete payment
+router.delete("/:paymentId", async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { paymentId } = req.params;
+
+    // Find and verify payment exists
+    const payment = await Payment.findById(paymentId).session(session);
+    if (!payment) {
+      return res.status(404).json({ message: "Payment not found" });
+    }
+
+    // Find distributor and revert balance
+    const distributor = await Distributor.findById(payment.distributorId).session(session);
+    if (distributor) {
+      distributor.currentBalance -= payment.paymentType === "Payment Out" ? payment.amount : -payment.amount;
+      await distributor.save({ session });
+    }
+
+    // Revert account balance if it's not a pending cheque payment
+    if (payment.paymentMethod !== "CHEQUE" || payment.status === "COMPLETED") {
+      const account = await AccountDetails.findById(payment.accountId).session(session);
+      if (account) {
+        // Reverse the original transaction
+        const transactionAmount = payment.paymentType === "Payment Out" ? payment.amount : -payment.amount;
+        account.balance -= transactionAmount;
+        await account.save({ session });
+      }
+    }
+
+    // Update bills
+    if (payment.paymentType === "Payment Out") {
+      for (const billId of payment.bills) {
+        const bill = await InvoiceSchema.findById(billId).session(session);
+        if (bill) {
+          bill.amountPaid -= payment.amount;
+          bill.paymentStatus = bill.amountPaid >= bill.grandTotal ? "paid" : "due";
+          bill.payments = bill.payments.filter(pid => pid.toString() !== paymentId);
+          await bill.save({ session });
+        }
+      }
+    } else {
+      for (const billId of payment.salesBills) {
+        const bill = await SalesBill.findById(billId).session(session);
+        if (bill) {
+          bill.amountPaid -= payment.amount;
+          bill.paymentStatus = bill.amountPaid >= bill.grandTotal ? "paid" : "due";
+          bill.payments = bill.payments.filter(pid => pid.toString() !== paymentId);
+          await bill.save({ session });
+        }
+      }
+    }
+
+    // Delete the payment
+    await Payment.findByIdAndDelete(paymentId).session(session);
+
+    await session.commitTransaction();
+    res.status(200).json({ message: "Payment deleted successfully" });
+
+  } catch (error) {
+    await session.abortTransaction();
+    console.error("Error deleting payment:", error);
+    res.status(500).json({ 
+      message: "Error deleting payment", 
+      error: error.message 
+    });
+  } finally {
+    session.endSession();
+  }
+});
 
 export default router;

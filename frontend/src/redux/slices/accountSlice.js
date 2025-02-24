@@ -1,8 +1,9 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import createLoadingAsyncThunk from "./createLoadingAsyncThunk";
 import { Backend_URL } from "../../assets/Data";
 
 // Async thunks
-export const fetchAccounts = createAsyncThunk(
+export const fetchAccounts = createLoadingAsyncThunk(
   "accounts/fetchAccounts",
   async (_, { rejectWithValue }) => {
     try {
@@ -14,10 +15,10 @@ export const fetchAccounts = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.message);
     }
-  }
+  },  { useGlobalLoader: true }
 );
 
-export const addAccount = createAsyncThunk(
+export const addAccount = createLoadingAsyncThunk(
   "accounts/addAccount",
   async (accountData, { rejectWithValue }) => {
     try {
@@ -32,7 +33,7 @@ export const addAccount = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.message);
     }
-  }
+  }, { useGlobalLoader: true }
 );
 
 export const updateAccount = createAsyncThunk(
@@ -50,7 +51,7 @@ export const updateAccount = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.message);
     }
-  }
+  }, { useGlobalLoader: true }
 );
 
 export const updateAccountBalance = createAsyncThunk(
@@ -109,7 +110,15 @@ const accountSlice = createSlice({
     updateBalanceStatus: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
     transactionsStatus: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
   },
-  reducers: {},
+  reducers: {
+    setAccountsStatusIdle: (state) => {
+      state.fetchStatus = 'idle';
+      state.createAccountStatus = 'idle';
+      state.updateAccountStatus = 'idle';
+      state.updateBalanceStatus = 'idle';
+      state.transactionsStatus = 'idle';
+    },
+  },
   extraReducers: (builder) => {
     builder
       // Fetch Accounts
@@ -193,5 +202,7 @@ const accountSlice = createSlice({
       });
   },
 });
+
+export const { setAccountsStatusIdle } = accountSlice.actions;
 
 export default accountSlice.reducer;

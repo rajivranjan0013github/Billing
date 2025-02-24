@@ -8,12 +8,13 @@ import PurchaseItemTable from "../components/custom/purchase/PurchaseItemTable";
 import { useToast } from "../hooks/use-toast";
 import SelectDistributorDlg from "../components/custom/distributor/SelectDistributorDlg";
 import { useDispatch } from "react-redux";
-import { fetchItems } from "../redux/slices/inventorySlice";
+import { setItemStatusIdle } from "../redux/slices/inventorySlice";
 import { createPurchaseBill } from "../redux/slices/PurchaseBillSlice";
 import { useNavigate } from "react-router-dom";
 import PaymentDialog from "../components/custom/payment/PaymentDialog";
 import AmountSettingsDialog from "../components/custom/purchase/AmountSettingDialog";
-
+import { setAccountsStatusIdle } from "../redux/slices/accountSlice";
+import { setDistributorStatusIdle } from "../redux/slices/distributorSlice";
 const inputKeys = ['distributorName', 'invoiceNo', 'invoiceDate', 'dueDate', 'product', 'HSN', 'batchNumber', 'expiry', 'pack', 'quantity', 'free', 'mrp', 'purchaseRate', 'schemeInput1', 'schemeInput2', 'discount', 'gstPer', 'addButton' ];
 
 const roundToTwo = (num) => {
@@ -88,6 +89,10 @@ export default function PurchaseForm() {
   const [distributorName, setdistributorName] = useState("");
   const { toast } = useToast();
 
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [invoiceForPayment, setInvoiceForPayment] = useState(null);
+
   const [formData, setFormData] = useState({
     purchaseType: "invoice",
     distributorName: "",
@@ -130,7 +135,8 @@ export default function PurchaseForm() {
         distributorId: formData.distributorId,
         invoiceNumber: formData.invoiceNumber,
         invoiceDate: invoiceDate,
-        totalAmount: amountData.grandTotal,
+        grandTotal: amountData.grandTotal,
+        dueDate: dueDate,
       });
       setPaymentDialogOpen(true);
     } catch (error) {
@@ -170,9 +176,8 @@ export default function PurchaseForm() {
         invoiceNumber: formData.invoiceNumber,
         distributorName: formData.distributorName,
         distributorId: formData.distributorId,
-        mob: "",
         invoiceDate: new Date(invoiceDate),
-        paymentDueDate: paymentData.status === "due" ? paymentData.dueDate : null,
+        paymentDueDate: paymentData.dueDate || null,
         products: formattedProducts,
         withGst: formData.withGst === "yes",
         billSummary: {
@@ -186,7 +191,6 @@ export default function PurchaseForm() {
         },
         amountCalculationType: formData.amountType,
         status: "active",
-        paymentStatus: paymentData.status,
         grandTotal: roundToTwo(amountData.grandTotal),
         amountPaid: paymentData.status === "due" ? 0 : Number(paymentData.amount || 0),
         payment: paymentData.status === "paid" ? {
@@ -213,9 +217,6 @@ export default function PurchaseForm() {
         title: "Purchase invoice saved successfully",
         variant: "success",
       });
-
-      // Refresh inventory items
-      dispatch(fetchItems());
 
       // Reset form state
       resetFormState();
@@ -316,18 +317,14 @@ export default function PurchaseForm() {
     }
   };
 
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [invoiceForPayment, setInvoiceForPayment] = useState(null);
 
   return (
     <div className="relative rounded-lg h-[100vh] pt-4">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <ArrowLeft
-            className="w-5 h-5 cursor-pointer"
-            onClick={() => navigate(-1)}
-          />
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
           <h1 className="text-xl font-medium">Add Purchase</h1>
         </div>
         <div className="flex items-center gap-3">

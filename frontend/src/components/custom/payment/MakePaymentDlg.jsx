@@ -22,7 +22,7 @@ export default function MakePaymentDlg({ open, onOpenChange, paymentData, showSt
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { accounts } = useSelector((state) => state.accounts);
+  const { accounts, fetchStatus } = useSelector((state) => state.accounts);
   const { createPaymentStatus } = useSelector((state) => state.payment);
   const [step, setStep] = useState(showStep1 ? 1 : 2);
   const [showDetails, setShowDetails] = useState(false);
@@ -41,10 +41,15 @@ export default function MakePaymentDlg({ open, onOpenChange, paymentData, showSt
   });
 
   useEffect(() => {
-    if (open) {
-      setError(null);
+    if(fetchStatus === 'idle') {
       dispatch(fetchAccounts()).unwrap()
         .catch(err => setError(err.message));
+    }
+  }, [dispatch, fetchStatus]);
+
+  useEffect(() => {
+    if (open) {
+      setError(null);
       setStep(showStep1 ? 1 : 2);
       setShowDetails(false);
       setPaymentDetails({
@@ -160,13 +165,11 @@ export default function MakePaymentDlg({ open, onOpenChange, paymentData, showSt
       finalData.accountId = null;
     }
 
-    console.log(finalData);
-
     dispatch(createPayment(finalData)).unwrap()
-      .then(() => {
+      .then((data) => {
         toast({title: "Payment added successfully", variant: "success"});
         dispatch(fetchDistributors());
-        navigate('/purchase/payment-out');
+        navigate(`/purchase/payment-out/${data?._id}`);
       })
       .catch((error) => {
         toast({title: "Failed to create payment", variant: "destructive"});
@@ -373,8 +376,8 @@ export default function MakePaymentDlg({ open, onOpenChange, paymentData, showSt
                   </div>
 
                   <div>
-                    <Label className="text-sm text-gray-500">Due Amount</Label>
-                    <div className="font-medium">{formatCurrency(paymentData?.bills[0]?.grandTotal - paymentData?.bills[0]?.amountPaid)}</div>
+                    <Label className="text-sm text-gray-500 ">Due Amount</Label>
+                    <div className="font-medium text-rose-500">{formatCurrency(paymentData?.bills[0]?.grandTotal - paymentData?.bills[0]?.amountPaid)}</div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -526,9 +529,16 @@ export default function MakePaymentDlg({ open, onOpenChange, paymentData, showSt
           <Button
             size="sm"
             onClick={() => {
-              if (step === 1) setStep(2);
-              else if (step === 2) setStep(3);
-              else if (step === 3 && canSubmitPayment()) handleSubmit();
+              if (step === 1) {
+                setStep(2);
+              } else if (step === 2) {
+                if (paymentDetails.paymentMethod) {
+                  setShowDetails(true);
+                  setStep(3);
+                }
+              } else if (step === 3 && canSubmitPayment()) {
+                handleSubmit();
+              }
             }}
             disabled={
               (step === 1 ? !paymentDetails.amount : 

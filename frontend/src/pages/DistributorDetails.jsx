@@ -477,7 +477,7 @@ export default function DistributorDetails() {
                             {payment.paymentType}
                           </span>
                         </TableCell>
-                        <TableCell>{payment.payment_number || '-'}</TableCell>
+                        <TableCell>{payment.paymentNumber || '-'}</TableCell>
                         <TableCell>{payment.paymentMethod}</TableCell>
                         <TableCell className="text-right">₹ {payment.amount.toLocaleString()}</TableCell>
                         <TableCell>

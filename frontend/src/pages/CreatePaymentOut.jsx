@@ -76,7 +76,7 @@ export const TableContent = ({ isLoadingBills, pendingInvoices, selectedBills, o
             <TableCell className="text-right">
               ₹{invoice.grandTotal.toLocaleString()}{" "}
               <span className="text-red-500 ml-1">
-                (₹{(invoice.grandTotal - invoice.amountPaid).toLocaleString()} pending)
+                (₹{roundToTwo(invoice.grandTotal - invoice.amountPaid).toLocaleString()} pending)
               </span>
             </TableCell>
             <TableCell className="text-right">₹{invoice.amountPaid.toLocaleString()}</TableCell>
@@ -87,15 +87,19 @@ export const TableContent = ({ isLoadingBills, pendingInvoices, selectedBills, o
         <TableRow>
           <TableCell colSpan={4}>Total</TableCell>
           <TableCell className="text-right">
-            ₹{pendingInvoices.reduce((total, invoice) => total + invoice.grandTotal, 0).toLocaleString()}
+            ₹{roundToTwo(pendingInvoices.reduce((total, invoice) => total + invoice.grandTotal, 0)).toLocaleString()}
           </TableCell>
           <TableCell className="text-right">
-            ₹{pendingInvoices.reduce((total, invoice) => total + invoice.amountPaid, 0).toLocaleString()}
+            ₹{roundToTwo(pendingInvoices.reduce((total, invoice) => total + invoice.amountPaid, 0)).toLocaleString()}
           </TableCell>
         </TableRow>
       </TableFooter>
     </Table>
   );
+};
+
+const roundToTwo = (num) => {
+  return Math.round((num + Number.EPSILON) * 100) / 100;
 };
 
 export default function Component() {
@@ -160,16 +164,16 @@ export default function Component() {
       const newSelectedBills = [...selectedBills, invoice];
       setSelectedBills(newSelectedBills);
       // Calculate total pending amount of selected bills
-      const totalPending = newSelectedBills.reduce((total, bill) => 
+      const totalPending = roundToTwo(newSelectedBills.reduce((total, bill) => 
         total + (bill.grandTotal - bill.amountPaid), 0
-      );
+      ));
       setPaymentAmount(totalPending);
     } else {
       const newSelectedBills = selectedBills.filter(bill => bill._id !== invoice._id);
       setSelectedBills(newSelectedBills);
-      const totalPending = newSelectedBills.reduce((total, bill) => 
+      const totalPending = roundToTwo(newSelectedBills.reduce((total, bill) => 
         total + (bill.grandTotal - bill.amountPaid), 0
-      );
+      ));
       setPaymentAmount(totalPending);
     }
   };
@@ -330,12 +334,12 @@ export default function Component() {
           paymentType: "Payment Out",
           distributorId: selecteddistributor?._id,
           paymentDate,
-          amount: paymentAmount,
+          amount: roundToTwo(paymentAmount),
           remarks: notes,
           paymentNumber: paymentOutNumber,
           bills: selectedBills.map(bill => ({
             billId: bill._id,
-            amount: bill.grandTotal - bill.amountPaid,
+            amount: roundToTwo(bill.grandTotal - bill.amountPaid),
             billNumber: bill.invoiceNumber
           }))
         }}
