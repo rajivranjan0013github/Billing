@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { ChevronLeft, Save, CirclePlus, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, CirclePlus, Trash2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { useState } from "react";
 import { Input } from "../components/ui/input";
@@ -369,15 +369,13 @@ const PurchaseReturn = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <ChevronLeft
-            className="w-5 h-5 text-rose-500 cursor-pointer"
-            onClick={() => navigate(-1)}
-          />
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
           <h1 className="text-xl font-medium">Create Purchase Return</h1>
         </div>
         <div className="flex items-center gap-3">
           <Button
-            className="gap-2 bg-gray-800"
             onClick={handleSave}
             disabled={loading}
           >
@@ -441,7 +439,7 @@ const PurchaseReturn = () => {
               </div>
               <div className="col-span-2 flex items-end">
                 <Button
-                  className="w-full bg-gray-800 h-10"
+                  className="w-full h-10"
                   onClick={handleSearch}
                   disabled={searchLoading}
                 >

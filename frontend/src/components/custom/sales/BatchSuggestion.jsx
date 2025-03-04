@@ -3,6 +3,7 @@ import { ScrollArea } from "../../ui/scroll-area";
 import { Backend_URL, convertQuantity } from "../../../assets/Data";
 import { useToast } from "../../../hooks/use-toast";
 import { Input } from "../../ui/input";
+import { Badge } from "../../ui/badge";
 
 const BatchSuggestion = forwardRef(({ value, setValue, onSuggestionSelect, inventoryId, inputRef, disabled }, ref) => {
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
@@ -37,7 +38,7 @@ const BatchSuggestion = forwardRef(({ value, setValue, onSuggestionSelect, inven
       (suggestion) =>
         suggestion.batchNumber
           .toLowerCase()
-          .includes((value || "").toLowerCase()) && suggestion.quantity > 0
+          .includes((value || "").toLowerCase())
     );
   }, [value, suggestions]);
 
@@ -168,10 +169,11 @@ const BatchSuggestion = forwardRef(({ value, setValue, onSuggestionSelect, inven
                   <div className="col-span-2">
                     <div className="text-xs text-gray-500">STOCKS</div>
                     <div className="text-sm uppercase font-medium">
-                      {convertQuantity(
-                        suggestion?.quantity,
-                        suggestion?.pack
-                      )}
+                      {suggestion?.quantity === 0 
+                        ? <Badge variant="destructive">OUT OF STOCKS</Badge>
+                        : <Badge variant="success">
+                            {convertQuantity(suggestion?.quantity, suggestion?.pack)}
+                          </Badge>}
                     </div>
                   </div>
                   <div>

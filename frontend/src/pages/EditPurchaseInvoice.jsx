@@ -3,15 +3,27 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import { ArrowLeft, Pencil, Save, Settings2, ChevronRight } from "lucide-react";
+import { ArrowLeft, Pencil, Save, Settings2, ChevronRight, Trash2, X } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../components/ui/alert-dialog";
 import PurchaseItemTable from "../components/custom/purchase/PurchaseItemTable";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
 import SelectdistributorDialog from "../components/custom/distributor/SelectDistributorDlg";
 import { calculateTotals } from "./CreatePurchaseInvoice";
 import { useParams, useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { fetchItems } from "../redux/slices/inventorySlice";
+import { deletePurchaseBill } from "../redux/slices/PurchaseBillSlice";
 import PaymentDialog from "../components/custom/payment/PaymentDialog";
 import AmountSettingsDialog from "../components/custom/purchase/AmountSettingDialog";
 import MakePaymentDlg from "../components/custom/payment/MakePaymentDlg";
@@ -64,6 +76,8 @@ export default function EditPurchaseInvoice() {
   const [payments, setPayments] = useState([]);
   const [paymentOutDialogOpen, setPaymentOutDialogOpen] = useState(false);
   const [paymentOutData, setPaymentOutData] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const { deleteStatus } = useSelector((state) => state.purchaseBill);
 
   const [formData, setFormData] = useState({
     purchaseType: "invoice",
@@ -418,6 +432,24 @@ export default function EditPurchaseInvoice() {
     }
   };
 
+  const handleDeleteInvoice = async () => {
+    try {
+      await dispatch(deletePurchaseBill(invoiceId)).unwrap();
+      toast({
+        title: "Success",
+        description: "Purchase invoice deleted successfully",
+        variant: "success",
+      });
+      navigate(-1);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete invoice",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className=" relative rounded-lg h-[100vh] pt-4">
       <div className="flex items-center justify-between">
@@ -439,13 +471,25 @@ export default function EditPurchaseInvoice() {
             Column Settings
           </Button>
           {viewMode ? (
-            <Button
-              size="sm"
-              className="gap-2 "
-              onClick={() => setViewMode(false)}
-            >
-              <Pencil className="w-4 h-4" /> Edit
-            </Button>
+            <>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="gap-2"
+                onClick={() => setDeleteDialogOpen(true)}
+                disabled={loading}
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </Button>
+              <Button
+                size="sm"
+                className="gap-2"
+                onClick={() => setViewMode(false)}
+              >
+                <Pencil className="w-4 h-4" /> Edit
+              </Button>
+            </>
           ) : (
             <Button
               size="sm"
@@ -809,6 +853,44 @@ export default function EditPurchaseInvoice() {
         paymentData={paymentOutData}
         showStep1={true}
       />
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="max-w-xl p-0 gap-0">
+          <AlertDialogHeader className="px-4 py-2.5 flex flex-row items-center justify-between bg-gray-100 border-b">
+            <AlertDialogTitle className="text-base font-semibold">Delete Purchase Invoice</AlertDialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </AlertDialogHeader>
+          <div className="p-6">
+            <AlertDialogDescription>
+              Are you sure you want to delete this purchase invoice? This action will permanently delete the invoice
+              and revert all associated inventory adjustments and payment records.
+            </AlertDialogDescription>
+          </div>
+          <div className="p-3 bg-gray-100 border-t flex items-center justify-end gap-2">
+            <Button 
+              onClick={() => setDeleteDialogOpen(false)} 
+              variant="outline" 
+              size="sm"
+              disabled={deleteStatus === "loading"}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleDeleteInvoice} 
+              size="sm"
+              disabled={deleteStatus === "loading"}
+            >
+              {deleteStatus === "loading" ? "Deleting..." : "Delete"}
+            </Button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

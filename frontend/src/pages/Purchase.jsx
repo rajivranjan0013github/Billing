@@ -59,10 +59,12 @@ export default function PurchasesTransactions() {
 
 
 
-  const summary = purchaseBills.reduce(
+  const summary = (purchaseBills || []).reduce(
     (acc, bill) => {
+      if (!bill) return acc; // Skip null/undefined bills
+      
       acc.count++;
-      acc.purchaseAmount += bill.grandTotal || 0;
+      acc.purchaseAmount += bill.billSummary?.grandTotal || 0;
       acc.amountPaid += bill.amountPaid || 0;
       return acc;
     },

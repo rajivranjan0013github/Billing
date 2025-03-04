@@ -1,11 +1,18 @@
 import mongoose from "mongoose";
 import { hospitalPlugin } from "../plugins/hospitalPlugin.js";
-const debitNoteNumber = new mongoose.Schema({
 
-  debitNoteNumber: Number,
+const debitNoteCounterSchema = new mongoose.Schema({
+  year: {
+    type: Number,
+  },
+  debit_note_number: {
+    type: Number,
+    default: 0,
+  },
 });
-debitNoteNumber.plugin(hospitalPlugin);
-export const DebitNoteNumber = mongoose.model("DebitNoteNumber", debitNoteNumber);
+
+const DebitNoteCounter = mongoose.model("DebitNoteCounter", debitNoteCounterSchema);
+
 const purchaseReturnSchema = new mongoose.Schema(
   {
     // Basic Info
@@ -165,20 +172,33 @@ const purchaseReturnSchema = new mongoose.Schema(
       ref: "Staff",
       required: true,
     },
-
-  
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
-
-
 
 // Apply hospital plugin
 purchaseReturnSchema.plugin(hospitalPlugin);
 
-export const PurchaseReturn = mongoose.model(
-  "PurchaseReturn",
-  purchaseReturnSchema
-);
+purchaseReturnSchema.statics.getNextDebitNoteNumber = async function (session) {
+  const currentYear = new Date().getFullYear();
+  const yearSuffix = currentYear.toString().slice(-2);
+  const counter = await DebitNoteCounter.findOneAndUpdate(
+    { year: currentYear },
+    { $inc: { debit_note_number: 1 } },
+    { upsert: true, new: true, setDefaultsOnInsert: true, session }
+  );
+  return `DBN/${yearSuffix}/${counter.debit_note_number}`;
+};
+
+purchaseReturnSchema.statics.getCurrentDebitNoteNumber = async function (session) {
+  const currentYear = new Date().getFullYear();
+  const yearSuffix = currentYear.toString().slice(-2);
+  const counter = await DebitNoteCounter.findOneAndUpdate(
+    { year: currentYear },
+    {},
+    { upsert: true, new: true, setDefaultsOnInsert: true, session }
+  );
+  return `DBN/${yearSuffix}/${counter.debit_note_number + 1}`;
+};
+
+export const PurchaseReturn = mongoose.model( "PurchaseReturn", purchaseReturnSchema);

@@ -15,27 +15,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Card, CardContent } from "../components/ui/card";
-import {
-  ChevronDown,
-  FileText,
-  Settings,
-  Users,
-  Search,
-  FileQuestion,
-  ArrowLeft,
-} from "lucide-react";
+import { Search, Users, X, ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchDistributors } from "../redux/slices/distributorSlice";
 import { useNavigate } from "react-router-dom";
 import CreateDistributorDlg from "../components/custom/distributor/CreateDistributorDlg";
+import { formatCurrency } from "../utils/Helper";
 
 export default function Distributors() {
   const dispatch = useDispatch();
   const { distributors, fetchStatus } = useSelector((state) => state.distributor);
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchType, setSearchType] = useState("name");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -44,172 +37,185 @@ export default function Distributors() {
     }
   }, [dispatch, fetchStatus]);
 
-  // Calculate totals for the cards
-  const totaldistributors = distributors.length;
-  const toCollect = distributors
-    .filter((Distributor) => Distributor.currentBalance > 0)
-    .reduce((sum, Distributor) => sum + Distributor.currentBalance, 0);
-  const toPay = distributors
-    .filter((Distributor) => Distributor.currentBalance < 0)
-    .reduce((sum, Distributor) => sum + Math.abs(Distributor.currentBalance), 0);
+  // Calculate totals for the summary
+  const summary = {
+    count: distributors.length,
+    toCollect: distributors
+      .filter((distributor) => distributor.currentBalance > 0)
+      .reduce((sum, distributor) => sum + distributor.currentBalance, 0),
+    toPay: distributors
+      .filter((distributor) => distributor.currentBalance < 0)
+      .reduce((sum, distributor) => sum + Math.abs(distributor.currentBalance), 0),
+    totalBalance: distributors.reduce((sum, distributor) => sum + (distributor.currentBalance || 0), 0)
+  };
 
   // Filter distributors based on search
-  const filtereddistributors = distributors.filter((Distributor) => {
-    const searchMatch =
-      Distributor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      Distributor.mob?.toLowerCase().includes(searchTerm.toLowerCase());
+  const getFilteredDistributors = () => {
+    if (!searchQuery) return distributors;
 
-    return searchMatch;
-  });
+    return distributors.filter((distributor) => {
+      if (searchType === "name") {
+        return distributor.name.toLowerCase().includes(searchQuery.toLowerCase());
+      } else if (searchType === "mobile") {
+        return distributor.mob?.toLowerCase().includes(searchQuery.toLowerCase());
+      }
+      return true;
+    });
+  };
 
   return (
-    <div className="container mx-auto p-4">
-      <header className="flex justify-between items-center mb-4">
+    <div className="relative p-4 space-y-4">
+      <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-bold">Distributors</h1>
+          <h1 className="text-2xl font-semibold">Distributors</h1>
         </div>
-        <div className="flex items-center space-x-2">
-          <Select>
-            <SelectTrigger className="w-[140px]">
-              <FileText className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Reports" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="sales">Sales Report</SelectItem>
-              <SelectItem value="purchases">Purchases Report</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="icon">
-            <Settings className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon">
-            <Users className="h-4 w-4" />
-          </Button>
-        </div>
-      </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <Card className="bg-purple-50">
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-sm font-medium">All distributors</p>
-              <p className="text-2xl font-bold">
-                {totaldistributors.toLocaleString()}
-              </p>
+        <div className="grid grid-cols-4 gap-4 text-right">
+          <div>
+            <div className="font-semibold">{summary.count}</div>
+            <div className="text-sm text-muted-foreground">Total Distributors</div>
+          </div>
+          <div>
+            <div className="font-semibold text-green-600">
+              {formatCurrency(summary.toCollect)}
             </div>
-            <Users className="h-8 w-8 text-purple-500" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-sm font-medium">To Collect</p>
-              <p className="text-2xl font-bold">
-                ₹ {toCollect.toLocaleString()}
-              </p>
+            <div className="text-sm text-muted-foreground">To Collect</div>
+          </div>
+          <div>
+            <div className="font-semibold text-red-600">
+              {formatCurrency(summary.toPay)}
             </div>
-            <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-              <span className="text-green-600 text-xl">₹</span>
+            <div className="text-sm text-muted-foreground">To Pay</div>
+          </div>
+          <div>
+            <div className="font-semibold">
+              {formatCurrency(summary.totalBalance)}
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-sm font-medium">To Pay</p>
-              <p className="text-2xl font-bold">₹ {toPay.toLocaleString()}</p>
-            </div>
-            <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center">
-              <span className="text-red-600 text-xl">₹</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center space-x-2">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="w-64 pl-8"
-              placeholder="Search distributors..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <div className="text-sm text-muted-foreground">Net Balance</div>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <Select>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Bulk Action" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="delete">Delete Selected</SelectItem>
-              <SelectItem value="export">Export Selected</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
-            Create Distributor
-          </Button>
-        </div>
       </div>
 
-      {filtereddistributors.length > 0 ? (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[250px]">Distributor Name</TableHead>
-              <TableHead>Mobile Number</TableHead>
-              <TableHead>Address</TableHead>
-              <TableHead className="text-right">Balance</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtereddistributors.map((Distributor) => (
-              <TableRow
-                key={Distributor._id}
-                className="cursor-pointer hover:bg-gray-50"
-                onClick={() => navigate(`/distributor-details/${Distributor._id}`)}
+      <div className="flex gap-4">
+        <div className="relative flex-1">
+          <div className="relative flex items-center bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
+            <div className="relative flex items-center px-3 border-r border-slate-200">
+              <Select
+                defaultValue="name"
+                onValueChange={(value) => setSearchType(value)}
               >
-                <TableCell className="font-medium">{Distributor.name}</TableCell>
-                <TableCell>{Distributor.mob || "-"}</TableCell>
-                <TableCell>{Distributor.address || "-"}</TableCell>
-                <TableCell className="text-right">
-                  <span
-                    className={
-                      Distributor.currentBalance > 0
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }
+                <SelectTrigger className="h-9 w-[120px] border-0 bg-transparent hover:bg-slate-100 focus:ring-0 focus:ring-offset-0">
+                  <SelectValue placeholder="Search by" />
+                </SelectTrigger>
+                <SelectContent align="start" className="w-[120px]">
+                  <SelectItem value="name" className="text-sm">
+                    Name
+                  </SelectItem>
+                  <SelectItem value="mobile" className="text-sm">
+                    Mobile
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex-1 relative flex items-center">
+              <div className="absolute left-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-slate-400" />
+              </div>
+              <Input
+                className="w-full h-9 pl-10 pr-10 border-0 focus-visible:ring-0 placeholder:text-slate-400"
+                placeholder={`Search by ${searchType === "name" ? "distributor name" : "mobile number"}...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <div className="absolute right-3 flex items-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 hover:bg-slate-100 rounded-full"
+                    onClick={() => setSearchQuery("")}
                   >
-                    {Distributor.currentBalance > 0 ? "↓ " : "↑ "}₹{" "}
-                    {Math.abs(Distributor.currentBalance || 0)}
-                  </span>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-10 bg-gray-50 rounded-lg">
-          <FileQuestion className="h-16 w-16 text-gray-400 mb-4" />
-          <p className="text-lg font-medium text-gray-500">No distributors found</p>
-          <p className="text-sm text-gray-400 mt-1">
-            {searchTerm
-              ? "Try adjusting your search terms"
-              : "Get started by creating your first Distributor"}
-          </p>
+                    <X className="h-3 w-3 text-slate-500" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
           <Button
-            className="mt-4"
+            className="w-[200px]"
             onClick={() => setIsCreateDialogOpen(true)}
           >
             Create Distributor
           </Button>
         </div>
-      )}
+      </div>
+
+      <div className="relative overflow-x-auto">
+        {getFilteredDistributors().length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <Users className="h-12 w-12 mb-4" />
+            <p className="text-lg">No distributors found</p>
+            <p className="text-sm">
+              {searchQuery
+                ? "Try adjusting your search terms"
+                : "Create a new distributor to get started"}
+            </p>
+            <Button
+              className="mt-4"
+              onClick={() => setIsCreateDialogOpen(true)}
+            >
+              Create Distributor
+            </Button>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>DISTRIBUTOR NAME</TableHead>
+                <TableHead>MOBILE NUMBER</TableHead>
+                <TableHead>ADDRESS</TableHead>
+                <TableHead className="text-right">BALANCE</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {getFilteredDistributors().map((distributor) => (
+                <TableRow
+                  key={distributor._id}
+                  className="group cursor-pointer"
+                  onClick={() => navigate(`/distributor-details/${distributor._id}`)}
+                >
+                  <TableCell className="font-medium">
+                    {distributor.name}
+                  </TableCell>
+                  <TableCell>{distributor.mob || "-"}</TableCell>
+                  <TableCell>{distributor.address || "-"}</TableCell>
+                  <TableCell className="text-right">
+                    <span
+                      className={
+                        distributor.currentBalance > 0
+                          ? "text-green-600"
+                          : distributor.currentBalance < 0
+                          ? "text-red-600"
+                          : ""
+                      }
+                    >
+                      {distributor.currentBalance > 0 ? "↓ " : distributor.currentBalance < 0 ? "↑ " : ""}
+                      {formatCurrency(Math.abs(distributor.currentBalance || 0))}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+      
       <CreateDistributorDlg 
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}

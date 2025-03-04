@@ -60,7 +60,7 @@ export const navItems = [
     path: "/purchase",
     submenu: [
       { name: "Purchase List", path: "/purchase" },
-      { name: "Purchase Return", path: "/purchase/return/list" },
+      { name: "Purchase Return", path: "/purchase/return" },
       { name: "Payment Out", path: "/purchase/payment-out" },
     ],
   },

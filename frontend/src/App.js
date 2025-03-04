@@ -39,13 +39,15 @@ import PaymentIn from "./pages/PaymentIn";
 import CreatePaymentIn from "./pages/createPaymentIn";
 import PaymentDetailsIn from "./pages/PaymentDetailsIn";
 import SalesReturn from "./pages/SalesReturn";
-import PurchaseReturn from "./pages/PurchaseReturn";
+import CreatePurchaseReturn from "./pages/CreatePurchaseReturn";
 import Inventory from "./pages/Inventory";
 import SalesInvoicePrint from "./pages/SalesInvoicePrint";
 import AccountDetails from "./pages/AccountDetails";
 import SalesReturnList from "./pages/SalesReturnList";
 import Customers from "./pages/Customers";
 import ScrollRestoration from './utils/ScrollRestoration'
+import EditPurchaseReturn from "./pages/EditPurchaseReturn";
+import CustomerDetails from "./pages/CustomerDetails";
 
 const AppContent = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -123,6 +125,7 @@ const AppContent = () => {
               <Route path="/items-master" element={<Inventory />} />
               <Route path="/distributors" element={<Distributors />} />
               <Route path="/customers" element={<Customers />} />
+              <Route path="/customers/:customerId" element={<CustomerDetails />} />
               <Route
                 path="/sales/create-sell-invoice"
                 element={<CreateSellInvoice />}
@@ -161,18 +164,10 @@ const AppContent = () => {
               />
               <Route path="/sales/return" element={<SalesReturn />} />
               <Route path="/sales/return/list" element={<SalesReturnList />} />
-              <Route
-                path="/purchase/return/list"
-                element={<PurchaseReturnList />}
-              />
-              <Route
-                path="/purchase/return/create"
-                element={<PurchaseReturn />}
-              />
-              <Route
-                path="/sales/invoice-print"
-                element={<SalesInvoicePrint />}
-              />
+              <Route path="/purchase/return/create" element={<CreatePurchaseReturn />} />
+              <Route  path="/purchase/return"  element={<PurchaseReturnList />}/>
+              <Route path="/purchase/return/:returnId" element={<EditPurchaseReturn />} />
+              <Route path="/sales/invoice-print" element={<SalesInvoicePrint />} />
             </>
           )}
         </Routes>

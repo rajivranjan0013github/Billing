@@ -7,8 +7,7 @@ const customerSchema = new mongoose.Schema({
     trim: true,
   },
   mobileNumber: {
-    type: String,
-    
+    type: String, 
   },
   address: {
     type: String,
@@ -31,6 +30,14 @@ const customerSchema = new mongoose.Schema({
       ref: "SalesReturn",
     },
   ],
+  totalAmount: {
+    type: Number,
+    default: 0,
+  },
+  amountPaid: {
+    type: Number,
+    default: 0,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

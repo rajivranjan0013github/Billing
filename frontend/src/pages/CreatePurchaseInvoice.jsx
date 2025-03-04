@@ -8,13 +8,10 @@ import PurchaseItemTable from "../components/custom/purchase/PurchaseItemTable";
 import { useToast } from "../hooks/use-toast";
 import SelectDistributorDlg from "../components/custom/distributor/SelectDistributorDlg";
 import { useDispatch } from "react-redux";
-import { setItemStatusIdle } from "../redux/slices/inventorySlice";
 import { createPurchaseBill } from "../redux/slices/PurchaseBillSlice";
 import { useNavigate } from "react-router-dom";
 import PaymentDialog from "../components/custom/payment/PaymentDialog";
 import AmountSettingsDialog from "../components/custom/purchase/AmountSettingDialog";
-import { setAccountsStatusIdle } from "../redux/slices/accountSlice";
-import { setDistributorStatusIdle } from "../redux/slices/distributorSlice";
 const inputKeys = ['distributorName', 'invoiceNo', 'invoiceDate', 'dueDate', 'product', 'HSN', 'batchNumber', 'expiry', 'pack', 'quantity', 'free', 'mrp', 'purchaseRate', 'schemeInput1', 'schemeInput2', 'discount', 'gstPer', 'addButton' ];
 
 const roundToTwo = (num) => {

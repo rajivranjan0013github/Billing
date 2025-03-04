@@ -66,6 +66,26 @@ export const searchPurchaseBills = createLoadingAsyncThunk(
   }
 );
 
+// Add delete purchase bill thunk
+export const deletePurchaseBill = createLoadingAsyncThunk(
+  "purchaseBill/deletePurchaseBill",
+  async (invoiceId, { dispatch }) => {
+    const response = await fetch(`${Backend_URL}/api/purchase/${invoiceId}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to delete purchase bill");
+    }
+    await dispatch(setAccountsStatusIdle());
+    await dispatch(setDistributorStatusIdle());
+    await dispatch(setItemStatusIdle());
+    return invoiceId;
+  },
+  { useGlobalLoader: true }
+);
+
 const purchaseBillSlice = createSlice({
   name: "purchaseBill",
   initialState: {
@@ -73,6 +93,7 @@ const purchaseBillSlice = createSlice({
     fetchStatus: "idle",
     createPurchaseBillStatus: "idle",
     searchStatus: "idle",
+    deleteStatus: "idle",
     error: null,
   },
   reducers: {
@@ -117,6 +138,20 @@ const purchaseBillSlice = createSlice({
       })
       .addCase(searchPurchaseBills.rejected, (state, action) => {
         state.searchStatus = "failed";
+        state.error = action.payload;
+      })
+      .addCase(deletePurchaseBill.pending, (state) => {
+        state.deleteStatus = "loading";
+        state.error = null;
+      })
+      .addCase(deletePurchaseBill.fulfilled, (state, action) => {
+        state.deleteStatus = "succeeded";
+        state.purchaseBills = state.purchaseBills.filter(
+          (bill) => bill._id !== action.payload
+        );
+      })
+      .addCase(deletePurchaseBill.rejected, (state, action) => {
+        state.deleteStatus = "failed";
         state.error = action.payload;
       });
   },
