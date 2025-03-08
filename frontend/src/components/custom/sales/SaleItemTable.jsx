@@ -1,24 +1,20 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "../../ui/button";
 import { convertToFraction } from "../../../assets/Data";
 import { Pen, Trash2 } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
 import InventorySuggestion from "./InventorySuggestion";
 import BatchSuggestion from "./BatchSuggestion";
+import { Input } from "../../ui/input";
 
-export default function SaleTable({
-  inputRef,
-  products,
-  setProducts,
-  viewMode,
-}) {
+export default function SaleTable({ inputRef, products, setProducts, handleKeyDown, viewMode}) {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(true);
   const [newProduct, setNewProduct] = useState({});
-  const [productSearch, setProductSearch] = useState(""); // for product input-> which is passing in inventory suggestion
+  const [productSearch, setProductSearch] = useState(""); // for product Input-> which is passing in inventory suggestion
   const [batchNumber, setBatchNumber] = useState("");
 
-  // input changes handler
+  // Input changes handler
   const handleInputChange = (field, value) => {
     const updatedProduct = { ...newProduct, [field]: value };
 
@@ -203,15 +199,17 @@ export default function SaleTable({
               setValue={setBatchNumber}
               onSuggestionSelect={handleBatchSelect}
               inventoryId={newProduct?.inventoryId}
+              ref={(el) => (inputRef.current["batchNumber"] = el)}
             />
           </div>
           <div>
-            <input
+            <Input
               ref={(el) => (inputRef.current["HSN"] = el)}
               onChange={(e) => handleInputChange("HSN", e.target.value)}
               value={newProduct.HSN || ""}
               type="text"
               className="h-8 w-full border-[1px] border-gray-300 px-1"
+              onKeyDown={(e) => handleKeyDown(e, 'hsn')}
             />
           </div>
           <div>
@@ -219,78 +217,86 @@ export default function SaleTable({
               <span className="absolute left-2 top-1/2 -translate-y-1/2 tracking-widest opacity-80">
                 1x
               </span>
-              <input
+              <Input
                 ref={(el) => (inputRef.current["pack"] = el)}
                 onChange={(e) => handleInputChange("pack", e.target.value)}
                 value={newProduct.pack || ""}
                 type="text"
                 className="h-8 w-full border-[1px] border-gray-300 px-1 pl-7"
+                onKeyDown={(e) => handleKeyDown(e, 'pack')}
               />
             </div>
           </div>
           <div>
-            <input
+            <Input
               ref={(el) => (inputRef.current["expiry"] = el)}
               onChange={(e) => handleInputChange("expiry", e.target.value)}
               value={newProduct.expiry || ""}
               type="text"
               placeholder="MM/YY"
               className="h-8 w-full border-[1px] border-gray-300 px-2"
+              onKeyDown={(e) => handleKeyDown(e, 'expiry')}
             />
           </div>
           <div>
             <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-10">
                 ₹
               </span>
-              <input
+              <Input
                 ref={(el) => (inputRef.current["mrp"] = el)}
                 onChange={(e) => handleInputChange("mrp", e.target.value)}
                 value={newProduct.mrp || ""}
                 type="text"
-                className="h-8 w-full border-[1px] border-gray-300 pl-5 px-1"
+                className="h-8 w-full border-[1px] border-gray-300 pl-5 rounded-sm"
+                onKeyDown={(e) => handleKeyDown(e, 'mrp')}
               />
             </div>
           </div>
           <div>
-            <input
+            <Input
               ref={(el) => (inputRef.current["packs"] = el)}
               onChange={(e) => handleInputChange("packs", e.target.value)}
               value={newProduct.packs || ""}
               type="text"
               className="h-8 w-full border-[1px] border-gray-300 px-1"
+              onKeyDown={(e) => handleKeyDown(e, 'packs')}
             />
           </div>
           <div>
-            <input
+            <Input
               ref={(el) => (inputRef.current["loose"] = el)}
               onChange={(e) => handleInputChange("loose", e.target.value)}
               value={newProduct.loose || ""}
               type="text"
               className="h-8 w-full border-[1px] border-gray-300 px-1"
+              onKeyDown={(e) => handleKeyDown(e, 'loose')}
             />
           </div>
           <div>
             <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-10">
                 ₹
               </span>
-              <input
+              <Input
                 ref={(el) => (inputRef.current["saleRate"] = el)}
                 onChange={(e) => handleInputChange("saleRate", e.target.value)}
                 value={newProduct.saleRate || ""}
                 type="text"
-                className="h-8 w-full border-[1px] border-gray-300 pl-5 px-1"
+                className="h-8 w-full border-[1px] border-gray-300 pl-5 rounded-sm"
+                onKeyDown={(e) => handleKeyDown(e, 'saleRate')}
               />
             </div>
           </div>
           <div>
             <div className="relative">
-              <input
+              <Input
+                ref={(el) => (inputRef.current["discount"] = el)}
                 onChange={(e) => handleInputChange("discount", e.target.value)}
                 value={newProduct.discount || ""}
                 type="text"
                 className="h-8 w-full border-[1px] border-gray-300 px-1 pr-5"
+                onKeyDown={(e) => handleKeyDown(e, 'discount')}
               />
               <span className="absolute right-2 top-1/2 -translate-y-1/2">
                 %
@@ -299,11 +305,13 @@ export default function SaleTable({
           </div>
           <div>
             <div className="relative">
-              <input
+              <Input
+                ref={(el) => (inputRef.current["gstPer"] = el)} 
                 onChange={(e) => handleInputChange("gstPer", e.target.value)}
                 value={newProduct.gstPer || ""}
                 type="text"
                 className="h-8 w-full border-[1px] border-gray-300 px-1 pr-5"
+                onKeyDown={(e) => handleKeyDown(e, 'gstPer')}
               />
               <span className="absolute right-2 top-1/2 -translate-y-1/2">
                 %
@@ -311,7 +319,7 @@ export default function SaleTable({
             </div>
           </div>
           <div>
-            <input
+            <Input
               readOnly
               value={newProduct.amount || ""}
               type="text"
@@ -341,7 +349,7 @@ export default function SaleTable({
             >
               <div className="col-span-3 grid grid-cols-6">
                 <span className="text-center font-semibold">{index + 1}.</span>
-                <input
+                <Input
                   disabled
                   value={product?.productName}
                   type="text"
@@ -349,7 +357,7 @@ export default function SaleTable({
                 />
               </div>
               <div className="col-span-2">
-                <input
+                <Input
                   disabled={editMode}
                   type="text"
                   value={product?.batchNumber || ""}
@@ -357,7 +365,7 @@ export default function SaleTable({
                 />
               </div>
               <div>
-                <input
+                <Input
                   disabled={editMode}
                   value={product?.HSN || ""}
                   type="text"
@@ -369,7 +377,7 @@ export default function SaleTable({
                   <span className="absolute left-2 top-1/2 -translate-y-1/2 tracking-widest opacity-80">
                     1x
                   </span>
-                  <input
+                  <Input
                     disabled={editMode}
                     ref={(el) => (inputRef.current["pack"] = el)}
                     onChange={(e) => handleInputChange("pack", e.target.value)}
@@ -380,7 +388,7 @@ export default function SaleTable({
                 </div>
               </div>
               <div>
-                <input
+                <Input
                   disabled={editMode}
                   value={product.expiry || ""}
                   type="text"
@@ -389,19 +397,19 @@ export default function SaleTable({
               </div>
               <div>
                 <div className="relative">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-10">
                     ₹
                   </span>
-                  <input
+                  <Input
                     disabled={editMode}
                     value={product?.mrp || ""}
                     type="text"
-                    className="h-8 w-full border-[1px] border-gray-300 pl-5 px-1"
+                    className="h-8 w-full border-[1px] border-gray-300 pl-5 rounded-sm"
                   />
                 </div>
               </div>
               <div>
-                <input
+                <Input
                   disabled={editMode}
                   value={product?.packs || ""}
                   type="text"
@@ -409,7 +417,7 @@ export default function SaleTable({
                 />
               </div>
               <div>
-                <input
+                <Input
                   disabled={editMode}
                   value={product?.loose || ""}
                   type="text"
@@ -418,20 +426,20 @@ export default function SaleTable({
               </div>
               <div>
                 <div className="relative">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-10">
                     ₹
                   </span>
-                  <input
+                  <Input
                     disabled={editMode}
                     value={product?.saleRate || ""}
                     type="text"
-                    className="h-8 w-full border-[1px] border-gray-300 pl-5 px-1"
+                    className="h-8 w-full border-[1px] border-gray-300 pl-5 rounded-sm"
                   />
                 </div>
               </div>
               <div>
                 <div className="relative">
-                  <input
+                  <Input
                     disabled={editMode}
                     value={product?.discount || ""}
                     type="text"
@@ -444,7 +452,7 @@ export default function SaleTable({
               </div>
               <div>
                 <div className="relative">
-                  <input
+                  <Input
                     disabled={editMode}
                     value={product?.gstPer || ""}
                     type="text"
@@ -456,7 +464,7 @@ export default function SaleTable({
                 </div>
               </div>
               <div>
-                <input
+                <Input
                   disabled
                   value={product?.amount || ""}
                   type="text"

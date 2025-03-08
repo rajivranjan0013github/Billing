@@ -1,26 +1,16 @@
 import { useRef, useState, useMemo, useEffect } from "react";
 import { Button } from "../components/ui/button";
-import { Calendar } from "../components/ui/calendar";
 import { Input } from "../components/ui/input";
 import { createBill } from "../redux/slices/SellBillSlice";
-
 import { Label } from "../components/ui/label";
 import { Checkbox } from "../components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "../components/ui/popover";
-import { CalendarIcon, ChevronLeft, Save, Settings } from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "../lib/utils";
+import { Save, Settings, FileText, ClipboardList, ScrollText, ArrowLeft } from "lucide-react";
 import SaleItemTable from "../components/custom/sales/SaleItemTable";
 import { convertToFraction } from "../assets/Data";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
 import SelectCustomerDialog from "../components/custom/customer/SelectCustomerDialog";
-import { enIN } from "date-fns/locale";
 import { useDispatch } from "react-redux";
 import { fetchItems } from "../redux/slices/inventorySlice";
 import { useNavigate } from "react-router-dom";
@@ -68,9 +58,11 @@ export const calculateTotals = (products) => {
   );
 };
 
+const inputKeys = ['customerName', 'dueDate', 'product',  'batchNumber', 'hsn', 'pack', 'expiry', 'mrp', 'packs', 'loose', 'saleRate', 'discount', 'gstPer', 'add' ];
+
 export default function CreateSellInvoice() {
   const navigate = useNavigate();
-  const inputRef = useRef([]);
+  const inputRef = useRef({});
   const dispatch = useDispatch();
   const [invoiceDate, setInvoiceDate] = useState(
     new Date()
@@ -90,6 +82,13 @@ export default function CreateSellInvoice() {
   const { toast } = useToast();
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [invoiceForPayment, setInvoiceForPayment] = useState(null);
+
+  // Add useEffect to focus on customer name input when component mounts
+  useEffect(() => {
+    if (inputRef.current["customerName"]) {
+      inputRef.current["customerName"].focus();
+    }
+  }, []);
 
   const [formData, setFormData] = useState({
     saleType: "invoice",
@@ -337,20 +336,43 @@ export default function CreateSellInvoice() {
       distributorId: customer._id,
       distributorName: customer.name,
     });
+    setIsCashCounter(false); // Uncheck cash/counter when customer is selected
     setCustomerSelectDialog(false);
+    if(inputRef && inputRef.current['dueDate']) {
+      inputRef.current['dueDate'].focus();
+    }
   };
 
-  const [invoiceDateOpen, setInvoiceDateOpen] = useState(false);
-  const [dueDateOpen, setDueDateOpen] = useState(false);
+  // Add this new function to handle key press events
+  const handleKeyDown = (e, currentInputId) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const currentInputIndex = inputKeys.indexOf(currentInputId);
+      if (e.shiftKey) {
+        if(currentInputIndex > 0) {
+          const newInputId = inputKeys[currentInputIndex-1];
+          if (newInputId && inputRef.current[newInputId]) {
+            inputRef.current[newInputId].focus();
+          }
+        }
+      } else {
+        if(currentInputIndex < inputKeys.length - 1) {
+          const newInputId = inputKeys[currentInputIndex + 1];
+          if (newInputId && inputRef.current[newInputId]) {
+            inputRef.current[newInputId].focus();
+          }
+        }
+      }
+    }
+  };
 
   return (
     <div className="relative rounded-lg h-[100vh] pt-4">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <ChevronLeft
-            className="w-5 h-5 text-rose-500 cursor-pointer"
-            onClick={() => navigate(-1)}
-          />
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
           <h1 className="text-xl font-medium">Add Sale</h1>
         </div>
         <div className="flex items-center gap-3">
@@ -359,9 +381,9 @@ export default function CreateSellInvoice() {
             Settings
           </Button>
           <Button
-            className="gap-2 bg-gray-800"
             onClick={handleSaveInvoice}
             disabled={loading}
+            className='gap-1'
           >
             {loading ? (
               <>
@@ -398,24 +420,7 @@ export default function CreateSellInvoice() {
                   htmlFor="invoice"
                   className="flex items-center gap-3 rounded-md border-2 border-muted bg-popover p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-5 w-5 text-blue-500 shrink-0"
-                  >
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                    <line x1="10" y1="9" x2="8" y2="9" />
-                  </svg>
+                  <FileText className="h-5 w-5 text-blue-500 shrink-0" />
                   <div className="space-y-0.5">
                     <p className="text-sm font-medium leading-none">Invoice</p>
                     <p className="text-xs text-muted-foreground">
@@ -435,30 +440,7 @@ export default function CreateSellInvoice() {
                   htmlFor="deliveryChallan"
                   className="flex items-center gap-3 rounded-md border-2 border-muted bg-popover p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-5 w-5 text-orange-500 shrink-0"
-                  >
-                    <rect width="16" height="20" x="4" y="2" rx="2" />
-                    <path d="M9 22v-4h6v4" />
-                    <path d="M8 6h.01" />
-                    <path d="M16 6h.01" />
-                    <path d="M12 6h.01" />
-                    <path d="M12 10h.01" />
-                    <path d="M12 14h.01" />
-                    <path d="M16 10h.01" />
-                    <path d="M16 14h.01" />
-                    <path d="M8 10h.01" />
-                    <path d="M8 14h.01" />
-                  </svg>
+                  <ClipboardList className="h-5 w-5 text-orange-500 shrink-0" />
                   <div className="space-y-0.5">
                     <p className="text-sm font-medium leading-none">
                       Delivery Challan
@@ -480,23 +462,7 @@ export default function CreateSellInvoice() {
                   htmlFor="Quotation"
                   className="flex items-center gap-3 rounded-md border-2 border-muted bg-popover p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-5 w-5 text-green-500 shrink-0"
-                  >
-                    <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z" />
-                    <path d="M16 8h-6" />
-                    <path d="M14 12h-4" />
-                    <path d="M12 16H8" />
-                  </svg>
+                  <ScrollText className="h-5 w-5 text-green-500 shrink-0" />
                   <div className="space-y-0.5">
                     <p className="text-sm font-medium leading-none">
                       Quotation
@@ -515,16 +481,24 @@ export default function CreateSellInvoice() {
                 CUSTOMER NAME<span className="text-rose-500">*REQUIRED</span>
               </Label>
               <Input
+                ref={(el) => (inputRef.current["customerName"] = el)}
                 value={customerName || ""}
                 onChange={handleCustomerNameChange}
                 placeholder="Type or Press space"
-                disabled={isCashCounter}
+                onKeyDown={(e)=> handleKeyDown(e, 'customerName')}
               />
             </div>
             <div className="flex items-center gap-2 mt-1 text-sm font-semibold">
               <Checkbox
                 checked={isCashCounter}
                 onCheckedChange={(checked) => {
+                  if (!checked && !customerName) {
+                    toast({
+                      title: "Please select cutomer to uncheck",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
                   setIsCashCounter(checked);
                   if (checked) {
                     setCustomerName("");
@@ -555,77 +529,23 @@ export default function CreateSellInvoice() {
             <Label className="text-sm font-medium">
               INVOICE DATE<span className="text-rose-500">*REQUIRED</span>
             </Label>
-            <Popover open={invoiceDateOpen} onOpenChange={setInvoiceDateOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !invoiceDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="w-4 h-4 mr-2" />
-                  {invoiceDate
-                    ? format(invoiceDate, "dd/MM/yyyy")
-                    : "Select Date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={invoiceDate}
-                  onSelect={(date) => {
-                    setInvoiceDate(
-                      date
-                        .toLocaleDateString("en-IN", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                        })
-                        .split("/")
-                        .reverse()
-                        .join("-")
-                    );
-                    setInvoiceDateOpen(false);
-                  }}
-                  locale={enIN}
-                  captionLayout="dropdown-buttons"
-                  showOutsideDays={false}
-                  ISOWeek={false}
-                />
-              </PopoverContent>
-            </Popover>
+            <Input
+              type="date"
+              value={invoiceDate}
+              onChange={(e) => setInvoiceDate(e.target.value)}
+              className="w-full"
+            />
           </div>
           <div>
             <Label className="text-sm font-medium">PAYMENT DUE DATE</Label>
-            <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !dueDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="w-4 h-4 mr-2" />
-                  {dueDate ? format(dueDate, "dd/MM/yyyy") : "Select Due Date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={dueDate}
-                  onSelect={(date) => {
-                    setDueDate(date);
-                    setDueDateOpen(false);
-                  }}
-                  locale={enIN}
-                  captionLayout="dropdown-buttons"
-                  showOutsideDays={false}
-                  ISOWeek={false}
-                />
-              </PopoverContent>
-            </Popover>
+            <Input
+              type="date"
+              ref={(el) => (inputRef.current["dueDate"] = el)}
+              value={dueDate ? dueDate.toISOString().split('T')[0] : ''}
+              onChange={(e) => setDueDate(new Date(e.target.value))}
+              className="w-full"
+              onKeyDown={(e)=>handleKeyDown(e,'dueDate')}
+            />
           </div>
         </div>
       </div>
@@ -636,6 +556,7 @@ export default function CreateSellInvoice() {
           inputRef={inputRef}
           products={products}
           setProducts={setProducts}
+          handleKeyDown={handleKeyDown}
         />
       </div>
 

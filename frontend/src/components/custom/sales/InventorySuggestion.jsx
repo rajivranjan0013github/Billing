@@ -74,7 +74,7 @@ export const SearchSuggestion = forwardRef(({value, setValue, onSuggestionSelect
   return (
     <div className="relative w-full">
       <div className="relative ">
-        <input
+        <Input
           ref={(el) => (inputRef.current["product"] = el)}
           type="text"
           value={value}
