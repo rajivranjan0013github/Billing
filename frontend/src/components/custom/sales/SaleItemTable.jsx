@@ -8,6 +8,7 @@ import BatchSuggestion from "./BatchSuggestion";
 import { Input } from "../../ui/input";
 
 export default function SaleTable({ inputRef, products, setProducts, handleKeyDown, viewMode}) {
+  console.log(products)
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(true);
   const [newProduct, setNewProduct] = useState({});

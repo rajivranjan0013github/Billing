@@ -8,7 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "../components/ui/popover";
-import { CalendarIcon, ChevronLeft, Save, Settings } from "lucide-react";
+import { CalendarIcon, ChevronLeft, Save, Search } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "../lib/utils";
 import { convertToFraction } from "../assets/Data";
@@ -79,6 +79,7 @@ export default function SalesReturn() {
   const [distributorName, setdistributorName] = useState("");
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     originalInvoiceNumber: "",
@@ -111,6 +112,91 @@ export default function SalesReturn() {
       );
   }, []);
 
+  // New function to search and load invoice
+  const handleSearchInvoice = async () => {
+    try {
+      if (!formData.originalInvoiceNumber) {
+        toast({
+          title: "Error",
+          description: "Please enter an invoice number to search",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setSearchLoading(true);
+      const response = await fetch(`${Backend_URL}/api/sales/search/invoice`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          invoiceNumber: formData.originalInvoiceNumber,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Invoice not found");
+      }
+
+      const invoiceData = await response.json();
+
+      // Pre-fill form data from invoice
+      setFormData((prev) => ({
+        ...prev,
+        distributorName: invoiceData.distributorName,
+        distributorId: invoiceData.distributorId,
+      }));
+
+      setdistributorName(invoiceData.distributorName);
+
+      // Pre-fill products for return with proper pack and loose calculation
+      const returnProducts = invoiceData.products.map((product) => {
+        // Calculate packs and loose based on quantity and pack size
+        const totalQuantity = Number(product.quantity || 0);
+        const packSize = Number(product.pack || 1);
+        const packs = Math.floor(totalQuantity / packSize);
+        const loose = totalQuantity % packSize;
+
+        return {
+          ...product,
+          quantity: totalQuantity, // Reset quantity for return
+          packs: packs, // Reset packs
+          loose: loose, // Reset loose
+          originalQuantity: totalQuantity,
+          originalPacks: packs,
+          originalLoose: loose,
+        };
+      });
+
+      setProducts(returnProducts);
+
+      toast({
+        title: "Success",
+        description: "Invoice found and loaded",
+        variant: "success",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to find invoice",
+        variant: "destructive",
+      });
+      // Clear form data if invoice not found
+      setFormData((prev) => ({
+        ...prev,
+        distributorName: "",
+        distributorId: "",
+      }));
+      setdistributorName("");
+      setProducts([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
   const handlePaymentSubmit = (paymentData) => {
     setPayment(paymentData);
     setPaymentDialog(false);
@@ -130,24 +216,41 @@ export default function SalesReturn() {
         throw new Error("Please add at least one product to return");
       }
 
-      // Format products data
-      const formattedProducts = products.map((product) => ({
-        inventoryId: product.inventoryId,
-        productName: product.productName,
-        batchNumber: product.batchNumber,
-        batchId: product.batchId,
-        expiry: product.expiry,
-        HSN: product.HSN,
-        mrp: Number(product.mrp),
-        quantity: Number(product.quantity),
-        saleRate: Number(product.saleRate),
-        pack: Number(product.pack),
-        purchaseRate: Number(product.purchaseRate),
-        ptr: Number(product.ptr),
-        discount: Number(product.discount || 0),
-        gstPer: Number(product.gstPer),
-        amount: Number(product.amount),
-      }));
+      // Format products data with proper quantity calculation
+      const formattedProducts = products.map((product) => {
+        // Calculate total quantity from packs and loose
+        const packSize = Number(product.pack || 1);
+        const packs = Number(product.packs || 0);
+        const loose = Number(product.loose || 0);
+        const totalQuantity = packs * packSize + loose;
+
+        // Validate return quantity doesn't exceed original
+        if (totalQuantity > product.originalQuantity) {
+          throw new Error(
+            `Return quantity for ${product.productName} cannot exceed original quantity`
+          );
+        }
+
+        return {
+          inventoryId: product.inventoryId,
+          productName: product.productName,
+          batchNumber: product.batchNumber,
+          batchId: product.batchId,
+          expiry: product.expiry,
+          HSN: product.HSN,
+          mrp: Number(product.mrp),
+          quantity: totalQuantity,
+          saleRate: Number(product.saleRate),
+          pack: Number(product.pack),
+          purchaseRate: Number(product.purchaseRate),
+          ptr: Number(product.ptr),
+          discount: Number(product.discount || 0),
+          gstPer: Number(product.gstPer),
+          amount: Number(product.amount),
+          packs: packs,
+          loose: loose,
+        };
+      });
 
       // Calculate return summary
       const billSummary = {
@@ -168,7 +271,7 @@ export default function SalesReturn() {
       };
 
       // Calculate GST summary
-      products.forEach((product) => {
+      formattedProducts.forEach((product) => {
         const quantity = Number(product.quantity || 0);
         const pack = Number(product.pack || 1);
         const mrp = Number(product.mrp || 0);
@@ -305,15 +408,30 @@ export default function SalesReturn() {
       {/* Return Information */}
       <div className="grid gap-4">
         <div className="grid gap-4 grid-cols-4 w-full">
-          <div>
-            <Label className="text-sm font-medium">ORIGINAL INVOICE NO</Label>
-            <Input
-              value={formData?.originalInvoiceNumber}
-              onChange={(e) =>
-                handleInputChange("originalInvoiceNumber", e.target.value)
-              }
-              placeholder="Original Invoice Number (Optional)"
-            />
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Label className="text-sm font-medium">ORIGINAL INVOICE NO</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={formData?.originalInvoiceNumber}
+                  onChange={(e) =>
+                    handleInputChange("originalInvoiceNumber", e.target.value)
+                  }
+                  placeholder="Enter Invoice Number"
+                />
+                <Button
+                  variant="secondary"
+                  onClick={handleSearchInvoice}
+                  disabled={searchLoading}
+                >
+                  {searchLoading ? (
+                    <span className="animate-spin">⏳</span>
+                  ) : (
+                    <Search className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
           </div>
           <div>
             <Label className="text-sm font-medium">
@@ -353,14 +471,14 @@ export default function SalesReturn() {
                 >
                   <CalendarIcon className="w-4 h-4 mr-2" />
                   {returnDate
-                    ? format(returnDate, "dd/MM/yyyy")
+                    ? format(new Date(returnDate), "dd/MM/yyyy")
                     : "Select Date"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
                 <Calendar
                   mode="single"
-                  selected={returnDate}
+                  selected={new Date(returnDate)}
                   onSelect={(date) => {
                     setReturnDate(
                       date

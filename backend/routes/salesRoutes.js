@@ -36,7 +36,9 @@ router.post("/", verifyToken, async (req, res) => {
       if (!mongoose.isValidObjectId(details.distributorId)) {
         throw Error("distributor Id is not valid");
       }
-      distributorDetails = await Customer.findById(details.distributorId).session(session);
+      distributorDetails = await Customer.findById(
+        details.distributorId
+      ).session(session);
       if (!distributorDetails) {
         throw Error("distributor not found");
       }
@@ -503,6 +505,37 @@ router.get("/search", verifyToken, async (req, res) => {
   }
 });
 
+// Search sales by invoice number (POST route)
+router.post("/search/invoice", verifyToken, async (req, res) => {
+  try {
+    const { invoiceNumber } = req.body;
+
+    if (!invoiceNumber) {
+      return res.status(400).json({
+        message: "Invoice number is required",
+      });
+    }
+
+    const bill = await SalesBill.findOne({
+      invoiceNumber: invoiceNumber,
+      status: "active", // Only find active invoices
+    });
+
+    if (!bill) {
+      return res.status(404).json({
+        message: "Invoice not found",
+      });
+    }
+
+    res.status(200).json(bill);
+  } catch (error) {
+    res.status(500).json({
+      message: "Error searching invoice",
+      error: error.message,
+    });
+  }
+});
+
 // Create new sell bill
 router.post("/return", verifyToken, async (req, res) => {
   const session = await mongoose.startSession();
@@ -554,9 +587,9 @@ router.post("/return", verifyToken, async (req, res) => {
       if (payment.paymentMethod === "CHEQUE") {
         // Update distributor balance if distributor exists
         if (req.body.distributorId) {
-          const distributorDetails = await Distributor.findById(req.body.distributorId).session(
-            session
-          );
+          const distributorDetails = await Distributor.findById(
+            req.body.distributorId
+          ).session(session);
           if (distributorDetails) {
             distributorDetails.currentBalance =
               (distributorDetails.currentBalance || 0) - payment.amount;
@@ -596,9 +629,9 @@ router.post("/return", verifyToken, async (req, res) => {
 
         // Update distributor balance if distributor exists
         if (req.body.distributorId) {
-          const distributorDetails = await Distributor.findById(req.body.distributorId).session(
-            session
-          );
+          const distributorDetails = await Distributor.findById(
+            req.body.distributorId
+          ).session(session);
           if (distributorDetails) {
             distributorDetails.currentBalance =
               (distributorDetails.currentBalance || 0) - payment.amount;

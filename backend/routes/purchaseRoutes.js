@@ -306,7 +306,7 @@ router.post("/edit", verifyToken, async (req, res) => {
       const reversalTimeline = new StockTimeline({
         inventoryId: oldProduct.inventoryId,
         invoiceId: _id,
-        type: "PURCHASE_EDIT_REVERSAL",
+        type: "PURCHASE_EDIT",
         invoiceNumber: existingInvoice.invoiceNumber,
         debit: oldProduct.quantity,
         balance: inventorySchema.quantity,
