@@ -7,7 +7,7 @@ import {  Save, Settings2, ArrowLeft } from "lucide-react";
 import PurchaseItemTable from "../components/custom/purchase/PurchaseItemTable";
 import { useToast } from "../hooks/use-toast";
 import SelectDistributorDlg from "../components/custom/distributor/SelectDistributorDlg";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { createPurchaseBill } from "../redux/slices/PurchaseBillSlice";
 import { useNavigate } from "react-router-dom";
 import PaymentDialog from "../components/custom/payment/PaymentDialog";
@@ -85,6 +85,7 @@ export default function PurchaseForm() {
   const [distributorSelectDialog, setdistributorSelectDialog] = useState(false);
   const [distributorName, setdistributorName] = useState("");
   const { toast } = useToast();
+  const { createPurchaseBillStatus } = useSelector((state) => state.purchaseBill);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -573,6 +574,7 @@ export default function PurchaseForm() {
         onOpenChange={setPaymentDialogOpen}
         invoiceData={invoiceForPayment}
         onSubmit={handlePaymentSubmit}
+        billStatus={createPurchaseBillStatus}
       />
     </div>
   );

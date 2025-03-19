@@ -1,7 +1,7 @@
 import { useRef, useState, useMemo, useEffect } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { createBill } from "../redux/slices/SellBillSlice";
+import { createBill, fetchBills } from "../redux/slices/SellBillSlice";
 import { Label } from "../components/ui/label";
 import { Checkbox } from "../components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
@@ -11,10 +11,9 @@ import { convertToFraction } from "../assets/Data";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
 import SelectCustomerDialog from "../components/custom/customer/SelectCustomerDialog";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { fetchItems } from "../redux/slices/inventorySlice";
 import { useNavigate } from "react-router-dom";
-import { fetchBills } from "../redux/slices/SellBillSlice";
 import PaymentDialog from "../components/custom/payment/PaymentDialog";
 
 // for sale only
@@ -64,6 +63,7 @@ export default function CreateSellInvoice() {
   const navigate = useNavigate();
   const inputRef = useRef({});
   const dispatch = useDispatch();
+  const {createBillStatus} = useSelector(state=>state.bill)
   const [invoiceDate, setInvoiceDate] = useState(
     new Date()
       .toLocaleDateString("en-IN", {
@@ -142,11 +142,13 @@ export default function CreateSellInvoice() {
 
       // Instead of saving invoice here, open payment dialog
       setInvoiceForPayment({
+        isCashCounter,
         distributorName: isCashCounter ? "Cash/Counter" : formData.distributorName,
         distributorId: isCashCounter ? null : formData.distributorId,
         invoiceNumber: formData.invoiceNumber,
         invoiceDate: invoiceDate,
-        totalAmount: amountData.grandTotal,
+        grandTotal: amountData.grandTotal,
+        dueDate: dueDate
       });
       setPaymentDialogOpen(true);
     } catch (error) {
@@ -215,12 +217,8 @@ export default function CreateSellInvoice() {
 
         if (billSummary.gstSummary.hasOwnProperty(gstPer)) {
           billSummary.gstSummary[gstPer].taxable += Number(taxable.toFixed(2));
-          billSummary.gstSummary[gstPer].cgst += Number(
-            (gstAmount / 2).toFixed(2)
-          );
-          billSummary.gstSummary[gstPer].sgst += Number(
-            (gstAmount / 2).toFixed(2)
-          );
+          billSummary.gstSummary[gstPer].cgst += Number((gstAmount / 2).toFixed(2));
+          billSummary.gstSummary[gstPer].sgst += Number((gstAmount / 2).toFixed(2));
           billSummary.gstSummary[gstPer].total += Number(gstAmount.toFixed(2));
         }
       });
@@ -231,36 +229,28 @@ export default function CreateSellInvoice() {
         distributorName: isCashCounter ? "Cash/Counter" : formData.distributorName,
         distributorId: isCashCounter ? null : formData.distributorId,
         invoiceDate: invoiceDate,
-        paymentDueDate:
-          paymentData.status === "due" ? paymentData.dueDate : null,
+        paymentDueDate: paymentData.status === "due" ? paymentData.dueDate : null,
         products: formattedProducts,
         grandTotal: amountData.grandTotal,
         is_cash_customer: isCashCounter,
         billSummary,
         // Payment details
         paymentStatus: paymentData.status,
-        amountPaid:
-          paymentData.status === "due" ? 0 : Number(paymentData.amount || 0),
+        amountPaid: paymentData.status === "due" ? 0 : Number(paymentData.amount || 0),
         // Payment info
-        payment:
-          paymentData.status === "paid"
-            ? {
-                amount: Number(paymentData.amount || 0),
-                paymentType: "Payment In",
-                paymentMethod: paymentData.paymentMethod,
-                paymentDate: paymentData.chequeDate || new Date(),
-                accountId: paymentData.accountId,
-                transactionNumber: paymentData.transactionNumber,
-                chequeNumber: paymentData.chequeNumber,
-                chequeDate: paymentData.chequeDate,
-                micrCode: paymentData.micrCode,
-                status:
-                  paymentData.paymentMethod === "CHEQUE"
-                    ? "PENDING"
-                    : "COMPLETED",
-                remarks: paymentData.notes,
-              }
-            : null,
+        payment: paymentData.status === "paid" ? {
+          amount: Number(paymentData.amount || 0),
+          paymentType: "Payment In",
+          paymentMethod: paymentData.paymentMethod,
+          paymentDate: paymentData.chequeDate || new Date(),
+          accountId: paymentData.accountId,
+          transactionNumber: paymentData.transactionNumber,
+          chequeNumber: paymentData.chequeNumber,
+          chequeDate: paymentData.chequeDate,
+          micrCode: paymentData.micrCode,
+          status: paymentData.paymentMethod === "CHEQUE" ? "PENDING" : "COMPLETED",
+          remarks: paymentData.notes,
+        } : null,
       };
 
       dispatch(createBill(finalData))
@@ -642,6 +632,7 @@ export default function CreateSellInvoice() {
         onOpenChange={setPaymentDialogOpen}
         invoiceData={invoiceForPayment}
         onSubmit={handlePaymentSubmit}
+        billStatus={createBillStatus}
       />
     </div>
   );

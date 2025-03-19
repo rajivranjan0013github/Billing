@@ -16,8 +16,35 @@ router.get("/payment-number", async (req, res) => {
 // Get all payments
 router.get("/", async (req, res) => {
   try {
-    const { paymentType } = req.query;
-    const payments = await Payment.find({ paymentType }).sort({ createdAt: -1 }).lean();
+    const { paymentType, startDate, endDate } = req.query;
+    
+    // Build query object
+    const query = {};
+    if (paymentType) {
+      query.paymentType = paymentType;
+    }
+    
+    // Add date range filter if provided with proper date formatting
+    if (startDate || endDate) {
+      query.paymentDate = {};
+      if (startDate) {
+        // Convert start date to beginning of day
+        const formattedStartDate = new Date(startDate);
+        formattedStartDate.setHours(0, 0, 0, 0);
+        query.paymentDate.$gte = formattedStartDate;
+      }
+      if (endDate) {
+        // Convert end date to end of day
+        const formattedEndDate = new Date(endDate);
+        formattedEndDate.setHours(23, 59, 59, 999);
+        query.paymentDate.$lte = formattedEndDate;
+      }
+    }
+
+    const payments = await Payment.find(query)
+      .sort({ createdAt: -1 })
+      .lean();
+      
     res.status(200).json(payments);
   } catch (error) {
     console.error("Error fetching payments:", error);
@@ -155,7 +182,7 @@ router.post("/make-payment", async (req, res) => {
 
       await account.save({ session });
 
-      // Update distributor balance
+      // Update distributor balanceArrowLeft
       distributorDoc.currentBalance += paymentType === "Payment Out" ? amount : -amount;
     }
 

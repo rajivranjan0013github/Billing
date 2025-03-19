@@ -1,31 +1,23 @@
 import { useRef, useState, useMemo, useEffect } from "react";
 import { Button } from "../components/ui/button";
-import { Calendar } from "../components/ui/calendar";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "../components/ui/popover";
-import {
-  CalendarIcon,
-  ChevronLeft,
-  Pencil,
-  Save,
-  FileText,
-  Trash2,
-} from "lucide-react";
+import { ArrowLeft, Pencil, Save, FileText, Trash2, ChevronRight} from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "../lib/utils";
 import { Backend_URL, convertQuantityValue } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
 import SelectdistributorDialog from "../components/custom/distributor/SelectDistributorDlg";
-import { enIN } from "date-fns/locale";
 import { calculateTotals } from "./CreateSellInvoice";
 import { useParams, useNavigate } from "react-router-dom";
 import SaleItemTable from "../components/custom/sales/SaleItemTable";
+import MakePaymentDlg from "../components/custom/payment/MakePaymentDlg";
+import { formatCurrency } from "../utils/Helper";
+
+// Helper function to round to 2 decimal places
+const roundToTwo = (num) => {
+  return Math.round((num + Number.EPSILON) * 100) / 100;
+};
 
 export default function EditSaleInvoice() {
   const inputRef = useRef([]);
@@ -39,9 +31,22 @@ export default function EditSaleInvoice() {
   const [products, setProducts] = useState([]);
   const [distributorSelectDialog, setdistributorSelectDialog] = useState(false);
   const [distributorName, setdistributorName] = useState("");
-  const [invoiceDateOpen, setInvoiceDateOpen] = useState(false);
-  const [dueDateOpen, setDueDateOpen] = useState(false);
   const [completeData, setCompleteData] = useState(null);
+  const [amountPaid, setAmountPaid] = useState(0);
+  const [payments, setPayments] = useState([]);
+  const [paymentOutData, setPaymentOutData] = useState({
+    paymentType: "Payment In",
+    distributorId: "",
+    distributorName: "",
+    amount: 0,
+    bills: [{
+      billId: "",
+      billNumber: "",
+      grandTotal: 0,
+      amountPaid: 0
+    }]
+  });
+  const [paymentOutDialogOpen, setPaymentOutDialogOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     saleType: "invoice",
@@ -76,6 +81,8 @@ export default function EditSaleInvoice() {
           invoiceDate,
           paymentDueDate,
           withGst,
+          amountPaid,
+          payments,
         } = data;
         const fomateProduct = products.map((item) => {
           const temp = convertQuantityValue(item.quantity, item.pack);
@@ -84,6 +91,7 @@ export default function EditSaleInvoice() {
         setProducts(fomateProduct);
         setInvoiceDate(invoiceDate ? new Date(invoiceDate) : null);
         setDueDate(paymentDueDate ? new Date(paymentDueDate) : null);
+        setAmountPaid(amountPaid);
         setFormData({
           ...formData,
           distributorName,
@@ -94,6 +102,7 @@ export default function EditSaleInvoice() {
           withGst: withGst ? "yes" : "no",
         });
         setdistributorName(distributorName);
+        setPayments(payments);
       } catch (error) {
         console.error("Error fetching bill:", error);
         toast({
@@ -265,12 +274,11 @@ export default function EditSaleInvoice() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <ChevronLeft
-            className="w-5 h-5 text-rose-500 cursor-pointer"
-            onClick={() => navigate(-1)}
-          />
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
           <h1 className="text-xl font-medium">
-            {viewMode ? "View" : "Edit"} Sale
+            {viewMode ? "View" : "Edit"} Sale Invoice
           </h1>
         </div>
         <div className="flex gap-4">
@@ -296,7 +304,7 @@ export default function EditSaleInvoice() {
                   <Pencil className="w-4 h-4" /> Edit
                 </Button>
 
-                <Button className="gap-2 bg-rose-600">
+                <Button className="gap-2 bg-rose-600 hover:bg-rose-500  ">
                   <Trash2 className="w-4 h-4" /> Delete
                 </Button>
               </>
@@ -392,71 +400,23 @@ export default function EditSaleInvoice() {
             <Label className="text-sm font-medium">
               INVOICE DATE<span className="text-rose-500">*REQUIRED</span>
             </Label>
-            <Popover open={invoiceDateOpen} onOpenChange={setInvoiceDateOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !invoiceDate && "text-muted-foreground"
-                  )}
-                  disabled={viewMode}
-                >
-                  <CalendarIcon className="w-4 h-4 mr-2" />
-                  {invoiceDate && !isNaN(invoiceDate.getTime())
-                    ? format(invoiceDate, "dd/MM/yyyy")
-                    : "Select Date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={invoiceDate}
-                  onSelect={(date) => {
-                    setInvoiceDate(date);
-                    setInvoiceDateOpen(false);
-                  }}
-                  locale={enIN}
-                  captionLayout="dropdown-buttons"
-                  showOutsideDays={false}
-                  ISOWeek={false}
-                />
-              </PopoverContent>
-            </Popover>
+            <Input
+              type="date"
+              value={invoiceDate ? format(invoiceDate, 'yyyy-MM-dd') : ''}
+              onChange={(e) => setInvoiceDate(new Date(e.target.value))}
+              disabled={viewMode}
+              className="w-full"
+            />
           </div>
           <div>
             <Label className="text-sm font-medium">PAYMENT DUE DATE</Label>
-            <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !dueDate && "text-muted-foreground"
-                  )}
-                  disabled={viewMode}
-                >
-                  <CalendarIcon className="w-4 h-4 mr-2" />
-                  {dueDate && !isNaN(dueDate.getTime())
-                    ? format(dueDate, "dd/MM/yyyy")
-                    : "Select Due Date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={dueDate}
-                  onSelect={(date) => {
-                    setDueDate(date);
-                    setDueDateOpen(false);
-                  }}
-                  locale={enIN}
-                  captionLayout="dropdown-buttons"
-                  showOutsideDays={false}
-                  ISOWeek={false}
-                />
-              </PopoverContent>
-            </Popover>
+            <Input
+              type="date"
+              value={dueDate ? format(dueDate, 'yyyy-MM-dd') : ''}
+              onChange={(e) => setDueDate(new Date(e.target.value))}
+              disabled={viewMode}
+              className="w-full"
+            />
           </div>
         </div>
       </div>
@@ -508,9 +468,118 @@ export default function EditSaleInvoice() {
         </div>
       </div>
 
+      {/* Payment Details Section */}
+      <div className="mb-10 mt-4">
+        <div className="border rounded-lg overflow-hidden">
+          <div className="flex justify-between items-center p-4 border-b bg-gray-50">
+            <h3 className="text-lg font-medium">Payment History</h3>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={amountPaid >= amountData?.grandTotal}
+              onClick={() => {
+                setPaymentOutData({
+                  paymentType: "Payment In",
+                  distributorId: formData.distributorId,
+                  distributorName: formData.distributorName,
+                  amount: roundToTwo(amountData?.grandTotal - amountPaid),
+                  bills: [{
+                    billId: invoiceId,
+                    billNumber: formData.invoiceNumber,
+                    grandTotal: roundToTwo(amountData?.grandTotal),
+                    amountPaid: roundToTwo(amountPaid)
+                  }]
+                });
+                setPaymentOutDialogOpen(true);
+              }}
+            >
+              Add New Payment
+            </Button>
+          </div>
+          
+          {payments.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-100 text-left">
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Date</th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Payment Number</th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Amount</th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Method</th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Status</th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Reference</th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Remarks</th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map((payment, index) => (
+                    <tr 
+                      key={payment._id || index}
+                      className={`border-t ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                    >
+                      <td className="px-4 py-3 text-sm">
+                        {new Date(payment.paymentDate).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium">
+                        {payment.paymentNumber}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium">
+                        ₹{payment.amount.toLocaleString('en-IN')}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">
+                          {payment.paymentMethod}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          payment.status === "PENDING" 
+                            ? "bg-yellow-100 text-yellow-800"
+                            : payment.status === "COMPLETED"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}>
+                          {payment.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {payment.paymentMethod === "CHEQUE" 
+                          ? `Cheque: ${payment.chequeNumber}`
+                          : payment.paymentMethod === "BANK" || payment.paymentMethod === "UPI"
+                          ? `Txn: ${payment.transactionNumber || 'N/A'}`
+                          : payment.paymentMethod}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {payment.remarks || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => navigate(`/sales/payment-in/${payment._id}`)}
+                            className='h-6 w-6'
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center text-gray-500 py-8">
+              <p className="text-sm">No payment records found</p>
+              <p className="text-xs text-gray-400 mt-1">Click 'Add New Payment' to record a payment</p>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Fixed Footer */}
-      <div className="fixed bottom-0 w-[cal(100%-200px)] grid grid-cols-8 gap-4 p-4 text-sm text-white bg-gray-800 rounded-lg">
-        <div className="">
+      <div className="fixed bottom-0 w-[cal(100%-200px)] grid grid-cols-9 gap-4 p-4 text-sm text-white bg-gray-800 rounded-lg">
+        <div className="text-center">
           <div className="mb-1 text-gray-400">
             Total Products: {amountData?.productCount}
           </div>
@@ -518,33 +587,37 @@ export default function EditSaleInvoice() {
             Total Quantity: {amountData?.totalQuantity}
           </div>
         </div>
-        <div>
+        <div className="text-center">
           <div className="mb-1 text-gray-400">Subtotal</div>
-          <div>₹{amountData?.grandTotal}</div>
+          <div>{formatCurrency(amountData?.subtotal)}</div>
         </div>
-        <div>
+        <div className="text-center">
           <div className="mb-1 text-gray-400">(-) Discount</div>
-          <div>₹{amountData?.discountAmount}</div>
+          <div>{formatCurrency(amountData?.discountAmount)}</div>
         </div>
-        <div>
+        <div className="text-center">
           <div className="mb-1 text-gray-400">Taxable</div>
-          <div>₹{amountData?.taxable}</div>
+          <div>{formatCurrency(amountData?.taxable)}</div>
         </div>
-        <div>
+        <div className="text-center">
           <div className="mb-1 text-gray-400">(+) GST Amount</div>
-          <div>₹{amountData?.gstAmount}</div>
+          <div>{formatCurrency(amountData?.gstAmount)}</div>
         </div>
-        <div>
+        <div className="text-center">
           <div className="mb-1 text-gray-400">(-) Adjustment</div>
           <div>₹0</div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">(+) Delivery Charge</div>
-          <div>₹0.00</div>
-        </div>
-        <div className="bg-rose-500 -m-4 p-4 rounded-r-lg">
+        <div className="bg-rose-500 -m-4 p-4 rounded-r-lg text-center">
           <div className="mb-1">Total Amount</div>
-          <div>₹{amountData?.grandTotal}</div>
+          <div>{formatCurrency(amountData?.grandTotal)}</div>
+        </div>
+        <div className="text-center">
+          <div className="mb-1 text-gray-400">Amount Paid</div>
+          <div>{formatCurrency(amountPaid)}</div>
+        </div>
+        <div className="text-center">
+          <div className="mb-1 text-gray-400">Due Amount</div>
+          <div>{formatCurrency(amountData?.grandTotal - amountPaid)}</div>
         </div>
       </div>
 
@@ -555,6 +628,14 @@ export default function EditSaleInvoice() {
         search={distributorName}
         setSearch={setdistributorName}
         onSelect={handleCustomerSelect}
+      />
+
+      {/* Payment Dialog */}
+      <MakePaymentDlg
+        open={paymentOutDialogOpen}
+        onOpenChange={setPaymentOutDialogOpen}
+        paymentData={paymentOutData}
+        showStep1={true}
       />
     </div>
   );
