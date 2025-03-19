@@ -143,7 +143,9 @@ export default function Sales() {
     <div className="relative p-4 rounded-lg space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <ArrowLeft className="h-6 w-6 cursor-pointer " onClick={()=> navigate(-1)}  />
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
           <h1 className="text-2xl font-semibold">Sales Transactions</h1>
         </div>
         <div className="grid grid-cols-4 gap-4 text-right">

@@ -231,7 +231,7 @@ router.get("/", verifyToken, async (req, res) => {
 router.get("/invoice/:invoiceId", verifyToken, async (req, res) => {
   try {
     const { invoiceId } = req.params;
-    const bill = await SalesBill.findById(invoiceId);
+    const bill = await SalesBill.findById(invoiceId).populate('payments');
     if (!bill) {
       return res.status(404).json({ message: "Invoice not found" });
     }

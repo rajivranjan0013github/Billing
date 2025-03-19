@@ -48,6 +48,7 @@ import Customers from "./pages/Customers";
 import ScrollRestoration from './utils/ScrollRestoration'
 import EditPurchaseReturn from "./pages/EditPurchaseReturn";
 import CustomerDetails from "./pages/CustomerDetails";
+import Payments from "./pages/Payments";
 
 const AppContent = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -125,6 +126,7 @@ const AppContent = () => {
               <Route path="/items-master" element={<Inventory />} />
               <Route path="/distributors" element={<Distributors />} />
               <Route path="/customers" element={<Customers />} />
+              <Route path="/payments" element={<Payments />} />
               <Route path="/customers/:customerId" element={<CustomerDetails />} />
               <Route
                 path="/sales/create-sell-invoice"

@@ -15,6 +15,7 @@ import {
   Users,
   ChevronRight,
   Wallet,
+  WalletMinimal
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Button } from "../../ui/button";
@@ -43,7 +44,8 @@ export const navItems = [
   { name: "Distributors", icon: Users, path: "/distributors" },
   { name: "Customers", icon: Users, path: "/customers" },
   { name: "Accounts", icon: Wallet, path: "/accounts" },
-  { name: "Expenses", icon: IndianRupee, path: "/expenses" },
+  { name: "Payments", icon: IndianRupee, path: "/payments" },
+  { name: "Expenses", icon: WalletMinimal, path: "/expenses" },
   {
     name: "Sales",
     icon: ShoppingCart,

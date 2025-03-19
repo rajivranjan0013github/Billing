@@ -5,19 +5,90 @@ import { Input } from "../components/ui/input"
 import { MessageSquare, Search, Settings, ArrowLeft } from "lucide-react"
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { fetchPaymentsOut } from "../redux/slices/paymentSlice";
+import { fetchPayments, setDateRange, setSelectedPreset } from "../redux/slices/paymentSlice";
 import { useEffect } from "react";
+import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { DateRangePicker } from "../components/ui/date-range-picker";
+import {useToast} from '../hooks/use-toast'
 
-export default function Component() {
+export default function PaymentOut() {
   const navigate = useNavigate();
-  const { paymentOut, paymentOutStatus } = useSelector((state) => state.payment);
+  const {toast} = useToast();
+  const { payments, paymentsStatus, dateRange, selectedPreset } = useSelector((state) => state.payment);
   const dispatch = useDispatch();
 
-  useEffect(() => {
-    if (paymentOutStatus === "idle") {
-      dispatch(fetchPaymentsOut());
+  const paymentOut = payments?.filter(payment => payment.paymentType === 'Payment Out') || [];
+
+  const handleDateSelect = (range) => {
+    dispatch(setDateRange(range));
+    dispatch(setSelectedPreset("custom"));
+  };
+
+  const handleDatePresetChange = (value) => {
+    dispatch(setSelectedPreset(value));
+    
+    if (value === "custom") {
+      return;
     }
-  }, [dispatch, paymentOutStatus]);
+
+    let newRange = { from: new Date(), to: new Date() };
+
+    switch (value) {
+      case "today":
+        newRange = { from: new Date(), to: new Date() };
+        break;
+      case "yesterday":
+        const yesterday = subDays(new Date(), 1);
+        newRange = { from: yesterday, to: yesterday };
+        break;
+      case "thisWeek":
+        newRange = {
+          from: startOfWeek(new Date(), { weekStartsOn: 1 }),
+          to: endOfWeek(new Date(), { weekStartsOn: 1 }),
+        };
+        break;
+      case "thisMonth":
+        newRange = {
+          from: startOfMonth(new Date()),
+          to: endOfMonth(new Date()),
+        };
+        break;
+      default:
+        break;
+    }
+
+    dispatch(setDateRange(newRange));
+    dispatch(fetchPayments({
+      startDate: newRange.from.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
+      endDate: newRange.to.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
+    }));
+  };
+
+  const handleDateSearch = () => {
+    if(!dateRange.to) {
+      const updatedRange = { ...dateRange, to: dateRange.from };
+      dispatch(setDateRange(updatedRange));
+    }
+    dispatch(fetchPayments({
+      startDate: dateRange.from.toLocaleDateString("en-IN", {  day: "2-digit",  month: "2-digit",  year: "numeric",}).split("/").reverse().join("-"),
+      endDate: dateRange.to.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric",}).split("/").reverse().join("-"),
+    }));
+  };
+
+  const handleDateCancel = () => {
+    const newRange = {
+      from: subDays(new Date(), 7),
+      to: new Date(),
+    };
+    dispatch(setDateRange(newRange));
+    dispatch(setSelectedPreset("thisWeek"));
+  };
+
+  useEffect(() => {
+    if (paymentsStatus === "idle") {
+      handleDateSearch();
+    }
+  }, [dispatch, paymentsStatus]);
   
   return (
     <div className="w-full p-4 space-y-4">
@@ -28,13 +99,15 @@ export default function Component() {
           </Button>
           <h1 className="text-2xl font-semibold">Payment Out</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon">
-            <Settings className="h-5 w-5" />
-          </Button>
-          <Button variant="ghost" size="icon">
-            <MessageSquare className="h-5 w-5" />
-          </Button>
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col items-center">
+            <span className="font-semibold">{paymentOut.length}</span>
+            <span className="text-sm text-muted-foreground">Total Payments</span>
+          </div>
+          <div className="flex flex-col items-end">
+            <span className="font-semibold">₹ {paymentOut.reduce((sum, payment) => sum + (payment.amount || 0), 0).toLocaleString('en-IN')}</span>
+            <span className="text-sm text-muted-foreground">Total Amount</span>
+          </div>
         </div>
       </div>
       
@@ -44,24 +117,38 @@ export default function Component() {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input className="pl-8" placeholder="Search payments..." />
           </div>
-          <Select defaultValue="365">
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select period" />
+          <Select value={selectedPreset} onValueChange={handleDatePresetChange}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Select range" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="365">Last 365 Days</SelectItem>
-              <SelectItem value="30">Last 30 Days</SelectItem>
-              <SelectItem value="7">Last 7 Days</SelectItem>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="yesterday">Yesterday</SelectItem>
+              <SelectItem value="thisWeek">This Week</SelectItem>
+              <SelectItem value="thisMonth">This Month</SelectItem>
+              <SelectItem value="custom">Custom</SelectItem>
             </SelectContent>
           </Select>
+          {selectedPreset === "custom" && (
+            <div className="relative w-[300px]">
+              <DateRangePicker
+                from={dateRange.from}
+                to={dateRange.to}
+                onSelect={handleDateSelect}
+                onSearch={handleDateSearch}
+                onCancel={handleDateCancel}
+                className="border border-slate-200 rounded-md hover:border-slate-300 transition-colors"
+              />
+            </div>
+          )}
         </div>
-        <Button  onClick={() => navigate("/purchase/create-payment-out")}>
+        <Button onClick={() => navigate("/purchase/create-payment-out")}>
           Create Payment Out
         </Button>
       </div>
 
       <div className="border rounded-lg">
-        <Table >
+        <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-[150px]">Date</TableHead>
@@ -74,7 +161,11 @@ export default function Component() {
           </TableHeader>
           <TableBody>
             {paymentOut.map((payment) => (
-              <TableRow key={payment._id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/purchase/payment-out/${payment._id}`)}>
+              <TableRow 
+                key={payment._id} 
+                className="cursor-pointer hover:bg-muted/50 h-12" 
+                onClick={() => navigate(`/purchase/payment-out/${payment._id}`)}
+              >
                 <TableCell>
                   {new Date(payment.paymentDate).toLocaleDateString('en-IN', {
                     day: '2-digit',

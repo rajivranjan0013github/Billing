@@ -12,12 +12,11 @@ import { cn } from "../../../lib/utils";
 import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
 import { Separator } from "../../ui/separator";
 
-export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmit}) {
+export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmit, billStatus}) {
   const dispatch = useDispatch();
   const { accounts, fetchStatus } = useSelector((state) => state.accounts);
-  const { createPurchaseBillStatus } = useSelector((state) => state.purchaseBill);
   const [step, setStep] = useState(1);
-  const [paymentStatus, setPaymentStatus] = useState("due");
+  const [paymentStatus, setPaymentStatus] = useState('due');
   const [dueDate, setDueDate] = useState(new Date(invoiceData?.dueDate || new Date()));
   const [showDetails, setShowDetails] = useState(false);
 
@@ -44,8 +43,8 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
   useEffect(() => {
     if (open) {
       setError(null);
-      setStep(1);
-      setPaymentStatus("due");
+      setStep(invoiceData?.isCashCounter ? 2 : 1);
+      setPaymentStatus(invoiceData?.isCashCounter ? 'paid' : "due");
       setDueDate(new Date(invoiceData?.dueDate || new Date()));
       setShowDetails(false);
       setPaymentData({
@@ -57,6 +56,12 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
         micrCode: "",
         transactionNumber: "",
       });
+      if(invoiceData?.isCashCounter) {
+        setPaymentData((prev) => ({
+          ...prev,
+          amount: invoiceData?.grandTotal || "",
+        }));
+      }
     }
   }, [open, dispatch]);
 
@@ -582,9 +587,9 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
               size="sm"
               onClick={handleSubmit}
               className="bg-blue-600 text-white hover:bg-blue-700"
-              disabled={createPurchaseBillStatus === 'loading'}
+              disabled={billStatus === 'loading'}
             >
-              {createPurchaseBillStatus === 'loading' ? 'Submitting...' : 'Submit'}
+              {billStatus === 'loading' ? 'Submitting...' : 'Submit'}
             </Button>
           ) : (
             <Button
@@ -596,11 +601,11 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
               }}
               disabled={
                 (step === 3 ? !canSubmitPayment() : !paymentData.amount) ||
-                createPurchaseBillStatus === 'loading'
+                billStatus === 'loading'
               }
               className="bg-blue-600 text-white hover:bg-blue-700"
             >
-              {createPurchaseBillStatus === 'loading' ? 'Submitting...' : 
+              {billStatus === 'loading' ? 'Submitting...' : 
                step === 3 ? "Submit" : "Next"}
             </Button>
           )}
