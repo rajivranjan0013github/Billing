@@ -11,7 +11,16 @@ const stockTimelineSchema = new mongoose.Schema(
     invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: "Invoice" },
     type: {
       type: String,
-      enum: ["Adjustment", "PURCHASE", "SALE", "PURCHASE_RETURN", "SALE_EDIT","SALE_RETURN", "PURCHASE_EDIT", "PURCHASE_DELETE"],
+      enum: [
+        "Adjustment",
+        "PURCHASE",
+        "SALE",
+        "PURCHASE_RETURN",
+        "SALE_EDIT",
+        "SALE_RETURN",
+        "PURCHASE_EDIT",
+        "PURCHASE_DELETE",
+      ],
     },
     invoiceNumber: String,
     credit: Number,

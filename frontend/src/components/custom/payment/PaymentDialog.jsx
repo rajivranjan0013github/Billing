@@ -467,17 +467,7 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                             }
                           />
                         </div>
-                        {Number(paymentData.amount) !== Number(invoiceData?.grandTotal) && (
-                          <div>
-                            <Label>Payment Due Date</Label>
-                            <Input
-                              type="date"
-                              value={dueDate ? format(dueDate, "yyyy-MM-dd") : ""}
-                              onChange={(e) => setDueDate(new Date(e.target.value))}
-                              className="w-full"
-                            />
-                          </div>
-                        )}
+                       
                       </div>
                     </div>
                   )}

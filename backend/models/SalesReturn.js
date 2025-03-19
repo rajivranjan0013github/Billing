@@ -1,10 +1,13 @@
 import mongoose from "mongoose";
 import { hospitalPlugin } from "../plugins/hospitalPlugin.js";
-const salesReturnCounterSchema=new mongoose.Schema({
-  year:String,
-  returnNumber:{type:Number,default:0}
-})
-const salesReturnCounter=mongoose.model("salesReturnCounter",salesReturnCounterSchema)
+const salesReturnCounterSchema = new mongoose.Schema({
+  year: String,
+  returnNumber: { type: Number, default: 0 },
+});
+const salesReturnCounter = mongoose.model(
+  "salesReturnCounter",
+  salesReturnCounterSchema
+);
 const salesReturnSchema = new mongoose.Schema(
   {
     returnNumber: {
@@ -17,14 +20,14 @@ const salesReturnSchema = new mongoose.Schema(
     },
     distributorName: {
       type: String,
-      default:"N/A"
+      default: "N/A",
     },
-   payments:[
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Payment",
-    },
-   ],
+    payments: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Payment",
+      },
+    ],
     returnDate: {
       type: Date,
       required: true,
@@ -73,8 +76,7 @@ const salesReturnSchema = new mongoose.Schema(
           required: true,
           default: 1,
         },
-        
-       
+
         discount: {
           type: Number,
           default: 0,
@@ -171,17 +173,17 @@ const salesReturnSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-salesReturnSchema.statics.getNextReturnNumber=async function(session){
+salesReturnSchema.statics.getNextReturnNumber = async function (session) {
   const currentYear = new Date().getFullYear();
   const yearSuffix = currentYear.toString().slice(-2);
   const counter = await salesReturnCounter.findOneAndUpdate(
     { year: currentYear },
-    {$inc:{returnNumber:1}},
+    { $inc: { returnNumber: 1 } },
     { upsert: true, new: true, setDefaultsOnInsert: true, session }
   );
   return `CreditNote/${yearSuffix}/${counter.returnNumber}`;
 };
-salesReturnSchema.statics.getCurrentReturnNumber=async function(session){
+salesReturnSchema.statics.getCurrentReturnNumber = async function (session) {
   const currentYear = new Date().getFullYear();
   const yearSuffix = currentYear.toString().slice(-2);
   const counter = await salesReturnCounter.findOneAndUpdate(
@@ -189,10 +191,9 @@ salesReturnSchema.statics.getCurrentReturnNumber=async function(session){
     {},
     { upsert: true, new: true, setDefaultsOnInsert: true, session }
   );
-  return `CreditNote/${yearSuffix}/${counter.returnNumber+1}`;
-}
+  return `CreditNote/${yearSuffix}/${counter.returnNumber + 1}`;
+};
 // Add any pre-save hooks or methods here if needed
 salesReturnSchema.plugin(hospitalPlugin);
 
 export const SalesReturn = mongoose.model("SalesReturn", salesReturnSchema);
-

@@ -1,10 +1,6 @@
 import "./App.css";
 import React, { useEffect, useState } from "react";
-import {
-  Route,
-  BrowserRouter as Router,
-  Routes,
-} from "react-router-dom";
+import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import { Provider } from "react-redux";
 import { store } from "./redux/store";
 import { useDispatch, useSelector } from "react-redux";
@@ -45,7 +41,7 @@ import SalesInvoicePrint from "./pages/SalesInvoicePrint";
 import AccountDetails from "./pages/AccountDetails";
 import SalesReturnList from "./pages/SalesReturnList";
 import Customers from "./pages/Customers";
-import ScrollRestoration from './utils/ScrollRestoration'
+import ScrollRestoration from "./utils/ScrollRestoration";
 import EditPurchaseReturn from "./pages/EditPurchaseReturn";
 import CustomerDetails from "./pages/CustomerDetails";
 
@@ -125,7 +121,10 @@ const AppContent = () => {
               <Route path="/items-master" element={<Inventory />} />
               <Route path="/distributors" element={<Distributors />} />
               <Route path="/customers" element={<Customers />} />
-              <Route path="/customers/:customerId" element={<CustomerDetails />} />
+              <Route
+                path="/customers/:customerId"
+                element={<CustomerDetails />}
+              />
               <Route
                 path="/sales/create-sell-invoice"
                 element={<CreateSellInvoice />}
@@ -164,10 +163,19 @@ const AppContent = () => {
               />
               <Route path="/sales/return" element={<SalesReturn />} />
               <Route path="/sales/return/list" element={<SalesReturnList />} />
-              <Route path="/purchase/return/create" element={<CreatePurchaseReturn />} />
-              <Route  path="/purchase/return"  element={<PurchaseReturnList />}/>
-              <Route path="/purchase/return/:returnId" element={<EditPurchaseReturn />} />
-              <Route path="/sales/invoice-print" element={<SalesInvoicePrint />} />
+              <Route
+                path="/purchase/return/create"
+                element={<CreatePurchaseReturn />}
+              />
+              <Route path="/purchase/return" element={<PurchaseReturnList />} />
+              <Route
+                path="/purchase/return/:returnId"
+                element={<EditPurchaseReturn />}
+              />
+              <Route
+                path="/sales/invoice-print"
+                element={<SalesInvoicePrint />}
+              />
             </>
           )}
         </Routes>

@@ -4,7 +4,7 @@ const HospitalSchema = new mongoose.Schema({
   name: String,
   logo: String,
   address: String,
-  contactNumber: String, 
+  contactNumber: String,
   email: String,
   website: String,
   gstNumber: String,
@@ -16,13 +16,13 @@ const HospitalSchema = new mongoose.Schema({
   },
   itemExpiryThreshold: {
     type: Number,
-    min: 0, 
-    default: 3 // Default to 3 months, for example
+    min: 0,
+    default: 3, // Default to 3 months, for example
   },
   itemCategories: {
     type: [String],
-    default: []
-  }
+    default: [],
+  },
 });
 
 export const Hospital = mongoose.model("Hospital", HospitalSchema);

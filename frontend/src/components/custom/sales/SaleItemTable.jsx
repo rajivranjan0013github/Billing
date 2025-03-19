@@ -7,8 +7,14 @@ import InventorySuggestion from "./InventorySuggestion";
 import BatchSuggestion from "./BatchSuggestion";
 import { Input } from "../../ui/input";
 
-export default function SaleTable({ inputRef, products, setProducts, handleKeyDown, viewMode}) {
-  console.log(products)
+export default function SaleTable({
+  inputRef,
+  products,
+  setProducts,
+  handleKeyDown,
+  viewMode,
+}) {
+  console.log(products);
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(true);
   const [newProduct, setNewProduct] = useState({});
@@ -139,7 +145,7 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
       <div className="grid grid-cols-16 w-full space-x-1 ">
         <div className="col-span-3 grid grid-cols-6">
           <div className="text-xs font-semibold text-center">#</div>
-          <div className="text-xs font-semibold grid-cols-5">PRODUCT</div>
+          <div className="text-xs font-semibold col-span-5">PRODUCT</div>
         </div>
         <div className="col-span-2">
           <p className="text-xs font-semibold">BATCH</p>
@@ -210,7 +216,7 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
               value={newProduct.HSN || ""}
               type="text"
               className="h-8 w-full border-[1px] border-gray-300 px-1"
-              onKeyDown={(e) => handleKeyDown(e, 'hsn')}
+              onKeyDown={(e) => handleKeyDown(e, "hsn")}
             />
           </div>
           <div>
@@ -224,7 +230,7 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
                 value={newProduct.pack || ""}
                 type="text"
                 className="h-8 w-full border-[1px] border-gray-300 px-1 pl-7"
-                onKeyDown={(e) => handleKeyDown(e, 'pack')}
+                onKeyDown={(e) => handleKeyDown(e, "pack")}
               />
             </div>
           </div>
@@ -236,7 +242,7 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
               type="text"
               placeholder="MM/YY"
               className="h-8 w-full border-[1px] border-gray-300 px-2"
-              onKeyDown={(e) => handleKeyDown(e, 'expiry')}
+              onKeyDown={(e) => handleKeyDown(e, "expiry")}
             />
           </div>
           <div>
@@ -250,7 +256,7 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
                 value={newProduct.mrp || ""}
                 type="text"
                 className="h-8 w-full border-[1px] border-gray-300 pl-5 rounded-sm"
-                onKeyDown={(e) => handleKeyDown(e, 'mrp')}
+                onKeyDown={(e) => handleKeyDown(e, "mrp")}
               />
             </div>
           </div>
@@ -261,7 +267,7 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
               value={newProduct.packs || ""}
               type="text"
               className="h-8 w-full border-[1px] border-gray-300 px-1"
-              onKeyDown={(e) => handleKeyDown(e, 'packs')}
+              onKeyDown={(e) => handleKeyDown(e, "packs")}
             />
           </div>
           <div>
@@ -271,7 +277,7 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
               value={newProduct.loose || ""}
               type="text"
               className="h-8 w-full border-[1px] border-gray-300 px-1"
-              onKeyDown={(e) => handleKeyDown(e, 'loose')}
+              onKeyDown={(e) => handleKeyDown(e, "loose")}
             />
           </div>
           <div>
@@ -285,7 +291,7 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
                 value={newProduct.saleRate || ""}
                 type="text"
                 className="h-8 w-full border-[1px] border-gray-300 pl-5 rounded-sm"
-                onKeyDown={(e) => handleKeyDown(e, 'saleRate')}
+                onKeyDown={(e) => handleKeyDown(e, "saleRate")}
               />
             </div>
           </div>
@@ -297,7 +303,7 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
                 value={newProduct.discount || ""}
                 type="text"
                 className="h-8 w-full border-[1px] border-gray-300 px-1 pr-5"
-                onKeyDown={(e) => handleKeyDown(e, 'discount')}
+                onKeyDown={(e) => handleKeyDown(e, "discount")}
               />
               <span className="absolute right-2 top-1/2 -translate-y-1/2">
                 %
@@ -307,12 +313,12 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
           <div>
             <div className="relative">
               <Input
-                ref={(el) => (inputRef.current["gstPer"] = el)} 
+                ref={(el) => (inputRef.current["gstPer"] = el)}
                 onChange={(e) => handleInputChange("gstPer", e.target.value)}
                 value={newProduct.gstPer || ""}
                 type="text"
                 className="h-8 w-full border-[1px] border-gray-300 px-1 pr-5"
-                onKeyDown={(e) => handleKeyDown(e, 'gstPer')}
+                onKeyDown={(e) => handleKeyDown(e, "gstPer")}
               />
               <span className="absolute right-2 top-1/2 -translate-y-1/2">
                 %

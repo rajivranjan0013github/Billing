@@ -11,7 +11,10 @@ const debitNoteCounterSchema = new mongoose.Schema({
   },
 });
 
-const DebitNoteCounter = mongoose.model("DebitNoteCounter", debitNoteCounterSchema);
+const DebitNoteCounter = mongoose.model(
+  "DebitNoteCounter",
+  debitNoteCounterSchema
+);
 
 const purchaseReturnSchema = new mongoose.Schema(
   {
@@ -20,7 +23,7 @@ const purchaseReturnSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-  
+
     returnDate: {
       type: Date,
       required: true,
@@ -190,7 +193,9 @@ purchaseReturnSchema.statics.getNextDebitNoteNumber = async function (session) {
   return `DBN/${yearSuffix}/${counter.debit_note_number}`;
 };
 
-purchaseReturnSchema.statics.getCurrentDebitNoteNumber = async function (session) {
+purchaseReturnSchema.statics.getCurrentDebitNoteNumber = async function (
+  session
+) {
   const currentYear = new Date().getFullYear();
   const yearSuffix = currentYear.toString().slice(-2);
   const counter = await DebitNoteCounter.findOneAndUpdate(
@@ -201,4 +206,7 @@ purchaseReturnSchema.statics.getCurrentDebitNoteNumber = async function (session
   return `DBN/${yearSuffix}/${counter.debit_note_number + 1}`;
 };
 
-export const PurchaseReturn = mongoose.model( "PurchaseReturn", purchaseReturnSchema);
+export const PurchaseReturn = mongoose.model(
+  "PurchaseReturn",
+  purchaseReturnSchema
+);

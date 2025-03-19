@@ -11,7 +11,10 @@ const SalesBillCounterSchema = new mongoose.Schema({
   },
 });
 
-const SalesBillCounter = mongoose.model("SalesBillCounter", SalesBillCounterSchema);
+const SalesBillCounter = mongoose.model(
+  "SalesBillCounter",
+  SalesBillCounterSchema
+);
 
 const salesBillSchema = new mongoose.Schema(
   {
