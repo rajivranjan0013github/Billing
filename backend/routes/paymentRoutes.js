@@ -5,6 +5,7 @@ import { InvoiceSchema } from '../models/InvoiceSchema.js';
 import { SalesBill } from "../models/SalesBill.js";
 import { Distributor } from "../models/Distributor.js";
 import AccountDetails from "../models/AccountDetails.js";
+import {Customer} from '../models/Customer.js'
 const router = express.Router();
 
 // Get current payment number
@@ -108,20 +109,7 @@ router.post("/make-payment", async (req, res) => {
   session.startTransaction();
   
   try {
-    const {
-      bills, 
-      distributorId, 
-      remarks, 
-      paymentType,
-      paymentMethod, 
-      amount, 
-      paymentDate,
-      chequeNumber,
-      chequeDate,
-      micrCode,
-      transactionNumber,
-      accountId
-    } = req.body;
+    const { bills,  distributorId,  remarks,  paymentType, paymentMethod,  amount,  paymentDate, chequeNumber, chequeDate, micrCode, transactionNumber, accountId} = req.body;
 
     // Enhanced validation
     if (!paymentType || !paymentMethod || !distributorId || !amount) {
@@ -134,7 +122,8 @@ router.post("/make-payment", async (req, res) => {
     }
 
     // Fetch distributor
-    const distributorDoc = await Distributor.findById(distributorId).session(session);
+    const model = paymentType === 'Payment Out' ? Distributor : Customer;
+    const distributorDoc = await model.findById(distributorId).session(session);
     if (!distributorDoc) {
       return res.status(404).json({ message: "Distributor not found" });
     }

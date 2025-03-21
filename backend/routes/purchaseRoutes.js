@@ -462,14 +462,23 @@ router.get("/", verifyToken, async (req, res) => {
     };
 
     // Add date range to query if provided
-    if (startDate && endDate) {
-      query.invoiceDate = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
-      };
+    if (startDate || endDate) {
+      query.invoiceDate = {};
+      if (startDate) {
+        // Convert start date to beginning of day
+        const formattedStartDate = new Date(startDate);
+        formattedStartDate.setHours(0, 0, 0, 0);
+        query.invoiceDate.$gte = formattedStartDate;
+      }
+      if (endDate) {
+        // Convert end date to end of day
+        const formattedEndDate = new Date(endDate);
+        formattedEndDate.setHours(23, 59, 59, 999);
+        query.invoiceDate.$lte = formattedEndDate;
+      }
     }
 
-    const bills = await InvoiceSchema.find(query).sort({ createdAt: -1 });
+    const bills = await InvoiceSchema.find(query).sort({ createdAt: -1 }).lean();
 
     res.json(bills);
   } catch (error) {

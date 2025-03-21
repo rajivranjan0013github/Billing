@@ -15,7 +15,8 @@ import {
   Users,
   ChevronRight,
   Wallet,
-  WalletMinimal
+  WalletMinimal,
+  ChartColumn
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Button } from "../../ui/button";
@@ -40,12 +41,8 @@ import { Backend_URL } from "../../../assets/Data";
 import { useToast } from "../../../hooks/use-toast";
 
 export const navItems = [
-  { name: "Dashboard", icon: Home, path: "/" },
-  { name: "Distributors", icon: Users, path: "/distributors" },
-  { name: "Customers", icon: Users, path: "/customers" },
-  { name: "Accounts", icon: Wallet, path: "/accounts" },
-  { name: "Payments", icon: IndianRupee, path: "/payments" },
-  { name: "Expenses", icon: WalletMinimal, path: "/expenses" },
+  { name: "Quick Menu", icon: Home, path: "/" },
+  
   {
     name: "Sales",
     icon: ShoppingCart,
@@ -66,7 +63,13 @@ export const navItems = [
       { name: "Payment Out", path: "/purchase/payment-out" },
     ],
   },
+  { name: "Distributors", icon: Users, path: "/distributors" },
+  { name: "Customers", icon: Users, path: "/customers" },
+  { name: "Accounts", icon: Wallet, path: "/accounts" },
+  { name: "Payments", icon: IndianRupee, path: "/payments" },
+  { name: "Expenses", icon: WalletMinimal, path: "/expenses" },
   { name: "Stocks", icon: Package, path: "/items-master" },
+  { name: "dashboard", icon: ChartColumn, path: "/dashboard" },
   { name: "Staffs", icon: UsersIcon, path: "/staff" },
   { name: "Settings", icon: Settings, path: "/settings" },
 ];

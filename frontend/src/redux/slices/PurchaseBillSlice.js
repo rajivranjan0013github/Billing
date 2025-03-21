@@ -35,7 +35,7 @@ export const fetchPurchaseBills = createLoadingAsyncThunk(
   "purchaseBill/fetchPurchaseBills",
   async ({ startDate, endDate }) => {
     const response = await fetch(
-      `${Backend_URL}/api/purchase?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`,
+      `${Backend_URL}/api/purchase?startDate=${startDate}&endDate=${endDate}`,
       {
         credentials: "include",
       }
@@ -53,7 +53,7 @@ export const searchPurchaseBills = createLoadingAsyncThunk(
   "purchaseBill/searchPurchaseBills",
   async ({ query, startDate, endDate }) => {
     const response = await fetch(
-      `${Backend_URL}/api/purchase/search?query=${query}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`,
+      `${Backend_URL}/api/purchase/search?query=${query}&startDate=${startDate}&endDate=${endDate}`,
       {
         credentials: "include",
       }
@@ -90,6 +90,11 @@ const purchaseBillSlice = createSlice({
   name: "purchaseBill",
   initialState: {
     purchaseBills: [],
+    dateRange: {
+      from: new Date(),
+      to: new Date()
+    },
+    selectedPreset: "today",
     fetchStatus: "idle",
     createPurchaseBillStatus: "idle",
     searchStatus: "idle",
@@ -97,11 +102,16 @@ const purchaseBillSlice = createSlice({
     error: null,
   },
   reducers: {
-    // Add a reset status action if needed
     resetStatus: (state) => {
       state.fetchStatus = "idle";
       state.error = null;
     },
+    setDateRange: (state, action) => {
+      state.dateRange = action.payload;
+    },
+    setSelectedPreset: (state, action) => {
+      state.selectedPreset = action.payload;
+    }
   },
   extraReducers: (builder) => {
     builder
@@ -157,5 +167,5 @@ const purchaseBillSlice = createSlice({
   },
 });
 
-export const { resetStatus } = purchaseBillSlice.actions;
+export const { resetStatus, setDateRange, setSelectedPreset } = purchaseBillSlice.actions;
 export default purchaseBillSlice.reducer;

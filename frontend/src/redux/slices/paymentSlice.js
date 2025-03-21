@@ -87,6 +87,9 @@ const paymentSlice = createSlice({
     },
     setSelectedPreset: (state, action) => {
       state.selectedPreset = action.payload;
+    },
+    setPaymentIdle : (state) => {
+      state.paymentsStatus = 'idle';
     }
   },
   extraReducers: (builder) => {
