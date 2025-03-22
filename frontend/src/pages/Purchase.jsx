@@ -162,7 +162,7 @@ export default function PurchasesTransactions() {
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-semibold">Purchases Transactions</h1>
+          <h1 className="text-2xl font-bold">Purchases Transactions</h1>
         </div>
         <div className="grid grid-cols-4 gap-4 text-right">
           <div>

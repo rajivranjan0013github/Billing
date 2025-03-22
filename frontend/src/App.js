@@ -48,9 +48,8 @@ import Payments from "./pages/Payments";
 import QuickMenu from "./pages/QuickMenu";
 
 const AppContent = () => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const dispatch = useDispatch();
-  const isLoading = useSelector((state) => state.loader.isLoading);
+  const {isLoading, isCollapsed} = useSelector((state) => state.loader);
   const isAuthenticated = useSelector((state) => state.user.isAuthenticated);
   const [isInitializing, setIsInitializing] = useState(true);
 
@@ -87,14 +86,11 @@ const AppContent = () => {
     <div className="flex relative">
       {isLoading && <div className="youtube-loader"></div>}
       {isAuthenticated && (
-        <VerticalNav
-          isCollapsed={isCollapsed}
-          setIsCollapsed={setIsCollapsed}
-        />
+        <VerticalNav />
       )}
       <main
         className={`${
-          isAuthenticated ? (isCollapsed ? "md:ml-16" : "md:ml-56") : ""
+          isAuthenticated ? (isCollapsed ? "md:ml-16" : "md:ml-48") : ""
         } flex-1 px-0 sm:px-4 w-full h-screen overflow-y-auto transition-all duration-300`}
       >
         <Routes>

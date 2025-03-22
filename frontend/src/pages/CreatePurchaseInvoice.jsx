@@ -12,6 +12,7 @@ import { createPurchaseBill } from "../redux/slices/PurchaseBillSlice";
 import { useNavigate } from "react-router-dom";
 import PaymentDialog from "../components/custom/payment/PaymentDialog";
 import AmountSettingsDialog from "../components/custom/purchase/AmountSettingDialog";
+import { formatCurrency } from "../utils/Helper";
 const inputKeys = ['distributorName', 'invoiceNo', 'invoiceDate', 'dueDate', 'product', 'HSN', 'batchNumber', 'expiry', 'pack', 'quantity', 'free', 'mrp', 'purchaseRate', 'schemeInput1', 'schemeInput2', 'discount', 'gstPer', 'addButton' ];
 
 const roundToTwo = (num) => {
@@ -86,7 +87,7 @@ export default function PurchaseForm() {
   const [distributorName, setdistributorName] = useState("");
   const { toast } = useToast();
   const { createPurchaseBillStatus } = useSelector((state) => state.purchaseBill);
-
+  const {isCollapsed} = useSelector(state=>state.loader);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [invoiceForPayment, setInvoiceForPayment] = useState(null);
@@ -315,15 +316,14 @@ export default function PurchaseForm() {
     }
   };
 
-
   return (
-    <div className="relative rounded-lg h-[100vh] pt-4">
-      <div className="flex items-center justify-between mb-4">
+    <div className="relative rounded-lg h-[100vh] pt-4 font-semibold">
+      <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-300">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-medium">Add Purchase</h1>
+          <h1 className="text-xl font-bold">Add Purchase</h1>
         </div>
         <div className="flex items-center gap-3">
           <Button
@@ -516,44 +516,44 @@ export default function PurchaseForm() {
       </div>
 
       {/* footer of purchase */}
-      <div className="fixed bottom-0 w-[cal(100%-200px)] grid grid-cols-8 gap-4 p-4 text-sm text-white bg-gray-800 rounded-lg">
-        <div className="">
-          <div className="mb-1 text-gray-400">
+      <div className={`fixed bottom-0 w-[calc(100%-${isCollapsed ? '95px' : '225px'})] text-sm grid grid-cols-8 gap-4 text-white bg-gray-900 rounded-lg transition-all duration-300 text-center`}>
+        <div className="py-2">
+          <div>
             Total Products: {amountData?.productCount}
           </div>
-          <div className="text-gray-400">
+          <div>
             Total Quantity: {amountData?.totalQuantity}
           </div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">Subtotal</div>
-          <div>₹{amountData?.subtotal}</div>
+        <div className="py-2">
+          <div >Subtotal</div>
+          <div className="text-lg">{formatCurrency(amountData?.subtotal)}</div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">(-) Discount</div>
-          <div>₹{amountData?.discountAmount}</div>
+        <div className="py-2">
+          <div className="">(-) Discount</div>
+          <div className='text-lg'>{formatCurrency(amountData?.discountAmount)}</div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">Taxable</div>
-          <div>₹{amountData?.taxable}</div>
+        <div className="py-2">
+          <div className="">Taxable</div>
+          <div className='text-lg'>{formatCurrency(amountData?.taxable)}</div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">(+) GST Amount</div>
-          <div>₹{amountData?.gstAmount}</div>
+        <div className="py-2">
+          <div className="">(+) GST Amount</div>
+          <div className='text-lg'>{formatCurrency(amountData?.gstAmount)}</div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">(-) Adjustment</div>
-          <div>₹0</div>
+        <div className="py-2">
+          <div className="">(-) Adjustment</div>
+          <div className='text-lg'>{formatCurrency(0)}</div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">(+) Delivery Charge</div>
-          <div>₹0.00</div>
+        <div className="py-2">
+          <div className="">(+) Delivery Charge</div>
+          <div className='text-lg'>{formatCurrency(0.00)}</div>
         </div>
-        <div className="bg-rose-500 -m-4 p-4 rounded-r-lg">
-          <div className="mb-1">Total Amount</div>
-          <div>₹{amountData?.grandTotal}</div>
+        <div className="bg-rose-500 py-2">
+          <div className="">Total Amount</div>
+          <div className='text-lg'>{formatCurrency(amountData?.grandTotal)}</div>
         </div>
-      </div>
+      </div> 
       <SelectDistributorDlg
         open={distributorSelectDialog}
         setOpen={setdistributorSelectDialog}

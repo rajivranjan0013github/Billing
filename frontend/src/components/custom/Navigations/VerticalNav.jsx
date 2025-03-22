@@ -37,6 +37,7 @@ import {
   DropdownMenuSeparator,
 } from "../../ui/dropdown-menu";
 import { clearUserData } from "../../../redux/slices/userSlice";
+import {setIsCollapsed } from '../../../redux/slices/loaderSlice'
 import { Backend_URL } from "../../../assets/Data";
 import { useToast } from "../../../hooks/use-toast";
 
@@ -108,12 +109,13 @@ export const ColorfulLogo = ({ className }) => (
   </svg>
 );
 
-export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
+export default function VerticalNav() {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
   const { toast } = useToast();
   const user = useSelector((state) => state.user.userData);
+  const {isCollapsed} = useSelector(state=>state.loader);
   const [expandedItems, setExpandedItems] = useState([]);
 
   const isActive = (itemPath, submenuPaths = []) => {
@@ -178,8 +180,8 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
   return (
     <div
       className={cn(
-        "flex flex-col h-screen bg-white border-r transition-all duration-300 fixed top-0 left-0 z-10",
-        isCollapsed ? "w-16" : "w-56"
+        "flex flex-col h-screen  border-r transition-all duration-300 fixed top-0 left-0 z-10",
+        isCollapsed ? "w-16" : "w-48"
       )}
     >
       {/* Top section */}
@@ -187,15 +189,14 @@ export default function VerticalNav({ isCollapsed, setIsCollapsed }) {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="mr-2"
+          onClick={() => dispatch(setIsCollapsed(!isCollapsed))}
         >
           <Menu className="h-4 w-4" />
         </Button>
         {!isCollapsed && (
           <div className="flex items-center">
             <ColorfulLogo className="h-6 w-6" />
-            <span className="ml-2 text-lg font-bold text-gray-800">
+            <span className="ml-1 text-lg font-bold text-gray-800">
               The Billing
             </span>
           </div>

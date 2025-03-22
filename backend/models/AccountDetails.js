@@ -1,29 +1,5 @@
 import mongoose from "mongoose";
 
-const transactionSchema = new mongoose.Schema({
-  transactionNumber: String,
-  amount: {
-    type: Number,
-    required: true,
-  },
-  date: {
-    type: Date,
-    default: Date.now,
-  },
-  type: {
-    type: String,
-    enum: ["CREDIT", "DEBIT"],
-    required: true,
-  },
-  paymentId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Payment",
-  },
-  distributorName: String,
-  remarks: String,
-  balance: Number,
-});
-
 const accountDetailsSchema = new mongoose.Schema(
   {
     accountType: {
@@ -36,7 +12,6 @@ const accountDetailsSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    transactions: [transactionSchema],
     bankDetails: {
       bankName: String,
       accountNumber: String,

@@ -63,23 +63,17 @@ const paymentSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    bills: [
-      {
+    bills: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "Invoice",
       },
     ],
-    salesBills: [
-      {
+    salesBills: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "SalesBill",
       },
     ],
-  },
-  {
-    timestamps: true,
-  }
-);
+  },{ timestamps: true});
 
 paymentSchema.plugin(hospitalPlugin);
 

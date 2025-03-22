@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "../../ui/button";
-import { convertToFraction } from "../../../assets/Data";
+import { convertToFraction, convertQuantity } from "../../../assets/Data";
 import { Pen, Trash2 } from "lucide-react";
 import { useToast } from "../../../hooks/use-toast";
 import InventorySuggestion from "./InventorySuggestion";
@@ -78,6 +78,14 @@ export default function SaleTable({
       return;
     }
 
+    const {pack, currentStocks, quantity} = newProduct;
+    console.log(newProduct);
+    
+    if(currentStocks < quantity) {
+      toast({title : `${convertQuantity(currentStocks, pack)} are in stocks`, variant : 'destructive'})
+      return;
+    }
+
     if (newProduct.batchNumber) {
       setProducts((pre) => [...pre, newProduct]);
     } else {
@@ -134,6 +142,7 @@ export default function SaleTable({
       gstPer: batch.gstPer,
       HSN: batch.HSN,
       pack: batch.pack,
+      currentStocks : batch.quantity
     });
     if (inputRef?.current["packs"]) {
       inputRef?.current["packs"].focus();
