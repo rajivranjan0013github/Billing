@@ -72,7 +72,7 @@ router.post("/", verifyToken, async (req, res) => {
         micrCode: payment.micrCode,
         status: payment.paymentMethod === "CHEQUE" ? "PENDING" : "COMPLETED",
         remarks: payment.remarks,
-        bills: [newSalesBill._id],
+        salesBills: [newSalesBill._id],
       });
 
       // For cheque payments, we don't need to validate account
@@ -99,18 +99,6 @@ router.post("/", verifyToken, async (req, res) => {
 
         // Update account balance
         account.balance += payment.amount;
-
-        // Add transaction details
-        account.transactions.push({
-          transactionNumber: payment.transactionNumber,
-          amount: payment.amount,
-          date: new Date(),
-          type: "CREDIT",
-          paymentId: paymentDoc._id,
-          distributorName: details.distributorName,
-          remarks: payment.remarks,
-          balance: account.balance,
-        });
 
         await account.save({ session });
 

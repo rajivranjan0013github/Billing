@@ -7,7 +7,6 @@ import { Checkbox } from "../components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
 import { Save, Settings, FileText, ClipboardList, ScrollText, ArrowLeft } from "lucide-react";
 import SaleItemTable from "../components/custom/sales/SaleItemTable";
-import { convertToFraction } from "../assets/Data";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
 import SelectCustomerDialog from "../components/custom/customer/SelectCustomerDialog";
@@ -15,6 +14,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchItems } from "../redux/slices/inventorySlice";
 import { useNavigate } from "react-router-dom";
 import PaymentDialog from "../components/custom/payment/PaymentDialog";
+import { formatCurrency } from "../utils/Helper";
 
 // for sale only
 export const calculateTotals = (products) => {
@@ -29,19 +29,20 @@ export const calculateTotals = (products) => {
       const gstPer = Number(product?.gstPer || 0);
       const amount = Number(product?.amount || 0);
 
-      const subtotal = (quantity * product?.mrp) / pack;
-      const discount =
-        (((product?.quantity * product?.mrp) / pack) * discountPercent) / 100;
-      const taxable = ((subtotal - discount) * 100) / (100 + gstPer);
-      const gstAmount = (taxable * gstPer) / 100;
+      const subtotal = roundToTwo((quantity * product?.mrp) / pack);
+      const discount = roundToTwo(
+        (((product?.quantity * product?.mrp) / pack) * discountPercent) / 100
+      );
+      const taxable = roundToTwo(((subtotal - discount) * 100) / (100 + gstPer));
+      const gstAmount = roundToTwo((taxable * gstPer) / 100);
 
-      total.grandTotal += taxable + gstAmount;
+      total.grandTotal = roundToTwo(total.grandTotal + taxable + gstAmount);
       total.productCount += 1;
       total.totalQuantity += quantity + free;
-      total.subtotal += convertToFraction(subtotal);
-      total.discountAmount += convertToFraction(discount);
-      total.taxable += convertToFraction(taxable);
-      total.gstAmount += convertToFraction(gstAmount);
+      total.subtotal = roundToTwo(total.subtotal + subtotal);
+      total.discountAmount = roundToTwo(total.discountAmount + discount);
+      total.taxable = roundToTwo(total.taxable + taxable);
+      total.gstAmount = roundToTwo(total.gstAmount + gstAmount);
 
       return total;
     },
@@ -57,24 +58,19 @@ export const calculateTotals = (products) => {
   );
 };
 
-const inputKeys = ['customerName', 'dueDate', 'product',  'batchNumber', 'hsn', 'pack', 'expiry', 'mrp', 'packs', 'loose', 'saleRate', 'discount', 'gstPer', 'add' ];
+const roundToTwo = (num) => {
+  return Math.round((num + Number.EPSILON) * 100) / 100;
+};
+
+const inputKeys = ['customerName', 'product',  'batchNumber', 'hsn', 'pack', 'expiry', 'mrp', 'packs', 'loose', 'saleRate', 'discount', 'gstPer', 'add' ];
 
 export default function CreateSellInvoice() {
   const navigate = useNavigate();
   const inputRef = useRef({});
   const dispatch = useDispatch();
   const {createBillStatus} = useSelector(state=>state.bill)
-  const [invoiceDate, setInvoiceDate] = useState(
-    new Date()
-      .toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })
-      .split("/")
-      .reverse()
-      .join("-")
-  );
+  const {isCollapsed} = useSelector(state=>state.loader);
+  const [invoiceDate, setInvoiceDate] = useState(new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric",}).split("/").reverse().join("-"));
   const [dueDate, setDueDate] = useState();
   const [products, setProducts] = useState([]);
   const [customerSelectDialog, setCustomerSelectDialog] = useState(false);
@@ -173,26 +169,26 @@ export default function CreateSellInvoice() {
         batchId: product.batchId,
         expiry: product.expiry,
         HSN: product.HSN,
-        mrp: Number(product.mrp),
+        mrp: roundToTwo(Number(product.mrp)),
         quantity: Number(product.quantity),
-        saleRate: Number(product.saleRate),
+        saleRate: roundToTwo(Number(product.saleRate)),
         pack: Number(product.pack || 1),
-        purchaseRate: Number(product.purchaseRate),
-        ptr: Number(product.ptr),
-        discount: Number(product.discount || 0),
-        gstPer: Number(product.gstPer),
-        amount: Number(product.amount),
+        purchaseRate: roundToTwo(Number(product.purchaseRate)),
+        ptr: roundToTwo(Number(product.ptr)),
+        discount: roundToTwo(Number(product.discount || 0)),
+        gstPer: roundToTwo(Number(product.gstPer)),
+        amount: roundToTwo(Number(product.amount)),
       }));
 
       // Calculate bill summary
       const billSummary = {
-        subtotal: amountData.subtotal,
-        discountAmount: amountData.discountAmount,
-        taxableAmount: amountData.taxable,
-        gstAmount: amountData.gstAmount,
+        subtotal: roundToTwo(amountData.subtotal),
+        discountAmount: roundToTwo(amountData.discountAmount),
+        taxableAmount: roundToTwo(amountData.taxable),
+        gstAmount: roundToTwo(amountData.gstAmount),
         totalQuantity: amountData.totalQuantity,
         productCount: amountData.productCount,
-        grandTotal: amountData.grandTotal,
+        grandTotal: roundToTwo(amountData.grandTotal),
         gstSummary: {
           0: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
           5: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
@@ -206,22 +202,26 @@ export default function CreateSellInvoice() {
       products.forEach((product) => {
         const quantity = Number(product.quantity || 0);
         const pack = Number(product.pack || 1);
-        const mrp = Number(product.mrp || 0);
+        const mrp = roundToTwo(Number(product.mrp || 0));
         const discountPercent = Number(product.discount || 0);
         const gstPer = Number(product.gstPer || 0);
 
-        const subtotal = (quantity * mrp) / pack;
-        const discount = (subtotal * discountPercent) / 100;
-        const taxable = ((subtotal - discount) * 100) / (100 + gstPer);
-        const gstAmount = (taxable * gstPer) / 100;
+        const subtotal = roundToTwo((quantity * mrp) / pack);
+        const discount = roundToTwo((subtotal * discountPercent) / 100);
+        const taxable = roundToTwo(((subtotal - discount) * 100) / (100 + gstPer));
+        const gstAmount = roundToTwo((taxable * gstPer) / 100);
 
         if (billSummary.gstSummary.hasOwnProperty(gstPer)) {
-          billSummary.gstSummary[gstPer].taxable += Number(taxable.toFixed(2));
-          billSummary.gstSummary[gstPer].cgst += Number((gstAmount / 2).toFixed(2));
-          billSummary.gstSummary[gstPer].sgst += Number((gstAmount / 2).toFixed(2));
-          billSummary.gstSummary[gstPer].total += Number(gstAmount.toFixed(2));
+          billSummary.gstSummary[gstPer].taxable = roundToTwo(billSummary.gstSummary[gstPer].taxable + taxable);
+          billSummary.gstSummary[gstPer].cgst = roundToTwo(billSummary.gstSummary[gstPer].cgst + gstAmount / 2);
+          billSummary.gstSummary[gstPer].sgst = roundToTwo(billSummary.gstSummary[gstPer].sgst + gstAmount / 2);
+          billSummary.gstSummary[gstPer].total = roundToTwo(billSummary.gstSummary[gstPer].total + gstAmount);
         }
       });
+
+      // Determine payment status based on amount paid
+      const amountPaid = roundToTwo(Number(paymentData.amount || 0));
+      const paymentStatus = amountPaid >= roundToTwo(amountData.grandTotal) ? "paid" : "due";
 
       const finalData = {
         saleType: formData.saleType,
@@ -229,17 +229,17 @@ export default function CreateSellInvoice() {
         distributorName: isCashCounter ? "Cash/Counter" : formData.distributorName,
         distributorId: isCashCounter ? null : formData.distributorId,
         invoiceDate: invoiceDate,
-        paymentDueDate: paymentData.status === "due" ? paymentData.dueDate : null,
+        paymentDueDate: paymentStatus === "due" ? paymentData.dueDate : null,
         products: formattedProducts,
-        grandTotal: amountData.grandTotal,
+        grandTotal: roundToTwo(amountData.grandTotal),
         is_cash_customer: isCashCounter,
         billSummary,
         // Payment details
-        paymentStatus: paymentData.status,
-        amountPaid: paymentData.status === "due" ? 0 : Number(paymentData.amount || 0),
+        paymentStatus: paymentStatus,
+        amountPaid: amountPaid,
         // Payment info
-        payment: paymentData.status === "paid" ? {
-          amount: Number(paymentData.amount || 0),
+        payment: amountPaid > 0 ? {
+          amount: amountPaid,
           paymentType: "Payment In",
           paymentMethod: paymentData.paymentMethod,
           paymentDate: paymentData.chequeDate || new Date(),
@@ -328,8 +328,8 @@ export default function CreateSellInvoice() {
     });
     setIsCashCounter(false); // Uncheck cash/counter when customer is selected
     setCustomerSelectDialog(false);
-    if(inputRef && inputRef.current['dueDate']) {
-      inputRef.current['dueDate'].focus();
+    if(inputRef && inputRef.current['product']) {
+      inputRef.current['product'].focus();
     }
   };
 
@@ -357,8 +357,8 @@ export default function CreateSellInvoice() {
   };
 
   return (
-    <div className="relative rounded-lg h-[100vh] pt-4">
-      <div className="flex items-center justify-between mb-4">
+    <div className="relative rounded-lg h-[100vh] pt-4 font-semibold">
+      <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-300">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
@@ -582,44 +582,44 @@ export default function CreateSellInvoice() {
       </div>
 
       {/* footer of purchase */}
-      <div className="fixed bottom-0 w-[cal(100%-200px)] grid grid-cols-8 gap-4 p-4 text-sm text-white bg-gray-800 rounded-lg">
-        <div className="">
-          <div className="mb-1 text-gray-400">
+      <div className={`fixed bottom-0 w-[calc(100%-${isCollapsed ? '95px' : '225px'})] text-sm grid grid-cols-8 gap-4 text-white bg-gray-900 rounded-lg transition-all duration-300 text-center`}>
+        <div className="py-2">
+          <div>
             Total Products: {amountData?.productCount}
           </div>
-          <div className="text-gray-400">
+          <div>
             Total Quantity: {amountData?.totalQuantity}
           </div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">Subtotal</div>
-          <div>₹{amountData?.subtotal}</div>
+        <div className="py-2">
+          <div >Subtotal</div>
+          <div className="text-lg">{formatCurrency(amountData?.subtotal)}</div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">(-) Discount</div>
-          <div>₹{amountData?.discountAmount}</div>
+        <div className="py-2">
+          <div className="">(-) Discount</div>
+          <div className='text-lg'>{formatCurrency(amountData?.discountAmount)}</div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">Taxable</div>
-          <div>₹{amountData?.taxable}</div>
+        <div className="py-2">
+          <div className="">Taxable</div>
+          <div className='text-lg'>{formatCurrency(amountData?.taxable)}</div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">(+) GST Amount</div>
-          <div>₹{amountData?.gstAmount}</div>
+        <div className="py-2">
+          <div className="">(+) GST Amount</div>
+          <div className='text-lg'>{formatCurrency(amountData?.gstAmount)}</div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">(-) Adjustment</div>
-          <div>₹0</div>
+        <div className="py-2">
+          <div className="">(-) Adjustment</div>
+          <div className='text-lg'>{formatCurrency(0)}</div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">(+) Delivery Charge</div>
-          <div>₹0.00</div>
+        <div className="py-2">
+          <div className="">(+) Delivery Charge</div>
+          <div className='text-lg'>{formatCurrency(0.00)}</div>
         </div>
-        <div className="bg-rose-500 -m-4 p-4 rounded-r-lg">
-          <div className="mb-1">Total Amount</div>
-          <div>₹{amountData?.grandTotal}</div>
+        <div className="bg-rose-500 py-2">
+          <div className="">Total Amount</div>
+          <div className='text-lg'>{formatCurrency(amountData?.grandTotal)}</div>
         </div>
-      </div>
+      </div> 
       <SelectCustomerDialog
         open={customerSelectDialog}
         setOpen={setCustomerSelectDialog}

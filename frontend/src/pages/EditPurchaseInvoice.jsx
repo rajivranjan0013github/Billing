@@ -78,6 +78,7 @@ export default function EditPurchaseInvoice() {
   const [paymentOutData, setPaymentOutData] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { deleteStatus } = useSelector((state) => state.purchaseBill);
+  const {isCollapsed} = useSelector(state=>state.loader);
 
   const [formData, setFormData] = useState({
     purchaseType: "invoice",
@@ -451,13 +452,13 @@ export default function EditPurchaseInvoice() {
   };
 
   return (
-    <div className=" relative rounded-lg h-[100vh] pt-4">
+    <div className=" relative rounded-lg h-[100vh] pt-4 font-semibold">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-medium">
+          <h1 className="text-xl font-bold">
             {viewMode ? "View" : "Edit"} Purchase
           </h1>
         </div>
@@ -783,49 +784,52 @@ export default function EditPurchaseInvoice() {
       </div>
       </ScrollArea>
       {/* footer of purchase */}
-      <div className="fixed bottom-0 w-[cal(100%-200px)] grid grid-cols-9 gap-4 p-4 text-sm text-white bg-gray-800 rounded-lg">
-        <div className="text-center">
-          <div className="mb-1 text-gray-400">
-            Total Products: {amountData?.productCount}
+      <div className={`fixed bottom-0 text-sm w-[calc(100%-${isCollapsed ? '95px' : '225px'})] grid grid-cols-10 gap-4 text-white bg-gray-900 rounded-lg transition-all duration-300 text-center`}>
+        <div className="py-2">
+          <div >
+            Products: {amountData?.productCount}
           </div>
-          <div className="text-gray-400">
-            Total Quantity: {amountData?.totalQuantity}
+          <div >
+            Quantity: {amountData?.totalQuantity}
           </div>
         </div>
-        <div className="text-center">
-          <div className="mb-1 text-gray-400">Subtotal</div>
-          <div>{formatCurrency(amountData?.subtotal)}</div>
+        <div className="py-2">
+          <div >Subtotal</div>
+          <div className="text-lg">{formatCurrency(amountData?.subtotal)}</div>
         </div>
-        <div className="text-center">
-          <div className="mb-1 text-gray-400">(-) Discount</div>
-          <div>{formatCurrency(amountData?.discountAmount)}</div>
+        <div className="py-2">
+          <div >(-) Discount</div>
+          <div className='text-lg'>{formatCurrency(amountData?.discountAmount)}</div>
         </div>
-        <div className="text-center">
-          <div className="mb-1 text-gray-400">Taxable</div>
-          <div>{formatCurrency(amountData?.taxable)}</div>
+        <div className="py-2">
+          <div >Taxable</div>
+          <div className='text-lg'>{formatCurrency(amountData?.taxable)}</div>
         </div>
-        <div className="text-center">
-          <div className="mb-1 text-gray-400">(+) GST Amount</div>
-          <div>{formatCurrency(amountData?.gstAmount)}</div>
+        <div className="py-2">
+          <div className="">(+) GST Amount</div>
+          <div className='text-lg'>{formatCurrency(amountData?.gstAmount)}</div>
         </div>
-        <div className="text-center">
-          <div className="mb-1 text-gray-400">(-) Adjustment</div>
-          <div>₹0</div>
+        <div className="py-2">
+          <div className="">(-) Adjustment</div>
+          <div className='text-lg'>{formatCurrency(0)}</div>
         </div>
-        <div className="bg-rose-500 -m-4 p-4 rounded-r-lg text-center">
-          <div className="mb-1">Total Amount</div>
-          <div>{formatCurrency(amountData?.grandTotal)}</div>
+        <div className="py-2">
+          <div className="">(+) Custom Charge</div>
+          <div className='text-lg'>{formatCurrency(0.00)}</div>
         </div>
-        <div className="text-center">
-          <div className="mb-1 text-gray-400">Amount Paid</div>
-          <div>{formatCurrency(amountPaid)}</div>
+        <div className="bg-rose-500 py-2">
+          <div className="">Total Amount</div>
+          <div className='text-lg'>{formatCurrency(amountData?.grandTotal)}</div>
         </div>
-        <div className="text-center">
-          <div className="mb-1 text-gray-400">Due Amount</div>
-          <div>{formatCurrency(amountData?.grandTotal - amountPaid)}</div>
+        <div className="py-2">
+          <div >Amount Paid</div>
+          <div className='text-lg'>{formatCurrency(amountPaid)}</div>
         </div>
-        
-      </div>
+        <div className="py-2">
+          <div >Due Amount</div>
+          <div className='text-lg'>{formatCurrency(amountData?.grandTotal - amountPaid)}</div>
+        </div>
+      </div> 
       <SelectdistributorDialog
         open={distributorSelectDialog}
         setOpen={setdistributorSelectDialog}

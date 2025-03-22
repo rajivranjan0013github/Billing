@@ -169,7 +169,7 @@ const BatchSuggestion = forwardRef(({ value, setValue, onSuggestionSelect, inven
                   <div className="col-span-2">
                     <div className="text-xs text-gray-500">STOCKS</div>
                     <div className="text-sm uppercase font-medium">
-                      {suggestion?.quantity === 0 
+                      {suggestion?.quantity <= 0 
                         ? <Badge variant="destructive">OUT OF STOCKS</Badge>
                         : <Badge variant="success">
                             {convertQuantity(suggestion?.quantity, suggestion?.pack)}

@@ -1,11 +1,14 @@
 import { createSlice } from "@reduxjs/toolkit";
 import createLoadingAsyncThunk from "./createLoadingAsyncThunk";
 import { Backend_URL } from "../../assets/Data";
+import { setAccountsStatusIdle } from "./accountSlice";
+import { setItemStatusIdle } from "./inventorySlice";
+import { setCustomerStatusIdle } from "./CustomerSlice";
 
 // Create new bill
 export const createBill = createLoadingAsyncThunk(
   "bill/createBill",
-  async (billData) => {
+  async (billData, {dispatch}) => {
     try {
       const response = await fetch(`${Backend_URL}/api/sales`, {
         method: "POST",
@@ -20,6 +23,9 @@ export const createBill = createLoadingAsyncThunk(
         throw new Error("Failed to create bill");
       }
       const data = await response.json();
+      await dispatch(setAccountsStatusIdle());
+      await dispatch(setCustomerStatusIdle());
+      await dispatch(setItemStatusIdle());
       return data;
     } catch (error) {
       throw new Error("Failed to create bill");

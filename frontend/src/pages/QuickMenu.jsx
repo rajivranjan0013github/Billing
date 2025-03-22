@@ -11,11 +11,9 @@ import {
   Settings,
   BarChart3,
   Package,
-  TrendingUp,
   Store,
   FileText,
   CreditCard,
-  Plus,
   FileInput,
   RotateCcw,
 } from "lucide-react";
@@ -149,7 +147,7 @@ const QuickMenu = () => {
   return (
     <div className="p-4 space-y-6">
       <h1 className="text-2xl font-bold mb-6">Quick Menu</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
         {quickActions.map((action, index) => (
           <Card
             key={index}
