@@ -58,8 +58,10 @@ router.post("/", verifyToken, async (req, res) => {
     // Handle payment if provided
     if (payment && payment.amount > 0) {
       // Create payment record
+      const paymentNumber = await Payment.getNextPaymentNumber(session);
       const paymentDoc = new Payment({
         amount: payment.amount,
+        paymentNumber,
         paymentType: "Payment In",
         paymentMethod: payment.paymentMethod,
         paymentDate: payment.chequeDate || new Date(),

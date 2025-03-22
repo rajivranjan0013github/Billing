@@ -1,4 +1,4 @@
-import { ArrowLeft, Pencil, Share2, Trash2, FileX } from "lucide-react"
+import { ArrowLeft, Pencil, Share2, Trash2, FileX, X } from "lucide-react"
 import { Button } from "../components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "../components/ui/dropdown-menu"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
@@ -8,12 +8,20 @@ import { useState, useEffect } from "react"
 import { Backend_URL } from "../assets/Data"
 import { Badge } from "../components/ui/badge"
 import { Loader2 } from "lucide-react"
+import { useDispatch, useSelector } from "react-redux"
+import { deletePayment } from "../redux/slices/paymentSlice"
+import { useToast } from "../hooks/use-toast"
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../components/ui/alert-dialog"
 
 export default function PaymentDetailsIn() {
   const navigate = useNavigate();
   const { paymentId } = useParams();
+  const { toast } = useToast();
   const [paymentDetails, setPaymentDetails] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const dispatch = useDispatch();
+  const { deletePaymentStatus } = useSelector((state) => state.payment);
 
   useEffect(() => {
     const fetchPaymentDetails = async () => {
@@ -32,6 +40,20 @@ export default function PaymentDetailsIn() {
 
     fetchPaymentDetails();
   }, [paymentId]);
+
+  console.log(paymentDetails);
+  
+
+  const handleDeletePayment = async () => {
+    try {
+      await dispatch(deletePayment(paymentId)).unwrap();
+      setIsDialogOpen(false);
+      toast({title: "Payment deleted successfully", variant: "success"});
+      navigate(-1);
+    } catch (error) {
+      toast({title: "Failed to delete payment", variant: "destructive"});
+    }
+  };
 
   if (isLoading) return (
     <div className="h-screen flex items-center justify-center">
@@ -72,9 +94,41 @@ export default function PaymentDetailsIn() {
           <Button variant="ghost" size="icon">
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="text-destructive">
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-destructive">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="max-w-xl p-0 gap-0">
+              <AlertDialogHeader className="px-4 py-2.5 flex flex-row items-center justify-between bg-gray-100 border-b">
+                <AlertDialogTitle className="text-base font-semibold">Delete Payment</AlertDialogTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setIsDialogOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </AlertDialogHeader>
+              <div className="p-6">
+                <AlertDialogDescription>
+                  Are you sure you want to delete this payment? This action will revert all associated transactions and cannot be undone.
+                </AlertDialogDescription>
+              </div>
+              <div className="p-3 bg-gray-100 border-t flex items-center justify-end gap-2">
+                <Button disabled={deletePaymentStatus === "loading"} onClick={() => setIsDialogOpen(false)} variant="outline" size="sm">Cancel</Button>
+                <Button 
+                  onClick={handleDeletePayment} 
+                  size="sm"
+                  disabled={deletePaymentStatus === "loading"}
+                >
+                  {deletePaymentStatus === "loading" ? "Deleting..." : "Delete"}
+                </Button>
+              </div>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
@@ -140,14 +194,14 @@ export default function PaymentDetailsIn() {
               </TableHeader>
               <TableBody>
                 {paymentDetails.salesBills.map((bill) => (
-                  <TableRow key={bill._id} onClick={() => navigate(`/sales/${bill._id}`)} className="cursor-pointer">
-                    <TableCell>{new Date(bill.bill_date).toLocaleDateString()}</TableCell>
-                    <TableCell>{bill.bill_number}</TableCell>
-                    <TableCell>₹{bill?.grand_total?.toLocaleString("en-IN")}</TableCell>
-                    <TableCell>₹{bill?.payment?.amount_paid?.toLocaleString("en-IN")}</TableCell>
+                  <TableRow key={bill._id} onClick={() => navigate(`/sale/${bill._id}`)} className="cursor-pointer">
+                    <TableCell>{new Date(bill.invoiceDate).toLocaleDateString()}</TableCell>
+                    <TableCell>{bill.invoiceNumber}</TableCell>
+                    <TableCell>₹{bill?.grandTotal?.toLocaleString("en-IN")}</TableCell>
+                    <TableCell>₹{bill?.amountPaid?.toLocaleString("en-IN")}</TableCell>
                     <TableCell>
-                      <Badge variant={bill.payment_status === "paid" ? "success" : "destructive"}>
-                        {bill.payment_status}
+                      <Badge variant={bill.paymentStatus === "paid" ? "success" : "destructive"}>
+                        {bill.paymentStatus}
                       </Badge>
                     </TableCell>
                   </TableRow>

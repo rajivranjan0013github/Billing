@@ -45,6 +45,7 @@ import ScrollRestoration from "./utils/ScrollRestoration";
 import EditPurchaseReturn from "./pages/EditPurchaseReturn";
 import CustomerDetails from "./pages/CustomerDetails";
 import Payments from "./pages/Payments";
+import QuickMenu from "./pages/QuickMenu";
 
 const AppContent = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -99,7 +100,7 @@ const AppContent = () => {
         <Routes>
           <Route
             path="/"
-            element={isAuthenticated ? <Dashboard /> : <Home />}
+            element={isAuthenticated ? <QuickMenu /> : <Home />}
           />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
@@ -111,6 +112,7 @@ const AppContent = () => {
               <Route path="/settings" element={<Settings />} />
               <Route path="/staff/:staffId" element={<StaffProfile />} />
               <Route path="/addstaff" element={<AddStaff />} />
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/editstaff/:staffId" element={<AddStaff />} />
               <Route
                 path="/settings/hospital-info"

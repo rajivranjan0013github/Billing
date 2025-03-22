@@ -113,7 +113,7 @@ const Payments = () => {
   const netTotal = totalPaymentIn - totalPaymentOut;
 
   return (
-    <div className="w-full p-4 space-y-4">
+    <div className="w-full p-4 space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>

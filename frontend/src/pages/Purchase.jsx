@@ -7,57 +7,108 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "..
 import { cn } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchPurchaseBills, searchPurchaseBills,} from "../redux/slices/PurchaseBillSlice";
-import { subDays } from "date-fns";
+import { fetchPurchaseBills, searchPurchaseBills, setDateRange, setSelectedPreset } from "../redux/slices/PurchaseBillSlice";
+import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { DateRangePicker } from "../components/ui/date-range-picker";
 import { formatCurrency } from "../utils/Helper";
 
 export default function PurchasesTransactions() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { purchaseBills: initialPurchaseBills } = useSelector((state) => state.purchaseBill);
+  const { purchaseBills: initialPurchaseBills, dateRange, selectedPreset } = useSelector((state) => state.purchaseBill);
   const [purchaseBills, setPurchaseBills] = useState(initialPurchaseBills);
-
-  const [dateRange, setDateRange] = useState({from: subDays(new Date(), 7),to: new Date()});
-
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState("invoice");
+  const [lastFetchedRange, setLastFetchedRange] = useState(null);
 
   const handleDateSelect = (range) => {
-    setDateRange(range);
+    dispatch(setDateRange(range));
+    dispatch(setSelectedPreset("custom"));
+  };
+
+  const handleDatePresetChange = (value) => {
+    dispatch(setSelectedPreset(value));
+    
+    if (value === "custom") {
+      return;
+    }
+
+    let newRange = { from: new Date(), to: new Date() };
+
+    switch (value) {
+      case "today":
+        newRange = { from: new Date(), to: new Date() };
+        break;
+      case "yesterday":
+        const yesterday = subDays(new Date(), 1);
+        newRange = { from: yesterday, to: yesterday };
+        break;
+      case "thisWeek":
+        newRange = {
+          from: startOfWeek(new Date(), { weekStartsOn: 1 }),
+          to: endOfWeek(new Date(), { weekStartsOn: 1 }),
+        };
+        break;
+      case "thisMonth":
+        newRange = {
+          from: startOfMonth(new Date()),
+          to: endOfMonth(new Date()),
+        };
+        break;
+      default:
+        break;
+    }
+
+    dispatch(setDateRange(newRange));
+    fetchBills(newRange);
   };
 
   const handleDateSearch = () => {
-    fetchBills();
+    if(!dateRange.to) {
+      const updatedRange = { ...dateRange, to: dateRange.from };
+      dispatch(setDateRange(updatedRange));
+      fetchBills(updatedRange);
+    } else {
+      fetchBills(dateRange);
+    }
   };
 
   const handleDateCancel = () => {
-    setDateRange({
+    const newRange = {
       from: subDays(new Date(), 7),
       to: new Date(),
-    });
+    };
+    dispatch(setDateRange(newRange));
+    dispatch(setSelectedPreset("thisWeek"));
+    fetchBills(newRange);
   };
 
-  const fetchBills = () => {
+  const fetchBills = (range = dateRange) => {
     dispatch(
       fetchPurchaseBills({
-        startDate: dateRange.from,
-        endDate: dateRange.to,
+        startDate: range.from.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
+        endDate: range.to.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
       })
     ).then((res) => {
       setPurchaseBills(res.payload);
+      setLastFetchedRange(range);
     });
   };
 
   useEffect(() => {
-    fetchBills();
-  }, []);
+    // Only fetch if we have no data or if the date range has changed
+    const shouldFetch = !lastFetchedRange || 
+      lastFetchedRange.from?.getTime() !== dateRange.from?.getTime() || 
+      lastFetchedRange.to?.getTime() !== dateRange.to?.getTime();
+
+    if (shouldFetch && dateRange.from && dateRange.to) {
+      fetchBills();
+    }
+  }, [dateRange.from, dateRange.to]);
 
   useEffect(() => {
     setPurchaseBills(initialPurchaseBills);
   }, [initialPurchaseBills]);
-
-
 
   const summary = (purchaseBills || []).reduce(
     (acc, bill) => {
@@ -95,8 +146,8 @@ export default function PurchasesTransactions() {
       dispatch(
         searchPurchaseBills({
           query: value,
-          startDate: dateRange.from,
-          endDate: dateRange.to,
+          startDate: dateRange.from.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
+          endDate: dateRange.to.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
         })
       ).then((res) => {
         setPurchaseBills(res.payload);
@@ -105,7 +156,7 @@ export default function PurchasesTransactions() {
   };
 
   return (
-    <div className="relative p-4 space-y-4">
+    <div className="relative p-4 space-y-2">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
@@ -139,10 +190,10 @@ export default function PurchasesTransactions() {
         </div>
       </div>
 
-      <div className="flex gap-4">
-        <div className="relative flex-1">
+      <div className="flex gap-2">
+        <div className="relative ">
           <div className="relative flex items-center bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
-            <div className="relative flex items-center px-3 border-r border-slate-200">
+            <div className="relative flex items-center border-r border-slate-200">
               <Select
                 defaultValue="invoice"
                 onValueChange={(value) => setSearchType(value)}
@@ -199,20 +250,35 @@ export default function PurchasesTransactions() {
           </div>
         </div>
 
-        <div className="relative w-[300px]">
-          <DateRangePicker
-            from={dateRange.from}
-            to={dateRange.to}
-            onSelect={handleDateSelect}
-            onSearch={handleDateSearch}
-            onCancel={handleDateCancel}
-            className="border border-slate-200 rounded-md hover:border-slate-300 transition-colors"
-          />
-        </div>
+        <Select value={selectedPreset} onValueChange={handleDatePresetChange}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Select range" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="yesterday">Yesterday</SelectItem>
+            <SelectItem value="thisWeek">This Week</SelectItem>
+            <SelectItem value="thisMonth">This Month</SelectItem>
+            <SelectItem value="custom">Custom</SelectItem>
+          </SelectContent>
+        </Select>
 
-        <div className="flex gap-2">
+        {selectedPreset === "custom" && (
+          <div className="relative w-[300px]">
+            <DateRangePicker
+              from={dateRange.from}
+              to={dateRange.to}
+              onSelect={handleDateSelect}
+              onSearch={handleDateSearch}
+              onCancel={handleDateCancel}
+              className="border border-slate-200 rounded-md hover:border-slate-300 transition-colors"
+            />
+          </div>
+        )}
+
+        <div className="flex-1 flex justify-end gap-2">
           <Button
-            className="w-[200px]"
+          variant='outline'
             onClick={() => navigate(`/purchase/create-purchase-invoice`)}
           >
             Create Purchase Invoice
