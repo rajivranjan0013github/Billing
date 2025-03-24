@@ -784,7 +784,7 @@ export default function EditPurchaseInvoice() {
       </div>
       </ScrollArea>
       {/* footer of purchase */}
-      <div className={`fixed bottom-0 text-sm w-[calc(100%-${isCollapsed ? '95px' : '225px'})] grid grid-cols-10 gap-4 text-white bg-gray-900 rounded-lg transition-all duration-300 text-center`}>
+      <div className={`fixed bottom-0 text-sm ${isCollapsed ? 'w-[calc(100%-95px)]' : 'w-[calc(100%-225px)]'} grid grid-cols-10 gap-4 text-white bg-gray-900 rounded-lg transition-all duration-300 text-center`}>
         <div className="py-2">
           <div >
             Products: {amountData?.productCount}

@@ -11,6 +11,7 @@ import { Clock, CheckCircle2, BanknoteIcon, CreditCard, Building2, Wallet, Landm
 import { cn } from "../../../lib/utils";
 import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
 import { Separator } from "../../ui/separator";
+import {formatCurrency} from '../../../utils/Helper'
 
 export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmit, billStatus}) {
   const dispatch = useDispatch();
@@ -327,9 +328,11 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
     }
   };
 
+  const dueAmount = Number(invoiceData?.grandTotal) - Number(paymentData?.amount || 0);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl p-0 gap-0">
+      <DialogContent className="max-w-[450px] p-0 gap-0 font-semibold">
         <DialogHeader className="px-4 py-2.5 flex flex-row items-center bg-gray-100 border-b">
           <div className="flex items-center flex-1">
             {step > 1 && (
@@ -357,47 +360,37 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
           </div>
         )}
 
-        <div className="p-6">
-          <ScrollArea className="h-[400px]">
+        <div>
+          <ScrollArea className="h-[350px]">
             {step === 1 ? (
               <>
                 {/* Invoice Summary Section - Only in step 1 */}
-                <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <Label className="text-sm text-gray-500">Distributor</Label>
-                    <div className="font-medium">{invoiceData?.distributorName}</div>
+                <div className="grid grid-cols-2 gap-2 py-2 px-4 bg-gray-50 rounded-lg">
+                  <div className="col-span-2">
+                    <Label className="">Distributor Name</Label>
+                    <Input value={invoiceData?.distributorName} disabled={true} className='font-bold border-gray-500' />
                   </div>
                   <div>
-                    <Label className="text-sm text-gray-500">
+                    <Label className="text-sm">
                       Invoice Number
                     </Label>
-                    <div className="font-medium">
-                      {invoiceData?.invoiceNumber}
-                    </div>
+                    <Input value={invoiceData?.invoiceNumber} disabled={true} className='font-bold border-gray-500' />
                   </div>
                   <div>
-                    <Label className="text-sm text-gray-500">Invoice Date</Label>
-                    <div className="font-medium">
-                      {invoiceData?.invoiceDate
-                        ? format(new Date(invoiceData.invoiceDate), "dd/MM/yyyy")
-                        : "-"}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-gray-500">Total Amount</Label>
-                    <div className="font-medium">₹{invoiceData?.grandTotal}</div>
+                    <Label className="text-sm ">Invoice Date</Label>
+                    <Input value={invoiceData?.invoiceDate ? format(new Date(invoiceData.invoiceDate), "dd/MM/yyyy") : "-"} disabled={true} className='font-bold border-gray-500' />
                   </div>
                 </div>
 
                 {/* Step 1: Payment Status and Amount */}
-                <div className="space-y-4 mt-4"> 
-                  <div className="space-y-2">
-                    <Label>Payment Status</Label>
+                <div className="space-y-4"> 
+                  <div className="space-y-2 px-4">
+                    <Label>Payment Types</Label>
                     <RadioGroup
                       defaultValue="due"
                       value={paymentStatus}
                       onValueChange={setPaymentStatus}
-                      className="grid grid-cols-2 gap-4 pt-2"
+                      className="grid grid-cols-2 gap-4"
                     >
                       <div>
                         <RadioGroupItem
@@ -407,16 +400,11 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                         />
                         <Label
                           htmlFor="due"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                          className="flex items-center justify-center gap-1  border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                         >
-                          <Clock className="mb-3 h-6 w-6 text-orange-500" />
-                          <div className="space-y-1 text-center">
-                            <p className="text-sm font-medium leading-none">
-                              Due
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              Set payment due date
-                            </p>
+                          <Clock className="h-6 w-6 text-orange-500" />
+                          <div className="space-y-1 text-center"> 
+                            Due/Credit
                           </div>
                         </Label>
                       </div>
@@ -429,16 +417,11 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                         />
                         <Label
                           htmlFor="paid"
-                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                          className="flex  items-center  justify-center gap-1  border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                         >
-                          <CheckCircle2 className="mb-3 h-6 w-6 text-green-500" />
+                          <CheckCircle2 className="h-6 w-6 text-green-500" />
                           <div className="space-y-1 text-center">
-                            <p className="text-sm font-medium leading-none">
-                              Paid
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              Enter payment details
-                            </p>
+                            Paid/Cash
                           </div>
                         </Label>
                       </div>
@@ -446,7 +429,7 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                   </div>
 
                   {paymentStatus === "due" ? (
-                    <div>
+                    <div className="px-4 w-1/2">
                       <Label>Payment Due Date</Label>
                       <Input
                         type="date"
@@ -456,7 +439,7 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                       />
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-4 px-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label>Amount Paid</Label>
@@ -472,7 +455,7 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                             }
                           />
                         </div>
-                        {Number(paymentData.amount) !== Number(invoiceData?.grandTotal) && (
+                        {Number(paymentData.amount) < Number(invoiceData?.grandTotal) && (
                           <div>
                             <Label>Payment Due Date</Label>
                             <Input
@@ -571,6 +554,21 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
               </div>
             )}
           </ScrollArea>
+        </div>
+
+        <div className="grid grid-cols-3 px-4 py-2 text-lg font-semibold text-center bg-pink-100">
+          <div> 
+            <p className="text-sm text-gray-500">TOTAL AMOUNT</p>
+            <p className="font-bold">{formatCurrency(invoiceData?.grandTotal)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">PAYING NOW</p>
+            <p className="font-bold text-green-600">{Number(paymentData.amount || 0) == 0 ? '-' : formatCurrency(paymentData.amount)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">BALANCE DUE</p>
+            <p className="font-bold">{dueAmount > 0 ? formatCurrency(dueAmount) : dueAmount === 0 ? '-' : `-${formatCurrency(dueAmount)}`}</p>
+          </div>
         </div>
 
         <div className="p-3 bg-gray-100 border-t flex items-center justify-end gap-2">

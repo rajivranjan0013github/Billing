@@ -122,8 +122,8 @@ const QuickMenu = () => {
       color: "bg-lime-200 text-lime-900 hover:bg-lime-300",
     },
     {
-      title: "Analytics",
-      description: "View business analytics",
+      title: "Dashboard",
+      description: "View business dashboard",
       icon: BarChart3,
       action: () => navigate("/dashboard"),
       color: "bg-teal-200 text-teal-900 hover:bg-teal-300",
@@ -160,7 +160,7 @@ const QuickMenu = () => {
                   <action.icon className="h-6 w-6" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold">{action.title}</h2>
+                  <h2 className="text-lg font-semibold tracking-wide ">{action.title}</h2>
                   <p className="text-sm opacity-90">{action.description}</p>
                 </div>
               </div>

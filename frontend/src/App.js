@@ -87,7 +87,7 @@ const AppContent = () => {
   }
 
   return (
-    <div className="flex relative">
+    <div className="flex relative font-roboto">
       {isLoading && <div className="youtube-loader"></div>}
       {isAuthenticated && (
         <VerticalNav />

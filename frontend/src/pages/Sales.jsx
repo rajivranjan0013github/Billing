@@ -140,7 +140,7 @@ export default function Sales() {
   );
 
   return (
-    <div className="relative p-4 rounded-lg space-y-4 font-semibold">
+    <div className="relative p-4 rounded-lg space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
