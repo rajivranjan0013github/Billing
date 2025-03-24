@@ -34,12 +34,27 @@ const BatchSuggestion = forwardRef(({ value, setValue, onSuggestionSelect, inven
   }, [inventoryId]);
 
   const filtered = useMemo(() => {
-    return suggestions.filter(
-      (suggestion) =>
+    return suggestions
+      .filter((suggestion) =>
         suggestion.batchNumber
           .toLowerCase()
           .includes((value || "").toLowerCase())
-    );
+      )
+      .sort((a, b) => {
+        // First sort by quantity (out of stock at bottom)  
+        if ((a.quantity <= 0) !== (b.quantity <= 0)) {
+          return a.quantity <= 0 ? 1 : -1;
+        }
+        
+        // Then sort by expiry date
+        const [aMonth, aYear] = a.expiry.split('/').map(Number);
+        const [bMonth, bYear] = b.expiry.split('/').map(Number);
+        
+        if (aYear !== bYear) {
+          return aYear - bYear;
+        }
+        return aMonth - bMonth;
+      });
   }, [value, suggestions]);
 
   useEffect(() => {

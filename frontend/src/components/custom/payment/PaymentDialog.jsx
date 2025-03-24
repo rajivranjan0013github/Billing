@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchAccounts } from "../../../redux/slices/accountSlice";
 import { Dialog, DialogContent, DialogHeader, DialogTitle} from "../../ui/dialog";
@@ -20,6 +20,9 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
   const [paymentStatus, setPaymentStatus] = useState('due');
   const [dueDate, setDueDate] = useState(new Date(invoiceData?.dueDate || new Date()));
   const [showDetails, setShowDetails] = useState(false);
+  const [selectedMethodIndex, setSelectedMethodIndex] = useState(1);
+
+  const inputRef = useRef({});
 
   const [paymentData, setPaymentData] = useState({
     amount: "",
@@ -30,6 +33,9 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
     micrCode: "",
     transactionNumber: "",
   });
+
+  // Add ref for the radio group
+  const radioGroupRef = useRef(null);
 
   useEffect(() => {
     if(fetchStatus === 'idle') {
@@ -43,11 +49,19 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
 
   useEffect(() => {
     if (open) {
+      // Focus on the radio group when dialog opens
+      setTimeout(() => {
+        if(inputRef?.current['paymentStatus']) {
+          inputRef?.current['paymentStatus'].focus();
+        }
+      }, 100);
+      
       setError(null);
       setStep(invoiceData?.isCashCounter ? 2 : 1);
       setPaymentStatus(invoiceData?.isCashCounter ? 'paid' : "due");
       setDueDate(new Date(invoiceData?.dueDate || new Date()));
       setShowDetails(false);
+      setSelectedMethodIndex(1);
       setPaymentData({
         amount: "",
         paymentMethod: "",
@@ -62,6 +76,12 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
           ...prev,
           amount: invoiceData?.grandTotal || "",
         }));
+      }
+      
+      // If there are accounts, automatically select the first account
+      if (accounts && accounts.length > 0) {
+        const firstAccount = accounts[0];
+        handlePaymentMethodChange(`ACCOUNT_${firstAccount._id}`);
       }
     }
   }, [open, dispatch]);
@@ -134,6 +154,15 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
     }));
     setShowDetails(true);
     setStep(3); // Move to payment details step
+
+    // Focus on cheque number input if cheque method is selected
+    if (paymentMethod === "CHEQUE") {
+      setTimeout(() => {
+        if (inputRef.current['chequeNumber']) {
+          inputRef.current['chequeNumber'].focus();
+        }
+      }, 100);
+    }
   };
 
   const canSubmitPayment = () => {
@@ -235,6 +264,8 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                     chequeNumber: e.target.value,
                   })
                 }
+                onKeyDown={(e) => handleKeyDown(e, 'micrCode')}
+                ref={(el) => (inputRef.current['chequeNumber'] = el)}
                 required
               />
             </div>
@@ -249,6 +280,8 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                     micrCode: e.target.value,
                   })
                 }
+                onKeyDown={(e) => handleKeyDown(e, 'chequeDate')}
+                ref={(el) => (inputRef.current['micrCode'] = el)}
               />
             </div>
           </div>
@@ -264,6 +297,8 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                 })
               }
               className="w-full"
+              onKeyDown={(e) => handleKeyDown(e, 'nextField')}
+              ref={(el) => (inputRef.current['chequeDate'] = el)}
               required
             />
           </div>
@@ -321,6 +356,8 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                   transactionNumber: e.target.value,
                 })
               }
+              onKeyDown={(e) => handleKeyDown(e, 'amount')}
+              ref={(el) => (inputRef.current['transactionNumber'] = el)}
             />
           </div>
         </div>
@@ -329,6 +366,59 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
   };
 
   const dueAmount = Number(invoiceData?.grandTotal) - Number(paymentData?.amount || 0);
+
+  // Update the handleKeyDown function to handle RadioGroup
+  const handleKeyDown = (e, nextInputId, isRadioGroup = false) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (isRadioGroup) {
+        // If it's the radio group, determine next input based on payment status
+        const nextInput = paymentStatus === 'due' ? 'dueDate' : 'amount';
+        if (inputRef.current[nextInput]) {
+          inputRef.current[nextInput].focus();
+        }
+      } else if (nextInputId && inputRef.current[nextInputId]) {
+        inputRef.current[nextInputId].focus();
+      }
+    }
+  };
+
+  // Add keyboard navigation handler
+  const handleKeyNavigation = (e) => {
+    if (step !== 2) return;
+
+    const totalMethods = 1 + accounts.length; // 1 for cheque + number of accounts
+
+    switch (e.key) {
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedMethodIndex(prev => (prev - 1 + totalMethods) % totalMethods);
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedMethodIndex(prev => (prev + 1) % totalMethods);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (selectedMethodIndex === 0) {
+          handlePaymentMethodChange("CHEQUE");
+        } else {
+          const selectedAccount = accounts[selectedMethodIndex - 1];
+          handlePaymentMethodChange(`ACCOUNT_${selectedAccount._id}`);
+        }
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Add effect to handle keyboard events
+  useEffect(() => {
+    if (step === 2) {
+      window.addEventListener('keydown', handleKeyNavigation);
+      return () => window.removeEventListener('keydown', handleKeyNavigation);
+    }
+  }, [step, selectedMethodIndex, accounts]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -384,13 +474,15 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
 
                 {/* Step 1: Payment Status and Amount */}
                 <div className="space-y-4"> 
-                  <div className="space-y-2 px-4">
+                  <div className="space-y-2 px-4 ">
                     <Label>Payment Types</Label>
                     <RadioGroup
                       defaultValue="due"
                       value={paymentStatus}
                       onValueChange={setPaymentStatus}
                       className="grid grid-cols-2 gap-4"
+                      ref={(el) => (inputRef.current["paymentStatus"] = el)}
+                      onKeyDown={(e) => handleKeyDown(e, null, true)}
                     >
                       <div>
                         <RadioGroupItem
@@ -426,6 +518,7 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                         </Label>
                       </div>
                     </RadioGroup>
+                    <p className="text-xs">use arrow key ← →</p>
                   </div>
 
                   {paymentStatus === "due" ? (
@@ -436,6 +529,8 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                         value={dueDate ? format(dueDate, "yyyy-MM-dd") : ""}
                         onChange={(e) => setDueDate(new Date(e.target.value))}
                         className="w-full"
+                        onKeyDown={(e) => handleKeyDown(e, 'dueSubmitButton')}
+                        ref={(el) => (inputRef.current['dueDate'] = el)}
                       />
                     </div>
                   ) : (
@@ -453,6 +548,14 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                                 amount: e.target.value,
                               })
                             }
+                            onKeyDown={(e) => {
+                              if(Number(paymentData.amount) < Number(invoiceData?.grandTotal)) {
+                                handleKeyDown(e, 'dueDate2')
+                              } else {
+                                handleKeyDown(e, 'nextButton')
+                              }
+                            }}
+                            ref={(el) => (inputRef.current['amount'] = el)}
                           />
                         </div>
                         {Number(paymentData.amount) < Number(invoiceData?.grandTotal) && (
@@ -463,6 +566,8 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                               value={dueDate ? format(dueDate, "yyyy-MM-dd") : ""}
                               onChange={(e) => setDueDate(new Date(e.target.value))}
                               className="w-full"
+                              onKeyDown={(e) => handleKeyDown(e, 'nextButton')}
+                              ref={(el) => (inputRef.current['dueDate2'] = el)}
                             />
                           </div>
                         )}
@@ -472,44 +577,23 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                 </div>
               </>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 px-4 mt-2">
                 {!showDetails || step === 2 ? (
                   <div className="grid grid-cols-1 gap-2">
-                    {/* Cheque Option */}
-                    <div
-                      className={cn(
-                        "flex items-center justify-between rounded-md border border-muted bg-popover p-3 hover:bg-blue-100/70 hover:border-blue-300 cursor-pointer transition-all duration-200",
-                        paymentData.paymentMethod === "CHEQUE" &&
-                          "border-blue-500 bg-blue-100"
-                      )}
-                      onClick={() => handlePaymentMethodChange("CHEQUE")}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-1.5 rounded-full bg-purple-100">
-                          <CreditCard size={18} className="text-purple-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Cheque Payment</p>
-                          <p className="text-xs text-muted-foreground">
-                            Pay by cheque
-                          </p>
-                        </div>
-                      </div>
-                    </div>
 
                     {/* Account Options */}
-                    {accounts.map((account) => (
+                    {accounts.map((account, index) => (
                       <div
                         key={account._id}
                         className={cn(
                           "flex items-center justify-between rounded-md border border-muted bg-popover p-3 hover:bg-blue-100/70 hover:border-blue-300 cursor-pointer transition-all duration-200",
-                          paymentData.paymentMethod ===
-                            `ACCOUNT_${account._id}` &&
-                            "border-blue-500 bg-blue-100"
+                          paymentData.paymentMethod === `ACCOUNT_${account._id}` && "border-blue-500 bg-blue-100",
+                          selectedMethodIndex === index + 1 && "border-blue-500 bg-blue-100"
                         )}
-                        onClick={() =>
-                          handlePaymentMethodChange(`ACCOUNT_${account._id}`)
-                        }
+                        onClick={() => {
+                          setSelectedMethodIndex(index + 1);
+                          handlePaymentMethodChange(`ACCOUNT_${account._id}`);
+                        }}
                       >
                         <div className="flex items-center gap-3">
                           <div className="p-1.5 rounded-full bg-blue-100">
@@ -547,6 +631,32 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                         </div>
                       </div>
                     ))}
+                    {/* Cheque Option */}
+                    <div
+                      className={cn(
+                        "flex items-center justify-between rounded-md border border-muted bg-popover p-3 hover:bg-blue-100/70 hover:border-blue-300 cursor-pointer transition-all duration-200",
+                        paymentData.paymentMethod === "CHEQUE" && "border-blue-500 bg-blue-100",
+                        selectedMethodIndex === 0 && "border-blue-500 bg-blue-100"
+                      )}
+                      onClick={() => {
+                        setSelectedMethodIndex(0);
+                        handlePaymentMethodChange("CHEQUE");
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-1.5 rounded-full bg-purple-100">
+                          <CreditCard size={18} className="text-purple-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Cheque Payment</p>
+                          <p className="text-xs text-muted-foreground">
+                            Pay by cheque
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    
                   </div>
                 ) : (
                   renderTransactionDetails()
@@ -571,42 +681,46 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
           </div>
         </div>
 
-        <div className="p-3 bg-gray-100 border-t flex items-center justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-            className=""
-          >
-            Cancel
-          </Button>
-          {paymentStatus === "due" ? (
+        <div className="p-3 bg-gray-100 border-t">
+          <div className="flex items-center justify-end gap-2">
             <Button
+              variant="outline"
               size="sm"
-              onClick={handleSubmit}
-              className="bg-blue-600 text-white hover:bg-blue-700"
-              disabled={billStatus === 'loading'}
+              onClick={() => onOpenChange(false)}
+              className=""
             >
-              {billStatus === 'loading' ? 'Submitting...' : 'Submit'}
+              Cancel
             </Button>
-          ) : (
-            <Button
-              size="sm"
-              onClick={() => {
-                if (step === 1) setStep(2);
-                else if (step === 2) setStep(3);
-                else if (step === 3 && canSubmitPayment()) handleSubmit();
-              }}
-              disabled={
-                (step === 3 ? !canSubmitPayment() : !paymentData.amount) ||
-                billStatus === 'loading'
-              }
-              className="bg-blue-600 text-white hover:bg-blue-700"
-            >
-              {billStatus === 'loading' ? 'Submitting...' : 
-               step === 3 ? "Submit" : "Next"}
-            </Button>
-          )}
+            {paymentStatus === "due" ? (
+              <Button
+                size="sm"
+                onClick={handleSubmit}
+                className="bg-blue-600 text-white hover:bg-blue-700"
+                disabled={billStatus === 'loading'}
+                ref={(el) => (inputRef.current["dueSubmitButton"] = el)}
+              >
+                {billStatus === 'loading' ? 'Submitting...' : 'Submit'}
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                ref={(el) => (inputRef.current["nextButton"] = el)}
+                onClick={() => {
+                  if (step === 1) setStep(2);
+                  else if (step === 2) setStep(3);
+                  else if (step === 3 && canSubmitPayment()) handleSubmit();
+                }}
+                disabled={
+                  (step === 3 ? !canSubmitPayment() : !paymentData.amount) ||
+                  billStatus === 'loading'
+                }
+                className="bg-blue-600 text-white hover:bg-blue-700"
+              >
+                {billStatus === 'loading' ? 'Submitting...' : 
+                step === 3 ? "Submit" : "Next"}
+              </Button>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -106,6 +106,19 @@ export default function CreateSellInvoice() {
 
   const [loading, setLoading] = useState(false);
 
+  // Add keyboard shortcut for Alt+S
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (e.altKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleSaveInvoice();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [products, formData, invoiceDate, dueDate, isCashCounter, customerName]); // Add dependencies that handleSaveInvoice uses
+
   useEffect(() => {
     fetch(`${Backend_URL}/api/sales/invoice-number`, {
       credentials: "include",

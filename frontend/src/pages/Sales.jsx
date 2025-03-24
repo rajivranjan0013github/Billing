@@ -165,7 +165,7 @@ export default function Sales() {
             </div>
             <div className="text-sm text-muted-foreground">Amount Paid</div>
           </div>
-          <div>
+          <div> 
             <div className="font-semibold text-pink-500">
               {formatCurrency(summary.salesAmount - summary.amountPaid)}
             </div>
@@ -253,6 +253,7 @@ export default function Sales() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className='pl-3'>S.NO</TableHead>
                 <TableHead>INVOICE NO</TableHead>
                 <TableHead>CUSTOMER</TableHead>
                 <TableHead>BILLED ON</TableHead>
@@ -260,16 +261,17 @@ export default function Sales() {
                 <TableHead>RECEIVABLE</TableHead>
                 <TableHead>BALANCE</TableHead>
                 <TableHead>STATUS</TableHead>
-                <TableHead />
+                {/* <TableHead /> */}
               </TableRow>
             </TableHeader>
-            <TableBody>
-              {bills.map((bill) => (
+            <TableBody className='border'>
+              {bills.map((bill, index) => (
                 <TableRow
                   key={bill._id}
                   className="group cursor-pointer"
                   onClick={() => navigate(`/sale/${bill._id}`)}
                 >
+                  <TableCell className='pl-5'>{index+1}</TableCell>
                   <TableCell>{bill.invoiceNumber}</TableCell>
                   <TableCell>
                     <div>{bill.distributorName || "Cash Sale"}</div>
@@ -315,24 +317,12 @@ export default function Sales() {
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="opacity-0 group-hover:opacity-100 text-pink-500 transition-opacity">
-                      →
-                    </div>
-                  </TableCell>
+                  
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         )}
-      </div>
-
-      <div className="fixed bottom-2 flex justify-between items-center">
-        <div className="text-sm text-muted-foreground">
-          Create New Sale - <span className="font-medium">F2</span> | Move Up or
-          Down - <span className="font-medium">Arrow Keys</span> | To Open -{" "}
-          <span className="font-medium">Enter</span>
-        </div>
       </div>
     </div>
   );

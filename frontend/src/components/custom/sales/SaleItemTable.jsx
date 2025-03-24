@@ -14,7 +14,6 @@ export default function SaleTable({
   handleKeyDown,
   viewMode,
 }) {
-  console.log(products);
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(true);
   const [newProduct, setNewProduct] = useState({});

@@ -299,6 +299,7 @@ export default function PurchasesTransactions() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className='pl-5'>S.NO</TableHead>
                 <TableHead>INVOICE NO</TableHead>
                 <TableHead>DISTRIBUTOR / GSTIN</TableHead>
                 <TableHead>INVOICE DATE</TableHead>
@@ -309,13 +310,16 @@ export default function PurchasesTransactions() {
                 <TableHead>PAID / DUE</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
-              {getFilteredBills().map((bill) => (
+            <TableBody className='border'>
+              {getFilteredBills().map((bill, index) => (
                 <TableRow
                   key={bill._id}
                   className="group cursor-pointer"
                   onClick={() => navigate(`/purchase/${bill._id}`)}
                 >
+                  <TableCell className="font-medium pl-5">
+                    {index+1}
+                  </TableCell>
                   <TableCell className="font-medium">
                     {bill.invoiceNumber}
                   </TableCell>
