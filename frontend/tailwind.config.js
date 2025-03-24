@@ -17,6 +17,9 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        roboto: ["Roboto", "sans-serif"],
+      },
       gridTemplateColumns: {
         // Add custom grid configurations
         16: "repeat(16, minmax(0, 1fr))", // 16 columns

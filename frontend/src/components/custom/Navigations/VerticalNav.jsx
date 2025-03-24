@@ -147,7 +147,6 @@ export default function VerticalNav() {
         // Show success toast
         toast({
           title: "Logged out successfully",
-          description: "You have been logged out of your account.",
           variant: "success",
         });
         // Redirect to login page
@@ -156,14 +155,12 @@ export default function VerticalNav() {
         // Show error toast
         toast({
           title: "Logout failed",
-          description: "There was an error logging out. Please try again.",
           variant: "destructive",
         });
       }
     } catch (error) {
       toast({
         title: "Logout failed",
-        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     }
@@ -219,8 +216,8 @@ export default function VerticalNav() {
                           item.path,
                           item.submenu?.map((sub) => sub.path) || []
                         )
-                          ? "bg-blue-100 text-blue-900"
-                          : "text-gray-600 hover:bg-blue-50 hover:text-blue-900",
+                          ? "bg-blue-300 text-blue-900"
+                          : "text-gray-600 hover:bg-blue-100 hover:text-blue-900",
                         isCollapsed ? "px-2" : "px-4"
                       )}
                       onClick={() => {

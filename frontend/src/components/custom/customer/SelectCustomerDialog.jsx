@@ -84,10 +84,10 @@ export default function SelectCustomerDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen} hideCloseButton>
-      <DialogContent className="max-w-5xl p-0 gap-0" onKeyDown={handleKeyDown}>
+      <DialogContent className="max-w-5xl p-0 gap-0 font-roboto" onKeyDown={handleKeyDown}>
         <DialogHeader className="px-4 py-2.5 flex flex-row items-center justify-between bg-gray-100 border-b">
           <div>
-            <DialogTitle className="text-base font-semibold">Select a Customer</DialogTitle>
+            <DialogTitle className="text-base">Select a Customer</DialogTitle>
           </div>
           <div className="flex items-center gap-2 mr-6">
             <Button
