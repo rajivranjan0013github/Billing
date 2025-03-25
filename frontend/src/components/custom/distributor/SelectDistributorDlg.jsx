@@ -76,6 +76,26 @@ export default function SelectDistributorDlg({ open, setOpen, search, setSearch,
     }
   };
 
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (e.key === "F2" && open) {
+        setCreateDistributorOpen(true)
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleGlobalKeyDown);
+    };
+  }, [open, createDistributorOpen]);
+
+  const handleOnSuccess = (newDistributor) => {
+    setCreateDistributorOpen(false);
+    onSelect?.(newDistributor);
+    setOpen(false);
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen} hideCloseButton >
       <DialogContent className="max-w-5xl p-0 gap-0" onKeyDown={handleKeyDown}>
@@ -216,11 +236,7 @@ export default function SelectDistributorDlg({ open, setOpen, search, setSearch,
       <CreateDistributorDlg
         open={createDistributorOpen}
         onOpenChange={setCreateDistributorOpen}
-        onSuccess={(newDistributor) => {
-          setCreateDistributorOpen(false);
-          onSelect?.(newDistributor);
-          setOpen(false);
-        }}
+        onSuccess={handleOnSuccess}
       />
     </Dialog>
   );

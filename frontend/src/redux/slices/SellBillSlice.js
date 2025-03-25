@@ -34,7 +34,7 @@ export const createBill = createLoadingAsyncThunk(
   { useGlobalLoader: true }
 );
 
-// Add this new thunk after createBill
+// Fetch all bills with date range
 export const fetchBills = createLoadingAsyncThunk(
   "bill/fetchBills",
   async ({ startDate, endDate }) => {
@@ -47,6 +47,24 @@ export const fetchBills = createLoadingAsyncThunk(
 
     if (!response.ok) {
       throw new Error("Failed to fetch bills");
+    }
+    return response.json();
+  }
+);
+
+// Search bills
+export const searchBills = createLoadingAsyncThunk(
+  "bill/searchBills",
+  async ({ query, startDate, endDate }) => {
+    const response = await fetch(
+      `${Backend_URL}/api/sales/search?query=${query}&startDate=${startDate}&endDate=${endDate}`,
+      {
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to search bills");
     }
     return response.json();
   }
@@ -71,11 +89,28 @@ const billSlice = createSlice({
   name: "bill",
   initialState: {
     bills: [],
+    dateRange: {
+      from: new Date(),
+      to: new Date()
+    },
+    selectedPreset: "today",
     createBillStatus: "idle",
     fetchStatus: "idle",
+    searchStatus: "idle",
     error: null,
   },
-  reducers: {},
+  reducers: {
+    resetStatus: (state) => {
+      state.fetchStatus = "idle";
+      state.error = null;
+    },
+    setDateRange: (state, action) => {
+      state.dateRange = action.payload;
+    },
+    setSelectedPreset: (state, action) => {
+      state.selectedPreset = action.payload;
+    }
+  },
   extraReducers: (builder) => {
     builder
       .addCase(createBill.pending, (state) => {
@@ -92,16 +127,29 @@ const billSlice = createSlice({
       })
       .addCase(fetchBills.pending, (state) => {
         state.fetchStatus = "loading";
+        state.error = null;
       })
       .addCase(fetchBills.fulfilled, (state, action) => {
         state.fetchStatus = "succeeded";
         state.bills = action.payload;
+        state.error = null;
       })
       .addCase(fetchBills.rejected, (state, action) => {
         state.fetchStatus = "failed";
+        state.error = action.payload;
+      })
+      .addCase(searchBills.pending, (state) => {
+        state.searchStatus = "loading";
+      })
+      .addCase(searchBills.fulfilled, (state, action) => {
+        state.searchStatus = "succeeded";
+      })
+      .addCase(searchBills.rejected, (state, action) => {
+        state.searchStatus = "failed";
         state.error = action.payload;
       });
   },
 });
 
+export const { resetStatus, setDateRange, setSelectedPreset } = billSlice.actions;
 export default billSlice.reducer;

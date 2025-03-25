@@ -34,8 +34,6 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
     transactionNumber: "",
   });
 
-  // Add ref for the radio group
-  const radioGroupRef = useRef(null);
 
   useEffect(() => {
     if(fetchStatus === 'idle') {
@@ -51,16 +49,23 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
     if (open) {
       // Focus on the radio group when dialog opens
       setTimeout(() => {
-        if(inputRef?.current['paymentStatus']) {
-          inputRef?.current['paymentStatus'].focus();
-        }
+        if(invoiceData?.isCashCounter) {
+          if(inputRef?.current['nextButton']) {
+            inputRef?.current['nextButton'].focus();
+          }
+        } else {
+          if(inputRef?.current['paymentStatus']) {
+            inputRef?.current['paymentStatus'].focus();
+          }
+        } 
       }, 100);
       
       setError(null);
+      // Reset all states when dialog opens
       setStep(invoiceData?.isCashCounter ? 2 : 1);
       setPaymentStatus(invoiceData?.isCashCounter ? 'paid' : "due");
       setDueDate(new Date(invoiceData?.dueDate || new Date()));
-      setShowDetails(false);
+      setShowDetails(false); // Always start with showDetails false
       setSelectedMethodIndex(1);
       setPaymentData({
         amount: "",
@@ -71,6 +76,8 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
         micrCode: "",
         transactionNumber: "",
       });
+      
+      // If it's a cash counter, set the amount but don't advance to step 3
       if(invoiceData?.isCashCounter) {
         setPaymentData((prev) => ({
           ...prev,
@@ -78,13 +85,17 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
         }));
       }
       
-      // If there are accounts, automatically select the first account
+      // If there are accounts, automatically select the first account but don't advance to step 3
       if (accounts && accounts.length > 0) {
         const firstAccount = accounts[0];
-        handlePaymentMethodChange(`ACCOUNT_${firstAccount._id}`);
+        setPaymentData(prev => ({
+          ...prev,
+          paymentMethod: `ACCOUNT_${firstAccount._id}`,
+          accountId: firstAccount._id
+        }));
       }
     }
-  }, [open, dispatch]);
+  }, [open, dispatch, accounts, invoiceData]);
 
   useEffect(() => {
     if (paymentStatus === "paid") {
@@ -387,16 +398,52 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
   const handleKeyNavigation = (e) => {
     if (step !== 2) return;
 
-    const totalMethods = 1 + accounts.length; // 1 for cheque + number of accounts
+    const totalMethods = accounts.length + 1; // 1 for cheque + number of accounts
 
     switch (e.key) {
       case 'ArrowUp':
         e.preventDefault();
-        setSelectedMethodIndex(prev => (prev - 1 + totalMethods) % totalMethods);
+        setSelectedMethodIndex(prev => {
+          const newIndex = (prev - 1 + totalMethods) % totalMethods;
+          // Update payment data to match selection
+          if (newIndex === 0) {
+            setPaymentData(prev => ({
+              ...prev,
+              paymentMethod: "CHEQUE",
+              accountId: ""
+            }));
+          } else {
+            const selectedAccount = accounts[newIndex - 1];
+            setPaymentData(prev => ({
+              ...prev,
+              paymentMethod: `ACCOUNT_${selectedAccount._id}`,
+              accountId: selectedAccount._id
+            }));
+          }
+          return newIndex;
+        });
         break;
       case 'ArrowDown':
         e.preventDefault();
-        setSelectedMethodIndex(prev => (prev + 1) % totalMethods);
+        setSelectedMethodIndex(prev => {
+          const newIndex = (prev + 1) % totalMethods;
+          // Update payment data to match selection
+          if (newIndex === 0) {
+            setPaymentData(prev => ({
+              ...prev,
+              paymentMethod: "CHEQUE",
+              accountId: ""
+            }));
+          } else {
+            const selectedAccount = accounts[newIndex - 1];
+            setPaymentData(prev => ({
+              ...prev,
+              paymentMethod: `ACCOUNT_${selectedAccount._id}`,
+              accountId: selectedAccount._id
+            }));
+          }
+          return newIndex;
+        });
         break;
       case 'Enter':
         e.preventDefault();
@@ -419,6 +466,29 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
       return () => window.removeEventListener('keydown', handleKeyNavigation);
     }
   }, [step, selectedMethodIndex, accounts]);
+
+  // Add effect to sync payment method with selected index
+  useEffect(() => {
+    if (step === 2) {
+      const totalMethods = accounts.length + 1;
+      if (selectedMethodIndex >= 0 && selectedMethodIndex < totalMethods) {
+        if (selectedMethodIndex === 0) {
+          setPaymentData(prev => ({
+            ...prev,
+            paymentMethod: "CHEQUE",
+            accountId: ""
+          }));
+        } else {
+          const selectedAccount = accounts[selectedMethodIndex - 1];
+          setPaymentData(prev => ({
+            ...prev,
+            paymentMethod: `ACCOUNT_${selectedAccount._id}`,
+            accountId: selectedAccount._id
+          }));
+        }
+      }
+    }
+  }, [selectedMethodIndex, step, accounts]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -587,7 +657,6 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                         key={account._id}
                         className={cn(
                           "flex items-center justify-between rounded-md border border-muted bg-popover p-3 hover:bg-blue-100/70 hover:border-blue-300 cursor-pointer transition-all duration-200",
-                          paymentData.paymentMethod === `ACCOUNT_${account._id}` && "border-blue-500 bg-blue-100",
                           selectedMethodIndex === index + 1 && "border-blue-500 bg-blue-100"
                         )}
                         onClick={() => {
@@ -635,7 +704,6 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                     <div
                       className={cn(
                         "flex items-center justify-between rounded-md border border-muted bg-popover p-3 hover:bg-blue-100/70 hover:border-blue-300 cursor-pointer transition-all duration-200",
-                        paymentData.paymentMethod === "CHEQUE" && "border-blue-500 bg-blue-100",
                         selectedMethodIndex === 0 && "border-blue-500 bg-blue-100"
                       )}
                       onClick={() => {
@@ -655,8 +723,6 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                         </div>
                       </div>
                     </div>
-
-                    
                   </div>
                 ) : (
                   renderTransactionDetails()

@@ -9,7 +9,7 @@ import { Save, Settings, FileText, ClipboardList, ScrollText, ArrowLeft } from "
 import SaleItemTable from "../components/custom/sales/SaleItemTable";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
-import SelectCustomerDialog from "../components/custom/customer/SelectCustomerDialog";
+import { CustomerSuggestionWithDialog } from "../components/custom/sales/customerSuggestion";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchItems } from "../redux/slices/inventorySlice";
 import { useNavigate } from "react-router-dom";
@@ -73,7 +73,6 @@ export default function CreateSellInvoice() {
   const [invoiceDate, setInvoiceDate] = useState(new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric",}).split("/").reverse().join("-"));
   const [dueDate, setDueDate] = useState();
   const [products, setProducts] = useState([]);
-  const [customerSelectDialog, setCustomerSelectDialog] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const { toast } = useToast();
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -81,9 +80,14 @@ export default function CreateSellInvoice() {
 
   // Add useEffect to focus on customer name input when component mounts
   useEffect(() => {
-    if (inputRef.current["customerName"]) {
-      inputRef.current["customerName"].focus();
-    }
+    // Add a small delay to ensure the component is fully rendered
+    const timer = setTimeout(() => {
+      if (inputRef.current["customerName"]) {
+        inputRef.current["customerName"].focus();
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const [formData, setFormData] = useState({
@@ -315,23 +319,7 @@ export default function CreateSellInvoice() {
     }
   };
 
-  // Handle customer name input change
-  const handleCustomerNameChange = (e) => {
-    e.preventDefault();
-    const value = e.target.value;
-
-    // Open dialog if space is pressed or text is entered
-    if (value.length === 1 && value === " ") {
-      setCustomerSelectDialog(true);
-      return;
-    }
-    if (value.length > 0 && value[0] !== " ") {
-      setCustomerName(value);
-      setCustomerSelectDialog(true);
-    }
-  };
-
-  // Handle customer selection from dialog
+  // Handle customer selection from CustomerSuggestion
   const handleCustomerSelect = (customer) => {
     setCustomerName(customer.name);
     setFormData({
@@ -340,7 +328,6 @@ export default function CreateSellInvoice() {
       distributorName: customer.name,
     });
     setIsCashCounter(false); // Uncheck cash/counter when customer is selected
-    setCustomerSelectDialog(false);
     if(inputRef && inputRef.current['product']) {
       inputRef.current['product'].focus();
     }
@@ -483,12 +470,13 @@ export default function CreateSellInvoice() {
               <Label className="text-sm font-medium">
                 CUSTOMER NAME<span className="text-rose-500">*REQUIRED</span>
               </Label>
-              <Input
+              <CustomerSuggestionWithDialog
+                inputRef={inputRef}
+                value={customerName}
+                setValue={setCustomerName}
+                onSuggestionSelect={handleCustomerSelect}
+                onKeyDown={(e) => handleKeyDown(e, 'customerName')}
                 ref={(el) => (inputRef.current["customerName"] = el)}
-                value={customerName || ""}
-                onChange={handleCustomerNameChange}
-                placeholder="Type or Press space"
-                onKeyDown={(e)=> handleKeyDown(e, 'customerName')}
               />
             </div>
             <div className="flex items-center gap-2 mt-1 text-sm font-semibold">
@@ -497,7 +485,7 @@ export default function CreateSellInvoice() {
                 onCheckedChange={(checked) => {
                   if (!checked && !customerName) {
                     toast({
-                      title: "Please select cutomer to uncheck",
+                      title: "Please select customer to uncheck",
                       variant: "destructive",
                     });
                     return;
@@ -633,13 +621,6 @@ export default function CreateSellInvoice() {
           <div className='text-lg'>{formatCurrency(amountData?.grandTotal)}</div>
         </div>
       </div> 
-      <SelectCustomerDialog
-        open={customerSelectDialog}
-        setOpen={setCustomerSelectDialog}
-        search={customerName}
-        setSearch={setCustomerName}
-        onSelect={handleCustomerSelect}
-      />
       <PaymentDialog
         open={paymentDialogOpen}
         onOpenChange={setPaymentDialogOpen}

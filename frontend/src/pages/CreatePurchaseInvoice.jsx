@@ -116,11 +116,24 @@ export default function PurchaseForm() {
 
   const [loading, setLoading] = useState(false);
 
+  // Add keyboard shortcut for Alt+S
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (e.altKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleSaveInvoice();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [products, formData, formData?.invoiceNumber, invoiceDate, dueDate, distributorName]); // Add dependencies that handleSaveInvoice uses
+
   const handleSaveInvoice = async () => {
     try {
       setLoading(true);
       // Validate required fields
-      if (!formData.distributorName || !formData.invoiceNumber || !invoiceDate) {
+      if (!distributorName || !formData.invoiceNumber || !invoiceDate) {
         throw new Error("Please fill all required fields");
       }
 
@@ -221,7 +234,7 @@ export default function PurchaseForm() {
       resetFormState();
 
       // Navigate back
-      navigate(-1);
+      navigate('/purchase');
     } catch (error) {
       toast({
         title: "Error",
@@ -311,10 +324,24 @@ export default function PurchaseForm() {
       distributorName: distributor.name,
     });
     setdistributorSelectDialog(false);
-    if(inputRef.current['invoiceNo']) {
-      inputRef.current['invoiceNo'].focus();
-    }
+    setTimeout(() => {
+      if(inputRef.current['invoiceNo']) {
+        inputRef.current['invoiceNo'].focus();
+      }
+    }, 0)
+    
   };
+
+  useEffect(() => {
+    // Add a small delay to ensure the component is fully rendered
+    const timer = setTimeout(() => {
+      if (inputRef.current['distributorName']) {
+        inputRef.current['distributorName'].focus();
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div className="relative rounded-lg h-[100vh] pt-4 ">

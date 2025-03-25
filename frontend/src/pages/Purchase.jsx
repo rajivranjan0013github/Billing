@@ -288,7 +288,7 @@ export default function PurchasesTransactions() {
 
       <div className="relative overflow-x-auto">
         {purchaseBills.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground border-t">
             <Users className="h-12 w-12 mb-4" />
             <p className="text-lg">No purchase bills found</p>
             <p className="text-sm">
