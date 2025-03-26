@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import { Card } from "../components/ui/card";
 import { useNavigate } from "react-router-dom";
 import {
@@ -86,11 +86,11 @@ const QuickMenu = () => {
       color: "bg-purple-200 text-purple-900 hover:bg-purple-300",
     },
     {
-        title: "Payments",
-        description: "Track all payments",
-        icon: Wallet,
-        action: () => navigate("/payments"),
-        color: "bg-indigo-200 text-indigo-900 hover:bg-indigo-300",
+      title: "Payments",
+      description: "Track all payments",
+      icon: Wallet,
+      action: () => navigate("/payments"),
+      color: "bg-indigo-200 text-indigo-900 hover:bg-indigo-300",
     },
     {
       title: "Distributors",
@@ -106,7 +106,7 @@ const QuickMenu = () => {
       action: () => navigate("/customers"),
       color: "bg-pink-200 text-pink-900 hover:bg-pink-300",
     },
-   
+
     {
       title: "Expenses",
       description: "Track and manage expenses",
@@ -118,7 +118,7 @@ const QuickMenu = () => {
       title: "Reports",
       description: "View financial reports",
       icon: FileText,
-      action: () => navigate("/accounts"),
+      action: () => navigate("/reports"),
       color: "bg-lime-200 text-lime-900 hover:bg-lime-300",
     },
     {
@@ -146,7 +146,7 @@ const QuickMenu = () => {
 
   return (
     <div className="p-4 space-y-6">
-      <h1 className="text-2xl font-bold mb-6">Quick Menu</h1>
+      <h1 className="text-2xl  mb-6">Quick Menu</h1>
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
         {quickActions.map((action, index) => (
           <Card
@@ -160,7 +160,7 @@ const QuickMenu = () => {
                   <action.icon className="h-6 w-6" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold tracking-wide ">{action.title}</h2>
+                  <h2 className="text-lg  tracking-wide ">{action.title}</h2>
                   <p className="text-sm opacity-90">{action.description}</p>
                 </div>
               </div>

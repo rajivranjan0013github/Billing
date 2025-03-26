@@ -46,10 +46,11 @@ import EditPurchaseReturn from "./pages/EditPurchaseReturn";
 import CustomerDetails from "./pages/CustomerDetails";
 import Payments from "./pages/Payments";
 import QuickMenu from "./pages/QuickMenu";
+import Reports from "./pages/Reports";
 
 const AppContent = () => {
   const dispatch = useDispatch();
-  const {isLoading, isCollapsed} = useSelector((state) => state.loader);
+  const { isLoading, isCollapsed } = useSelector((state) => state.loader);
   const isAuthenticated = useSelector((state) => state.user.isAuthenticated);
   const [isInitializing, setIsInitializing] = useState(true);
 
@@ -85,9 +86,7 @@ const AppContent = () => {
   return (
     <div className="flex relative font-roboto">
       {isLoading && <div className="youtube-loader"></div>}
-      {isAuthenticated && (
-        <VerticalNav />
-      )}
+      {isAuthenticated && <VerticalNav />}
       <main
         className={`${
           isAuthenticated ? (isCollapsed ? "md:ml-16" : "md:ml-48") : ""
@@ -121,6 +120,7 @@ const AppContent = () => {
               <Route path="/distributors" element={<Distributors />} />
               <Route path="/customers" element={<Customers />} />
               <Route path="/payments" element={<Payments />} />
+              <Route path="/reports" element={<Reports />} />
               <Route
                 path="/customers/:customerId"
                 element={<CustomerDetails />}
