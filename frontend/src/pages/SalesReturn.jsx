@@ -27,7 +27,7 @@ export const calculateReturnTotals = (products) => {
     (total, product) => {
       const quantity = Number(product?.quantity || 0);
       const pack = Number(product?.pack || 1);
-      const purchaseRate = Number(product?.ptr || 0);
+      const purchaseRate = Number(product?.saleRate || 0);
       const discountPercent = Number(product?.discount || 0);
       const gstPer = Number(product?.gstPer || 0);
 
@@ -243,7 +243,7 @@ export default function SalesReturn() {
           saleRate: Number(product.saleRate),
           pack: Number(product.pack),
           purchaseRate: Number(product.purchaseRate),
-          ptr: Number(product.ptr),
+          saleRate: Number(product.saleRate),
           discount: Number(product.discount || 0),
           gstPer: Number(product.gstPer),
           amount: Number(product.amount),

@@ -11,7 +11,7 @@ import drugsPic from "../../../assets/drugspic.png";
 import { Button } from "../../ui/button";
 import { Card, CardContent } from "../../ui/card";
 import { Checkbox } from "../../ui/checkbox";
-import { Settings, ChevronRight, Loader2, PackageX } from "lucide-react";
+import { Settings, ChevronRight, Loader2, PackageX, X } from "lucide-react";
 import { ScrollArea } from "../../ui/scroll-area";
 import { useEffect, useState } from "react";
 import { Backend_URL, convertQuantity } from "../../../assets/Data";
@@ -30,11 +30,8 @@ import { useSelector, useDispatch } from "react-redux";
 import { useToast } from "../../../hooks/use-toast";
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../ui/alert-dialog";
@@ -48,6 +45,7 @@ export default function InventoryDetails({ inventoryId }) {
   const [isEditItemOpen, setIsEditItemOpen] = useState(false);
   const [updateBatchDetails, setUpdateBatchDetails] = useState(null);
   const [batchToDelete, setBatchToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { items } = useSelector((state) => state.inventory);
   const dispatch = useDispatch();
   const { toast } = useToast();
@@ -76,6 +74,7 @@ export default function InventoryDetails({ inventoryId }) {
 
   const handleDeleteBatch = async (batchId) => {
     try {
+      setIsDeleting(true);
       const response = await fetch(
         `${Backend_URL}/api/inventory/delete-batch/${batchId}`,
         {
@@ -87,8 +86,11 @@ export default function InventoryDetails({ inventoryId }) {
       const data = await response.json();
       setItemDetails(data);
       toast({ title: "Batch deleted successfully", variant: "destructive" });
+      setBatchToDelete(null);
     } catch (error) {
       toast({ title: "Something went wrong", variant: "destructive" });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -115,14 +117,14 @@ export default function InventoryDetails({ inventoryId }) {
               <img
                 src={inventoryDetails?.imgUri || drugsPic}
                 alt={inventoryDetails?.name}
-                width={100}
-                height={90}
+                width={80}
+                height={60}
                 className="object-contain"
               />
             </CardContent>
           </Card>
           <div>
-            <h1 className="text-2xl font-semibold">{inventoryDetails?.name}</h1>
+            <h1 className="text-2xl font-semibold capitalize">{inventoryDetails?.name}</h1>
             <p className="text-muted-foreground">{inventoryDetails?.mfcName}</p>
             <div className="flex items-center gap-2 mt-2">
               <div className="bg-orange-500 text-white p-1 rounded-full">
@@ -133,83 +135,32 @@ export default function InventoryDetails({ inventoryId }) {
             </div>
           </div>
         </div>
-        <div className="flex gap-4">
-          <Button variant="outline" className="gap-2">
-            <Settings className="w-4 h-4" />
-            Settings
-          </Button>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => setIsEditItemOpen(true)}
-          >
-            <Pencil className="w-4 h-4" />
-            Edit Item
-          </Button>
-          <Button
-            variant="default"
-            className="gap-2"
-            onClick={() => setIsManageInventoryOpen(true)}
-          >
-            <Plus className="w-4 h-4" />
-            Add Batch
-          </Button>
-        </div>
-      </div>
-
-      {/* Product Info Grid */}
-      <div className="grid grid-cols-8 gap-4 text-sm my-3">
-        <div>
-          <div className="text-muted-foreground">PACK</div>
-          <div>{inventoryDetails?.pack}'s</div>
-        </div>
-        <div>
-          <div className="text-muted-foreground">EXPIRY</div>
-          <div>{inventoryDetails?.expiry || "-"}</div>
-        </div>
-        <div>
-          <div className="text-muted-foreground">LOCATION</div>
-          <div>{inventoryDetails?.location || "-"}</div>
-        </div>
-        <div>
-          <div className="text-muted-foreground">MRP</div>
-          <div>
-            {inventoryDetails?.mrp
-              ? `₹${inventoryDetails?.mrp?.toFixed(2)}`
-              : "-"}
+        <div className="flex flex-col gap-5">
+          <div className="text-end text-lg">
+            <p>{inventoryDetails?.location || '-'}</p>
+            <p className="text-xs text-gray-500">Location</p>
           </div>
-        </div>
-        <div>
-          <div className="text-muted-foreground">PURC RATE</div>
-          <div>
-            {inventoryDetails?.purchaseRate
-              ? `₹${inventoryDetails?.purchaseRate?.toFixed(2)}`
-              : "-"}
-          </div>
-        </div>
-        <div>
-          <div className="text-muted-foreground">NET RATE</div>
-          <div>
-            {inventoryDetails?.netRate
-              ? `₹${inventoryDetails?.netRate?.toFixed(2)}`
-              : "-"}
-          </div>
-        </div>
-        <div>
-          <div className="text-muted-foreground">SALE RATE</div>
-          <div>
-            {inventoryDetails?.ptr
-              ? `₹${inventoryDetails?.ptr?.toFixed(2)}`
-              : "-"}
-          </div>
-        </div>
-        <div>
-          <div className="text-muted-foreground">STOCK</div>
-          <div>
-            {convertQuantity(
-              inventoryDetails?.quantity,
-              inventoryDetails?.pack
-            )}
+          <div className="flex gap-4">
+            <Button variant="outline" className="gap-2">
+              <Settings className="w-4 h-4" />
+              Settings
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setIsEditItemOpen(true)}
+            >
+              <Pencil className="w-4 h-4" />
+              Edit Item
+            </Button>
+            <Button
+              variant="default"
+              className="gap-2"
+              onClick={() => setIsManageInventoryOpen(true)}
+            >
+              <Plus className="w-4 h-4" />
+              Add Batch
+            </Button>
           </div>
         </div>
       </div>
@@ -224,13 +175,7 @@ export default function InventoryDetails({ inventoryId }) {
             <TabsTrigger value="purchases">PURCHASES</TabsTrigger>
             <TabsTrigger value="sales">SALES</TabsTrigger>
             <TabsTrigger value="timeline">TIMELINE</TabsTrigger>
-          </TabsList>
-          <div className="flex items-center gap-2">
-            <Checkbox id="zero-qty" />
-            <label htmlFor="zero-qty" className="text-sm">
-              Show Zero Qty Batches
-            </label>
-          </div>
+          </TabsList> 
         </div>
 
         <TabsContent value="batches" className="mt-2">
@@ -243,27 +188,27 @@ export default function InventoryDetails({ inventoryId }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>BATCH NO</TableHead>
+                  <TableHead className='pl-4'>BATCH NO</TableHead>
                   <TableHead>PACK</TableHead>
                   <TableHead>EXPIRY</TableHead>
-                  <TableHead>STATUS</TableHead>
-                  <TableHead>MRP</TableHead>
-                  <TableHead>PURC RATE</TableHead>
-                  <TableHead className='text-center'>NET RATE</TableHead>
+                  <TableHead className='text-center'>STATUS</TableHead>
+                  <TableHead className='text-center'>MRP</TableHead>
+                  <TableHead className='text-center'>PURC RATE</TableHead>
+                  <TableHead className='text-center'>NET PURC RATE</TableHead>
                   <TableHead className='text-center'>SALE RATE</TableHead>
-                  <TableHead>STOCK QTY</TableHead>
-                  <TableHead>ACTION</TableHead>
+                  <TableHead className='text-center'>QUANTITY</TableHead>
+                  <TableHead className='text-center'>ACTION</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className='border'>
                 {inventoryDetails.batch.map((batch) => (
-                  <TableRow key={batch._id}>
-                    <TableCell className="font-medium">
-                      {batch.batchNumber}
+                  <TableRow key={batch?._id}>
+                    <TableCell className="font-medium pl-6">
+                      {batch?.batchNumber}
                     </TableCell>
                     <TableCell>{batch.pack}</TableCell>
                     <TableCell>{batch.expiry}</TableCell>
-                    <TableCell>
+                    <TableCell className='text-center'>
                       <span
                         className={`${
                           batch.quantity > 0 ? "bg-green-500" : "bg-red-500"
@@ -272,14 +217,21 @@ export default function InventoryDetails({ inventoryId }) {
                         {batch.quantity > 0 ? "In Stock" : "Out of Stock"}
                       </span>
                     </TableCell>
-                    <TableCell>{formatCurrency(batch.mrp)}</TableCell>
-                    <TableCell>{formatCurrency(batch.purchaseRate)}</TableCell>
-                    <TableCell className='text-center'>{batch?.netRate ? formatCurrency(batch.netRate) : '-'}</TableCell>
-                    <TableCell className='text-center'>{batch.ptr ? formatCurrency(batch.ptr) : '-'}</TableCell>
-                    <TableCell>
+                    <TableCell className='text-center'>{formatCurrency(batch?.mrp)}</TableCell>
+                    <TableCell className='text-center'>{formatCurrency(batch?.purchaseRate)}</TableCell>
+                    <TableCell className='text-center'>
+                      <p>{formatCurrency(batch?.purchaseRate * (1 + batch?.gstPer/100) )}</p>
+                      <p className="text-xs font-normal">including {batch?.gstPer}%</p>
+                    </TableCell>
+                    <TableCell className='text-center'>
+                      <p>{batch.saleRate ? formatCurrency(batch?.saleRate) : formatCurrency(batch?.mrp)}</p>
+                      <p className="text-xs font-normal">including {batch?.gstPer}%</p>
+                    </TableCell>
+                    {/* <TableCell className='text-center'>{batch.saleRate ? formatCurrency(batch?.saleRate) : formatCurrency(batch?.mrp)}</TableCell> */}
+                    <TableCell className='text-center'>
                       {convertQuantity(batch?.quantity, batch?.pack)}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className='text-center'>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">
@@ -311,13 +263,13 @@ export default function InventoryDetails({ inventoryId }) {
           )}
         </TabsContent>
         <TabsContent value="purchases">
-          <PurchaseTab inventoryId={inventoryDetails._id} />
+          <PurchaseTab inventoryId={inventoryDetails?._id} />
         </TabsContent>
         <TabsContent value="sales">
-          <SalesTab inventoryId={inventoryDetails._id} />
+          <SalesTab inventoryId={inventoryDetails?._id} />
         </TabsContent>
         <TabsContent value="timeline">
-          <Timeline inventoryId={inventoryDetails._id} />
+          <Timeline inventoryId={inventoryDetails?._id} />
         </TabsContent>
       </Tabs>
 
@@ -340,26 +292,41 @@ export default function InventoryDetails({ inventoryId }) {
         open={!!batchToDelete}
         onOpenChange={() => setBatchToDelete(null)}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the batch{" "}
-              {batchToDelete?.batchNumber}. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
-              onClick={() => {
-                handleDeleteBatch(batchToDelete._id);
-                setBatchToDelete(null);
-              }}
+        <AlertDialogContent className="max-w-xl p-0 gap-0">
+          <AlertDialogHeader className="px-4 py-2.5 flex flex-row items-center justify-between bg-gray-100 border-b">
+            <AlertDialogTitle className="text-base font-semibold">Delete Batch</AlertDialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setBatchToDelete(null)}
+              disabled={isDeleting}
             >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
+              <X className="h-4 w-4" />
+            </Button>
+          </AlertDialogHeader>
+          <div className="p-6">
+            <AlertDialogDescription>
+              This will permanently delete the batch {batchToDelete?.batchNumber}. This action cannot be undone.
+            </AlertDialogDescription>
+          </div>
+          <div className="p-3 bg-gray-100 border-t flex items-center justify-end gap-2">
+            <Button 
+              onClick={() => setBatchToDelete(null)} 
+              variant="outline" 
+              size="sm"
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => handleDeleteBatch(batchToDelete._id)}
+              size="sm"
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </div>
         </AlertDialogContent>
       </AlertDialog>
     </ScrollArea>

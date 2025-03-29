@@ -74,7 +74,12 @@ export default function PaymentDetails() {
           <Button variant="outline" size="sm" className="text-sm">
             Download PDF
           </Button>
-          <Button variant="outline" size="sm" className="text-sm">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="text-sm"
+            onClick={() => navigate('/payment/invoice-print', { state: { paymentData: paymentDetails } })}
+          >
             Print PDF
           </Button>
           <DropdownMenu>

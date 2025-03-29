@@ -117,12 +117,6 @@ export default function SaleTable({
     setNewProduct({
       productName: product.name,
       inventoryId: product._id,
-      mrp: product.mrp,
-      expiry: product.expiry,
-      ptr: product.ptr,
-      gstPer: product.gstPer,
-      HSN: product.HSN,
-      pack: product.pack,
     });
     if (inputRef?.current["batchNumber"]) {
       inputRef.current["batchNumber"].focus();
@@ -137,7 +131,7 @@ export default function SaleTable({
       mrp: batch.mrp,
       saleRate: batch.mrp,
       expiry: batch.expiry,
-      ptr: batch.ptr,
+      saleRate: batch.saleRate,
       gstPer: batch.gstPer,
       HSN: batch.HSN,
       pack: batch.pack,

@@ -158,12 +158,12 @@ const SalesInvoicePrint = () => {
         </div> */}
 
         {/* Invoice Info & Business Details */}
-        <div className="border border-gray-800">
+        <div className="border-x-[1px] border-t-[1px]  border-gray-800">
 
           <div className="grid grid-cols-7 gap-3">
             {/* logo */}
-            <div className="border-r border-gray-800">
-              <div className="w-full border-b border-gray-800 p-1" style={{backgroundColor : '#e5e7eb'}}>TAX INVOICE</div>
+            <div className="border-r-[1px] border-gray-800">
+              <div className="w-full border-b-[1px] border-gray-800 p-1" style={{backgroundColor : '#e5e7eb'}}>TAX INVOICE</div>
               {hospitalInfo?.logoUsable && (
                   <div className="w-auto h-[78px] p-1">
                     <img
@@ -192,9 +192,9 @@ const SalesInvoicePrint = () => {
             </div>
 
             {/* Customer Details - Right Side */}
-            <div className="col-span-3  border-l border-gray-800">
+            <div className="col-span-3  border-l-[1px] border-gray-800">
               {/* Invoice Number and Date */}
-              <div className="bg-gray-200 px-3 py-1 border-b border-gray-800 flex justify-between gap-8 text-sm">
+              <div className="bg-gray-200 px-3 py-1 border-b-[1px] border-gray-800 flex justify-between gap-8 text-sm">
                   <span className="font-medium">{invoiceData.invoiceNumber}</span>
                   <span className="font-medium">
                     {format(new Date(invoiceData.invoiceDate), "dd-MM-yyyy")}
@@ -223,37 +223,37 @@ const SalesInvoicePrint = () => {
         </div>
 
         {/* Products Table */}
-        <div className=" min-h-[160px] border-r border-l border-gray-800">
+        <div className="min-h-[160px] border-[1px] border-gray-800">
           <table className="w-full text-xs">
             <thead>
-              <tr className="bg-gray-200 border-b border-gray-800">
-                <th className="border-r border-gray-800 font-medium p-1.5">
+              <tr className="bg-gray-200 border-b-[1px] border-gray-800">
+                <th className="border-r-[1px] border-gray-800 font-medium p-1.5">
                 </th>
-                <th className="border-r border-gray-800 font-medium p-1.5">
+                <th className="border-r-[1px] border-gray-800 font-medium p-1.5">
                   Description
                 </th>
-                <th className="border-r border-gray-800 font-medium p-1.5 text-center">
+                <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
                   HSN
                 </th>
-                <th className="border-r border-gray-800 font-medium p-1.5 text-center">
+                <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
                   Batch
                 </th>
-                <th className="border-r border-gray-800 font-medium p-1.5 text-center">
+                <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
                   Exp
                 </th>
-                <th className="border-r border-gray-800 font-medium p-1.5 text-center">
+                <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
                   Qty
                 </th>
-                <th className="border-r border-gray-800 font-medium p-1.5 text-center">
+                <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
                   MRP
                 </th>
-                <th className="border-r border-gray-800 font-medium p-1.5 text-center">
+                <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
                   Rate
                 </th>
-                <th className="border-r border-gray-800 font-medium p-1.5 text-center">
+                <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
                   Dis%
                 </th>
-                <th className="border-r border-gray-800 font-medium p-1.5 text-center">
+                <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
                   GST%
                 </th>
                 <th className=" font-medium p-1.5 text-right">
@@ -264,34 +264,34 @@ const SalesInvoicePrint = () => {
             <tbody className="min-h-[180px]">
               {invoiceData.products.map((product, index) => (
                 <tr key={index} className="">
-                  <td className="border-r border-gray-800 text-center p-1.5">
+                  <td className="border-r-[1px] border-gray-800 text-center p-1.5">
                     {index + 1}
                   </td>
-                  <td className="border-r border-gray-800 pl-2 p-1.5">
+                  <td className="border-r-[1px] border-gray-800 pl-2 p-1.5">
                     {product.productName}
                   </td>
-                  <td className="border-r border-gray-800 text-center p-1.5">
+                  <td className="border-r-[1px] border-gray-800 text-center p-1.5">
                     {product.HSN}
                   </td>
-                  <td className="border-r border-gray-800 text-center p-1.5">
+                  <td className="border-r-[1px] border-gray-800 text-center p-1.5">
                     {product.batchNumber}
                   </td>
-                  <td className="border-r border-gray-800 text-center p-1.5">
+                  <td className="border-r-[1px] border-gray-800 text-center p-1.5">
                     {product.expiry}
                   </td>
-                  <td className="border-r border-gray-800 text-center p-1.5">
+                  <td className="border-r-[1px] border-gray-800 text-center p-1.5">
                     {product.quantity / (product.pack || 1)}
                   </td>
-                  <td className="border-r border-gray-800 text-center p-1.5">
+                  <td className="border-r-[1px] border-gray-800 text-center p-1.5">
                     {product.mrp}
                   </td>
-                  <td className="border-r border-gray-800 text-center p-1.5">
+                  <td className="border-r-[1px] border-gray-800 text-center p-1.5">
                     {product.saleRate}
                   </td>
-                  <td className="border-r border-gray-800 text-center p-1.5">
+                  <td className="border-r-[1px] border-gray-800 text-center p-1.5">
                     {product.discount}%
                   </td>
-                  <td className="border-r border-gray-800 text-center p-1.5">
+                  <td className="border-r-[1px] border-gray-800 text-center p-1.5">
                     {product.gstPer}%
                   </td>
                   <td className=" text-right p-1.5">
@@ -301,16 +301,16 @@ const SalesInvoicePrint = () => {
               ))}
               {[...Array(Math.max(0, 10 - invoiceData.products.length))].map((_, index) => (
                 <tr key={`empty-${index}`}>
-                  <td className="border-r border-gray-800 text-center p-1.5"></td>
-                  <td className="border-r border-gray-800 pl-2 p-1.5"></td>
-                  <td className="border-r border-gray-800 text-center p-1.5"></td>
-                  <td className="border-r border-gray-800 text-center p-1.5"></td>
-                  <td className="border-r border-gray-800 text-center p-1.5"></td>
-                  <td className="border-r border-gray-800 text-center p-1.5"></td>
-                  <td className="border-r border-gray-800 text-center p-1.5"></td>
-                  <td className="border-r border-gray-800 text-center p-1.5"></td>
-                  <td className="border-r border-gray-800 text-center p-1.5"></td>
-                  <td className="border-r border-gray-800 text-center p-1.5"></td>
+                  <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
+                  <td className="border-r-[1px] border-gray-800 pl-2 p-1.5"></td>
+                  <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
+                  <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
+                  <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
+                  <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
+                  <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
+                  <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
+                  <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
+                  <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
                   <td className=" text-right p-1.5"></td>
                 </tr>
               ))}
@@ -319,16 +319,16 @@ const SalesInvoicePrint = () => {
         </div>
 
         {/* Summary Section */}
-        <div className="grid grid-cols-7 border border-gray-800">
+        <div className="grid grid-cols-7 border-b-[1px] border-l-[1px] border-r-[1px] border-gray-800">
           <div className=" flex items-end justify-center pb-3 col-span-2">
             <div className=" inline-block">
               <p className="font-medium text-xs text-gray-700">Authorized Signatory</p>
             </div>
           </div>
           {/* Tax Summary */}
-          <div className="col-span-3 border-r border-l border-gray-800">
+          <div className="col-span-3 border-r-[1px] border-l-[1px] border-gray-800">
             <table className="w-full text-xs ">
-              <thead className="border-b py-2">
+              <thead className="border-b-[1px] py-2">
                 <tr className="">
                   <th className="text-left font-medium">
                     GST
@@ -396,7 +396,7 @@ const SalesInvoicePrint = () => {
                 <span className="">GST Amount:</span>
                 <span>₹{invoiceData.billSummary.gstAmount.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between border-t border-b border-gray-800 font-medium bg-gray-200 py-1 px-2 text-sm">
+              <div className="flex justify-between border-t-[1px] border-b-[1px] border-gray-800 font-medium bg-gray-200 py-1 px-2 text-sm box-border">
                 <span>Total Amount:</span>
                 <span>{formatCurrency(invoiceData?.grandTotal)}</span>
               </div>

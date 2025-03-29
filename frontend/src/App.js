@@ -46,6 +46,7 @@ import EditPurchaseReturn from "./pages/EditPurchaseReturn";
 import CustomerDetails from "./pages/CustomerDetails";
 import Payments from "./pages/Payments";
 import QuickMenu from "./pages/QuickMenu";
+import PaymentInvoicePrint from "./pages/PaymentInvoicePrint";
 
 const AppContent = () => {
   const dispatch = useDispatch();
@@ -117,7 +118,7 @@ const AppContent = () => {
               <Route path="/expenses" element={<Expenses />} />
               <Route path="/sales" element={<Sales />} />
               <Route path="/purchase" element={<Purchase />} />
-              <Route path="/items-master" element={<Inventory />} />
+              <Route path="/inventory" element={<Inventory />} />
               <Route path="/distributors" element={<Distributors />} />
               <Route path="/customers" element={<Customers />} />
               <Route path="/payments" element={<Payments />} />
@@ -172,10 +173,8 @@ const AppContent = () => {
                 path="/purchase/return/:returnId"
                 element={<EditPurchaseReturn />}
               />
-              <Route
-                path="/sales/invoice-print"
-                element={<SalesInvoicePrint />}
-              />
+              <Route path="/sales/invoice-print" element={<SalesInvoicePrint />} />
+              <Route path="/payment/invoice-print" element={<PaymentInvoicePrint />} />
             </>
           )}
         </Routes>

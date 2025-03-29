@@ -82,7 +82,7 @@ const QuickMenu = () => {
       title: "Inventory",
       description: "View and manage inventory",
       icon: Package,
-      action: () => navigate("/items-master"),
+      action: () => navigate("/inventory"),
       color: "bg-purple-200 text-purple-900 hover:bg-purple-300",
     },
     {
@@ -160,7 +160,7 @@ const QuickMenu = () => {
                   <action.icon className="h-6 w-6" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold tracking-wide ">{action.title}</h2>
+                  <h2 className="text-lg tracking-wide ">{action.title}</h2>
                   <p className="text-sm opacity-90">{action.description}</p>
                 </div>
               </div>

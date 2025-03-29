@@ -9,6 +9,7 @@ const initialState = {
   error: null,
 };
 
+// create or update item
 export const manageInventory = createLoadingAsyncThunk(
   "inventory/manageInventory",
   async (itemData) => {

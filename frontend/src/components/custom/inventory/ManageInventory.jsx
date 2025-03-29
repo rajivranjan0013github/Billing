@@ -14,7 +14,7 @@ import {
 } from "../../ui/select";
 import ProductSelector from "./SelectInventory";
 import { Backend_URL } from "../../../assets/Data";
-import { fetchItems } from "../../../redux/slices/inventorySlice";
+import {  setItemStatusIdle } from "../../../redux/slices/inventorySlice";
 
 const INITIAL_FORM_DATA = {
   inventoryId: "",
@@ -26,11 +26,31 @@ const INITIAL_FORM_DATA = {
   gstPer: "",
   purchaseRate: "",
   purchaseGstType: "Excl gst",
-  ptr: "",
+  saleRate: "",
+  saleGstType: "Incl gst",
   pack: "",
   packs: "",
   loose: "",
 };
+
+// Input keys in order of navigation
+const inputKeys = [
+  'productName',
+  'batchNumber',
+  'expiryMonth',
+  'expiryYear',
+  'mrp',
+  'HSN',
+  'gstPer',
+  'purchaseRate',
+  'purchaseGstType',
+  'saleRate',
+  'saleGstType',
+  'pack',
+  'packs',
+  'loose',
+  'submitButton'
+];
 
 export default function ManageInventory({
   open,
@@ -42,17 +62,17 @@ export default function ManageInventory({
 }) {
   const dispatch = useDispatch();
   const { toast } = useToast();
-  const batch_numberRef = useRef(null);
+  const inputRef = useRef([]);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
 
   useEffect(() => {
     if (inventoryDetails && open) {
-      setFormData({ ...formData, inventoryId: inventoryDetails._id });
+      setFormData({ ...formData, inventoryId: inventoryDetails?._id });
       setProductSearch(inventoryDetails.name);
       setTimeout(() => {
-        if (batch_numberRef.current) {
-          batch_numberRef.current.focus();
+        if (inputRef.current['batchNumber']) {
+          inputRef.current['batchNumber'].focus();
         }
       }, 100);
     }
@@ -71,7 +91,8 @@ export default function ManageInventory({
         gstPer: batchDetails.gstPer,
         purchaseRate: batchDetails.purchaseRate,
         purchaseGstType: "Excl gst",
-        ptr: batchDetails.ptr,
+        saleRate: batchDetails.saleRate,
+        saleGstType: "Incl gst",
         pack: batchDetails.pack,
         packs: Math.floor(
           Number(batchDetails.quantity) / Number(batchDetails.pack || 1)
@@ -106,8 +127,47 @@ export default function ManageInventory({
     }));
   };
 
+  const handleKeyDown = (e, currentKey) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const currentIndex = inputKeys.indexOf(currentKey);
+      
+      // Check if current element is a select trigger
+      const isSelect = ['gstPer', 'purchaseGstType', 'saleGstType'].includes(currentKey);
+      
+      if (isSelect) {
+        // Trigger click on the select to open it
+        const selectEl = inputRef.current[currentKey];
+        if (selectEl) {
+          selectEl.click();
+        }
+        return;
+      }
+
+      if (e.shiftKey) {
+        // Move to previous input on Shift+Enter
+        if (currentIndex > 0) {
+          const prevKey = inputKeys[currentIndex - 1];
+          inputRef.current[prevKey]?.focus();
+        }
+      } else {
+        // Move to next input on Enter
+        if (currentIndex < inputKeys.length - 1) {
+          const nextKey = inputKeys[currentIndex + 1];
+          inputRef.current[nextKey]?.focus();
+        }
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log(formData);
+    
+    if(!formData.batchNumber) {
+      toast({title : 'Enter batch number', variant : 'destructive'});
+      return;
+    } 
     if (isProductSelectorOpen) return;
 
     const expiry = `${formData.expiryMonth}/${formData.expiryYear}`;
@@ -115,6 +175,11 @@ export default function ManageInventory({
       formData.purchaseGstType === "Excl gst"
         ? formData.purchaseRate
         : formData.purchaseRate / (1 + formData.gstPer / 100);
+
+    const saleRate =
+      formData.saleGstType === "Excl gst"
+        ? formData.saleRate
+        : formData.saleRate / (1 + formData.gstPer / 100);
 
     const quantity =
       Number(formData.packs) * Number(formData.pack) + Number(formData.loose);
@@ -126,7 +191,7 @@ export default function ManageInventory({
       HSN: formData.HSN,
       gstPer: Number(formData.gstPer),
       purchaseRate: Number(parseFloat(purchaseRate).toFixed(2)),
-      ptr: Number(parseFloat(formData.ptr).toFixed(2)),
+      saleRate: Number(parseFloat(saleRate).toFixed(2)),
       pack: parseInt(formData.pack),
       quantity,
     };
@@ -155,7 +220,7 @@ export default function ManageInventory({
       if (setItemDetails) {
         setItemDetails(); // Just trigger the callback without passing data
       }
-      dispatch(fetchItems());
+      dispatch(setItemStatusIdle());
       onOpenChange(false);
       toast({ title: "Batch Added", variant: "success" });
     } catch (error) {
@@ -168,27 +233,26 @@ export default function ManageInventory({
   const handleProductSelect = (product) => {
     setFormData((prev) => ({
       ...prev,
-      inventoryId: product._id,
+      inventoryId: product?._id,
     }));
     setProductSearch(product.name);
-    if (batch_numberRef.current) {
-      batch_numberRef.current.focus();
+    if (inputRef.current['batchNumber']) {
+      inputRef.current['batchNumber'].focus();
     }
   };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-[500px] overflow-y-auto">
-        <div className="flex justify-between items-center pr-8">
-          <SheetHeader>
-            <SheetTitle className="text-xl">Add New Batch</SheetTitle>
-            <p className="text-sm text-gray-500">Add or Edit Stock Batches</p>
+      <SheetContent className="w-full sm:max-w-[500px] overflow-y-auto p-0 gap-0">
+        <div className="flex justify-between items-center pr-4 px-4 py-2.5 bg-gray-100 border-b">
+          <SheetHeader className="p-0">
+            <SheetTitle className="text-base font-semibold">Add New Batch</SheetTitle>
           </SheetHeader>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-6">
-          <div className="space-y-1">
-            <Label htmlFor="productName">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="productName" className="text-sm font-medium text-gray-700">
               PRODUCT NAME<span className="text-red-500">*</span>
             </Label>
             <Input
@@ -203,6 +267,9 @@ export default function ManageInventory({
                   setIsProductSelectorOpen(true);
                 }
               }}
+              onKeyDown={(e) => handleKeyDown(e, 'productName')}
+              ref={el => inputRef.current['productName'] = el}
+              className="h-9"
             />
             <ProductSelector
               open={isProductSelectorOpen}
@@ -213,23 +280,24 @@ export default function ManageInventory({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label htmlFor="batchNumber">
+          <div className="grid grid-cols-2 gap-5">
+            <div className="space-y-2">
+              <Label htmlFor="batchNumber" className="text-sm font-medium text-gray-700">
                 BATCH NUMBER<span className="text-red-500">*</span>
               </Label>
               <Input
-                ref={batch_numberRef}
                 id="batchNumber"
                 name="batchNumber"
                 placeholder="Batch Number"
                 value={formData.batchNumber}
                 onChange={handleInputChange}
-                className="w-full h-10"
+                className="h-9"
+                onKeyDown={(e) => handleKeyDown(e, 'batchNumber')}
+                ref={el => inputRef.current['batchNumber'] = el}
               />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="expiryDate">
+            <div className="space-y-2">
+              <Label htmlFor="expiryDate" className="text-sm font-medium text-gray-700">
                 BATCH EXPIRY DATE<span className="text-red-500">*</span>
               </Label>
               <div className="flex gap-2">
@@ -239,7 +307,9 @@ export default function ManageInventory({
                   placeholder="MM"
                   value={formData.expiryMonth}
                   onChange={handleInputChange}
-                  className="w-24 h-10"
+                  className="h-9"
+                  onKeyDown={(e) => handleKeyDown(e, 'expiryMonth')}
+                  ref={el => inputRef.current['expiryMonth'] = el}
                 />
                 <Input
                   id="expiryYear"
@@ -247,15 +317,17 @@ export default function ManageInventory({
                   placeholder="YY"
                   value={formData.expiryYear}
                   onChange={handleInputChange}
-                  className="w-24 h-10"
+                  className="h-9"
+                  onKeyDown={(e) => handleKeyDown(e, 'expiryYear')}
+                  ref={el => inputRef.current['expiryYear'] = el}
                 />
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label htmlFor="mrp">
+          <div className="grid grid-cols-2 gap-5">
+            <div className="space-y-2">
+              <Label htmlFor="mrp" className="text-sm font-medium text-gray-700">
                 MRP (INCL GST)<span className="text-red-500">*</span>
               </Label>
               <Input
@@ -264,11 +336,13 @@ export default function ManageInventory({
                 placeholder="MRP (incl gst)"
                 value={formData.mrp}
                 onChange={handleInputChange}
-                className="w-full h-10"
+                className="h-9"
+                onKeyDown={(e) => handleKeyDown(e, 'mrp')}
+                ref={el => inputRef.current['mrp'] = el}
               />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="HSN">
+            <div className="space-y-2">
+              <Label htmlFor="HSN" className="text-sm font-medium text-gray-700">
                 HSN CODE WITH GST RATE<span className="text-red-500">*</span>
               </Label>
               <div className="flex gap-2">
@@ -278,19 +352,37 @@ export default function ManageInventory({
                   placeholder="Ex. 3004"
                   value={formData.HSN}
                   onChange={handleInputChange}
-                  className="w-full h-10"
+                  className="h-9"
+                  onKeyDown={(e) => handleKeyDown(e, 'HSN')}
+                  ref={el => inputRef.current['HSN'] = el}
                 />
                 <Select
                   name="gstPer"
                   value={formData.gstPer}
-                  onValueChange={(value) =>
-                    handleInputChange({ target: { name: "gstPer", value } })
-                  }
+                  onValueChange={(value) => {
+                    handleInputChange({ target: { name: "gstPer", value } });
+                  }}
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      const currentIndex = inputKeys.indexOf('gstPer');
+                      if (currentIndex < inputKeys.length - 1) {
+                        const nextKey = inputKeys[currentIndex + 1];
+                        setTimeout(() => {
+                          inputRef.current[nextKey]?.focus();
+                        }, 100);
+                      }
+                    }
+                  }}
                 >
-                  <SelectTrigger className="w-24">
+                  <SelectTrigger 
+                    className="w-24 h-9" 
+                    ref={el => inputRef.current['gstPer'] = el}
+                    onKeyDown={(e) => handleKeyDown(e, 'gstPer')}
+                  >
                     <SelectValue placeholder="gst %" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="0">0%</SelectItem>
                     <SelectItem value="5">5%</SelectItem>
                     <SelectItem value="12">12%</SelectItem>
                     <SelectItem value="18">18%</SelectItem>
@@ -301,10 +393,10 @@ export default function ManageInventory({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label htmlFor="purchaseRate">
-                PURCHASE RATE<span className="text-red-500">*</span>
+          <div className="grid grid-cols-2 gap-5">
+            <div className="space-y-2">
+              <Label htmlFor="purchaseRate" className="text-sm font-medium text-gray-700">
+                PURCHASE RATE
               </Label>
               <div className="flex gap-2">
                 <Input
@@ -313,18 +405,35 @@ export default function ManageInventory({
                   placeholder="Purch Rate"
                   value={formData.purchaseRate}
                   onChange={handleInputChange}
-                  className="w-full h-10"
+                  className="h-9"
+                  onKeyDown={(e) => handleKeyDown(e, 'purchaseRate')}
+                  ref={el => inputRef.current['purchaseRate'] = el}
                 />
                 <Select
                   name="purchaseGstType"
                   value={formData.purchaseGstType}
-                  onValueChange={(value) =>
+                  onValueChange={(value) => {
                     handleInputChange({
                       target: { name: "purchaseGstType", value },
-                    })
-                  }
+                    });
+                  }}
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      const currentIndex = inputKeys.indexOf('purchaseGstType');
+                      if (currentIndex < inputKeys.length - 1) {
+                        const nextKey = inputKeys[currentIndex + 1];
+                        setTimeout(() => {
+                          inputRef.current[nextKey]?.focus();
+                        }, 100);
+                      }
+                    }
+                  }}
                 >
-                  <SelectTrigger className="w-24">
+                  <SelectTrigger 
+                    className="w-24 h-9" 
+                    ref={el => inputRef.current['purchaseGstType'] = el}
+                    onKeyDown={(e) => handleKeyDown(e, 'purchaseGstType')}
+                  >
                     <SelectValue placeholder="Excl gst" />
                   </SelectTrigger>
                   <SelectContent>
@@ -334,25 +443,60 @@ export default function ManageInventory({
                 </Select>
               </div>
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="ptr">
-                PRICE TO RETAILER (EXCL GST)
-                <span className="text-red-500">*</span>
+            <div className="space-y-2">
+              <Label htmlFor="saleRate" className="text-sm font-medium text-gray-700">
+                SALE RATE
               </Label>
-              <Input
-                id="ptr"
-                name="ptr"
-                placeholder="PTR"
-                value={formData.ptr}
-                onChange={handleInputChange}
-                className="w-full h-10"
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="saleRate"
+                  name="saleRate"
+                  placeholder="Sale Rate"
+                  value={formData.saleRate}
+                  onChange={handleInputChange}
+                  className="h-9"
+                  onKeyDown={(e) => handleKeyDown(e, 'saleRate')}
+                  ref={el => inputRef.current['saleRate'] = el}
+                />
+                <Select
+                  name="saleGstType"
+                  value={formData.saleGstType}
+                  onValueChange={(value) => {
+                    handleInputChange({
+                      target: { name: "saleGstType", value },
+                    });
+                  }}
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      const currentIndex = inputKeys.indexOf('saleGstType');
+                      if (currentIndex < inputKeys.length - 1) {
+                        const nextKey = inputKeys[currentIndex + 1];
+                        setTimeout(() => {
+                          inputRef.current[nextKey]?.focus();
+                        }, 100);
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger 
+                    className="w-24 h-9" 
+                    ref={el => inputRef.current['saleGstType'] = el}
+                    onKeyDown={(e) => handleKeyDown(e, 'saleGstType')}
+                  >
+                    <SelectValue placeholder="Incl gst" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Excl gst">Excl gst</SelectItem>
+                    <SelectItem value="Incl gst">Incl gst</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label htmlFor="pack">
+          <div className="grid grid-cols-2 gap-5">
+            <div className="space-y-2">
+              <Label htmlFor="pack" className="text-sm font-medium text-gray-700">
                 UNITS PER PACK<span className="text-red-500">*</span>
               </Label>
               <Input
@@ -361,57 +505,72 @@ export default function ManageInventory({
                 placeholder="Ex. Tablets or Capsule per Strip"
                 value={formData.pack}
                 onChange={handleInputChange}
-                className="w-full h-10"
+                className="h-9"
+                onKeyDown={(e) => handleKeyDown(e, 'pack')}
+                ref={el => inputRef.current['pack'] = el}
               />
             </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 mt-2 text-sm text-gray-500 h-full">
                 <div className="bg-pink-500 rounded-full p-1 w-6 h-6 flex items-center justify-center text-white">
                   💊
                 </div>
                 <p>
-                  For a strip of 10 tablets or capsules, the Units per Pack will
+                  For a strip of 10 tablets, the Units per Pack will
                   be 10
                 </p>
               </div>
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="packs">
+          <div className="space-y-2">
+            <Label htmlFor="packs" className="text-sm font-medium text-gray-700">
               QUANTITY IN STOCK<span className="text-red-500">*</span>
             </Label>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-5">
               <Input
                 id="packs"
                 name="packs"
                 placeholder="No of Packs"
                 value={formData.packs}
                 onChange={handleInputChange}
-                className="w-full h-10"
+                className="h-9"
+                onKeyDown={(e) => handleKeyDown(e, 'packs')}
+                ref={el => inputRef.current['packs'] = el}
               />
-
               <Input
                 id="loose"
                 name="loose"
                 placeholder="Loose Units"
                 value={formData.loose || ""}
                 onChange={handleInputChange}
-                className="w-full h-10"
+                className="h-9"
+                onKeyDown={(e) => handleKeyDown(e, 'loose')}
+                ref={el => inputRef.current['loose'] = el}
               />
             </div>
           </div>
-
-          <div className="flex justify-end pt-4">
-            <Button
-              type="submit"
-              className="bg-gray-800 text-white"
-              disabled={isLoading}
-            >
-              {isLoading ? "Saving..." : "Save (F2)"}
-            </Button>
-          </div>
         </form>
+
+        <div className="p-3  flex items-center justify-end gap-2 b-0">
+          <Button 
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={isLoading}
+            onClick={handleSubmit}
+            ref={el => inputRef.current['submitButton'] = el}
+            className="bg-blue-600 text-white hover:bg-blue-700"
+          >
+            {isLoading ? "Saving..." : "Save"}
+          </Button>
+        </div>
       </SheetContent>
     </Sheet>
   );

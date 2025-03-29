@@ -150,7 +150,7 @@ export default function EditSaleInvoice() {
         quantity: Number(product.quantity),
         pack: Number(product.pack),
         saleRate: Number(product.saleRate),
-        ptr: Number(product.ptr),
+        saleRate: Number(product.saleRate),
         discount: Number(product.discount || 0),
         gstPer: Number(product.gstPer),
         amount: Number(product.amount),

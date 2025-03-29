@@ -67,7 +67,7 @@ export default function SalesTab({inventoryId}) {
                                     </td>
                                     <td className="px-4 py-2 text-right">₹{sale.mrp?.toFixed(2)}</td>
                                     <td className="px-4 py-2 text-right">
-                                        <div className="text-sm font-medium">₹{convertToFraction(sale?.ptr * (1 + sale.gstPer/100))}</div>
+                                        <div className="text-sm font-medium">₹{convertToFraction(sale?.saleRate * (1 + sale.gstPer/100))}</div>
                                         <div className="text-xs text-gray-500">{sale.gstPer}% GST</div>
                                     </td>
                                     <td className="px-4 py-2 text-right">

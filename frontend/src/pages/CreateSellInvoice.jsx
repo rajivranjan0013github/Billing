@@ -23,7 +23,7 @@ export const calculateTotals = (products) => {
       const quantity = Number(product?.quantity || 0);
       const pack = Number(product?.pack || 1);
       const free = Number(product?.free || 0);
-      const purchaseRate = Number(product?.ptr || 0);
+      const purchaseRate = Number(product?.saleRate || 0);
       const discountPercent =
         Number(product?.discount || 0) + Number(product?.schemePercent || 0);
       const gstPer = Number(product?.gstPer || 0);
@@ -191,7 +191,7 @@ export default function CreateSellInvoice() {
         saleRate: roundToTwo(Number(product.saleRate)),
         pack: Number(product.pack || 1),
         purchaseRate: roundToTwo(Number(product.purchaseRate)),
-        ptr: roundToTwo(Number(product.ptr)),
+        saleRate: roundToTwo(Number(product.saleRate)),
         discount: roundToTwo(Number(product.discount || 0)),
         gstPer: roundToTwo(Number(product.gstPer)),
         amount: roundToTwo(Number(product.amount)),

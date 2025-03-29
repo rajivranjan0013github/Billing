@@ -56,14 +56,14 @@ const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
       {/* Header */}
       <div className="flex justify-between mb-2">
         <div>
-          <h2 className="text-xl font-semibold">Stock on hand</h2>
+          <h2 className="text-xl font-semibold">Inventory Value</h2>
           <p className="text-xs text-muted-foreground">SKU: {items.length}</p>
         </div>
         <div className="text-right">
           <h2 className="text-xl font-semibold">
             {formatCurrency(items.reduce((acc, item) => acc + item.mrp * (item.quantity / item.pack),0))}
           </h2>
-          <p className="text-xs text-muted-foreground">Stock Value</p>
+          <p className="text-xs text-muted-foreground">total</p>
         </div>
       </div>
 
@@ -121,22 +121,19 @@ const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
                       {item?.mfcName}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
-                      <Badge
+                      
+                      <p className="text-xs truncate">Pack of {item?.pack}</p>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0 justify-center">
+                    <Badge
                         variant={item?.quantity > 0 ? "success" : "destructive"}
                         className="h-5 text-xs font-medium rounded-none"
                       >
                         {item?.quantity > 0 ? "In Stock" : "Out of Stock"}
                       </Badge>
-                      <p className="text-xs truncate">Pack of {item?.pack}</p>
-                    </div>
-                  </div>
-
-                  <div className="text-right shrink-0">
-                    <p className="font-medium">₹{item.mrp}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Exp: {item?.expiry}
-                    </p>
-                    <p className="text-sm font-medium">
+                      <p className="text-sm font-medium">
                       {item?.quantity ? convertQuantity(item.quantity, item.pack) : ""}
                     </p>
                   </div>

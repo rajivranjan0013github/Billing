@@ -41,9 +41,6 @@ export default function PaymentDetailsIn() {
     fetchPaymentDetails();
   }, [paymentId]);
 
-  console.log(paymentDetails);
-  
-
   const handleDeletePayment = async () => {
     try {
       await dispatch(deletePayment(paymentId)).unwrap();
@@ -76,7 +73,11 @@ export default function PaymentDetailsIn() {
           <Button variant="outline" className="text-sm">
             Download PDF
           </Button>
-          <Button variant="outline" className="text-sm">
+          <Button 
+            variant="outline" 
+            className="text-sm"
+            onClick={() => navigate('/payment/invoice-print', { state: { paymentData: paymentDetails } })}
+          >
             Print PDF
           </Button>
           <DropdownMenu>

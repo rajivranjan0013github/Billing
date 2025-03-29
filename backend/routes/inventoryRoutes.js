@@ -68,13 +68,11 @@ router.post('/manage-batch', verifyToken, async (req, res) => {
             }
             timeline.remarks = findChangesInObject(batchDetails, details);
             Object.assign(batchDetails, details);
-            inventoryDetails.NewBatchOperation(details);
             await batchDetails.save({session});
         } else {
             const newBatch = new InventoryBatch({inventoryId: inventoryId, ...details});
             await newBatch.save({session});
             inventoryDetails.batch.push(newBatch._id);
-            inventoryDetails.NewBatchOperation(details);
             inventoryDetails.quantity += Number(details.quantity);
             timeline.credit = Number(details.quantity);
         }
