@@ -10,7 +10,6 @@ import {
 import drugsPic from "../../../assets/drugspic.png";
 import { Button } from "../../ui/button";
 import { Card, CardContent } from "../../ui/card";
-import { Checkbox } from "../../ui/checkbox";
 import { Settings, ChevronRight, Loader2, PackageX, X } from "lucide-react";
 import { ScrollArea } from "../../ui/scroll-area";
 import { useEffect, useState } from "react";
@@ -141,10 +140,10 @@ export default function InventoryDetails({ inventoryId }) {
             <p className="text-xs text-gray-500">Location</p>
           </div>
           <div className="flex gap-4">
-            <Button variant="outline" className="gap-2">
+            {/* <Button variant="outline" className="gap-2">
               <Settings className="w-4 h-4" />
               Settings
-            </Button>
+            </Button> */}
             <Button
               variant="outline"
               className="gap-2"

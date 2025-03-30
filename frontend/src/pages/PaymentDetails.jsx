@@ -71,9 +71,6 @@ export default function PaymentDetails() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="text-sm">
-            Download PDF
-          </Button>
           <Button 
             variant="outline" 
             size="sm" 
@@ -82,7 +79,7 @@ export default function PaymentDetails() {
           >
             Print PDF
           </Button>
-          <DropdownMenu>
+          {/* <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="text-sm">
                 <Share2 className="h-4 w-4 mr-2" />
@@ -93,10 +90,10 @@ export default function PaymentDetails() {
               <DropdownMenuItem>Share via email</DropdownMenuItem>
               <DropdownMenuItem>Copy link</DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
-          <Button variant="ghost" size="icon">
+          </DropdownMenu> */}
+          {/* <Button variant="ghost" size="icon">
             <Pencil className="h-4 w-4" />
-          </Button>
+          </Button> */}
           <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <AlertDialogTrigger asChild>
               <Button variant="ghost" size="icon" className="text-destructive">

@@ -51,7 +51,8 @@ router.post("/", verifyToken, async (req, res) => {
     const newSalesBill = new SalesBill({
       ...details,
       invoiceNumber,
-      createdBy: req.user._id,
+      createdBy: req?.user._id,
+      createdByName : req?.user?.name,
       mob: distributorDetails?.mob || "",
     });
 
@@ -75,6 +76,8 @@ router.post("/", verifyToken, async (req, res) => {
         status: payment.paymentMethod === "CHEQUE" ? "PENDING" : "COMPLETED",
         remarks: payment.remarks,
         salesBills: [newSalesBill._id],
+        createdBy: req?.user._id,
+        createdByName : req?.user?.name,
       });
 
       // For cheque payments, we don't need to validate account
@@ -168,8 +171,8 @@ router.post("/", verifyToken, async (req, res) => {
         saleRate,
         gstPer,
         pack,
-        user: req.user._id,
-        userName: req?.user?.name,
+        createdBy: req?.user._id,
+        createdByName : req?.user?.name,
         customerName: details.customerName,
         customerMob: details.mob || "",
       });

@@ -47,9 +47,9 @@ router.post('/manage-batch', verifyToken, async (req, res) => {
             type: 'Adjustment',
             batchNumber: details.batchNumber,
             expiry: details.expiry,
-            user : req.user._id,
+            createdBy : req.user._id,
             pack : details.pack,
-            userName : req.user?.name
+            createdByName : req.user?.name  
         });
 
         if (_id) {

@@ -101,6 +101,7 @@ const salesBillSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Staff",
     },
+    createdByName : String,
     billSummary: {
       subtotal: { type: Number, required: true },
       discountAmount: { type: Number, required: true },

@@ -118,6 +118,7 @@ router.post("/", verifyToken, async (req, res) => {
       newInvoice = new InvoiceSchema({
         ...req.body,
         createdBy: req.user._id,
+        createByName : req.user.name,
         mob: distributorDetails.mob,
         paymentStatus: dueAmount > 0 ? "due" : "paid",
         paymentDueDate: dueAmount > 0 ? details.paymentDueDate : null,
@@ -144,6 +145,8 @@ router.post("/", verifyToken, async (req, res) => {
         status: payment.paymentMethod === "CHEQUE" ? "PENDING" : "COMPLETED",
         remarks: payment.remarks,
         bills: [newInvoice._id],
+        createdBy: req.user._id,
+        createByName : req.user.name,
       });
 
       // For cheque payments, we don't need to validate account
@@ -198,6 +201,7 @@ router.post("/", verifyToken, async (req, res) => {
         const newBatch = new InventoryBatch({
           inventoryId: inventoryId,
           ...product,
+          saleRate : product?.mrp
         });
         
         await newBatch.save({ session });
@@ -230,8 +234,8 @@ router.post("/", verifyToken, async (req, res) => {
         gstPer,
         saleRate,
         pack,
-        user: req.user._id,
-        userName: req?.user?.name,
+        createdBy: req.user._id,
+        createByName : req.user.name,
         distributorName: distributorDetails.name,
         distributorMob: distributorDetails.mob,
       });

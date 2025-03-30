@@ -89,14 +89,14 @@ export const SearchSuggestion = forwardRef(({value, setValue, onSuggestionSelect
       </div>
 
       {showSuggestions && (
-        <div className="absolute z-10 w-[700px] mt-1 bg-white border border-gray-300 rounded-sm shadow-lg">
-            <div className='w-full grid grid-cols-8 border-b-[1px] border-muted-foreground px-4 py-2'>
+        <div className="absolute z-10 w-[600px] mt-1 bg-white border border-gray-300 rounded-sm shadow-lg">
+            <div className='w-full grid grid-cols-7 border-b-[1px] border-muted-foreground px-4 py-2'>
                 <div className='col-span-2 text-sm font-semibold'>PRODUCT</div>
                 <div></div>
-                <div className='text-sm font-semibold'>MRP</div>
-                <div className='text-sm font-semibold'>LOCATION</div>
+                
                 <div className='text-sm font-semibold'>BATCHES</div>
                 <div className='text-sm font-semibold col-span-2'>QUANTITY</div>
+                <div className='text-sm font-semibold'>LOCATION</div>
             </div>
           <ScrollArea className={`${filteredSuggestions.length > 5 ? 'h-[300px]' : 'max-h-300'} pr-2`}>
             {filteredSuggestions.length > 0 ? (
@@ -104,8 +104,8 @@ export const SearchSuggestion = forwardRef(({value, setValue, onSuggestionSelect
                 {filteredSuggestions.map((suggestion, index) => (
                   <li
                     key={suggestion._id}
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    className={`w-full grid grid-cols-8 border-b-[1px] border-muted px-4 py-2 hover:bg-blue-200 ${index === selectedIndex ? 'bg-blue-200' : ''}`}
+                    onClick={() => handleSuggestionClick(suggestion)} 
+                    className={`w-full grid grid-cols-7 border-b-[1px] border-muted px-4 py-2 hover:bg-blue-200 ${index === selectedIndex ? 'bg-blue-200' : ''}`}
                   >
                       <div className='col-span-2 '>
                         <div className='text-sm uppercase font-medium'>{suggestion?.name}</div>
@@ -116,10 +116,9 @@ export const SearchSuggestion = forwardRef(({value, setValue, onSuggestionSelect
                           {suggestion?.quantity > 0 ? "In Stock" : "Out Stock"}
                         </Badge>
                       </div>
-                      <div className='text-sm'>₹{suggestion?.mrp}</div>
-                      <div className='text-sm'>{suggestion?.location}</div>
                       <div className='text-sm'>{suggestion?.batch.length ? `${suggestion.batch.length} batch` : ""}</div>
                       <div className='text-sm col-span-2'>{convertQuantity(suggestion?.quantity, suggestion?.pack)}</div>
+                      <div className='text-sm text-center'>{suggestion?.location}</div>
                     </li>
                 ))}
               </ul>

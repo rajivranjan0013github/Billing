@@ -44,6 +44,7 @@ const invoiceShema = new mongoose.Schema(
 
     status: { type: String, enum: ["active", "cancelled", "returned", "draft"] },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "Staff" },
+    createdByName : String,
     billSummary: {
       subtotal: { type: Number, required: true },
       discountAmount: { type: Number, required: true },

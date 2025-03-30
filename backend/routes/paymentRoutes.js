@@ -6,6 +6,7 @@ import { SalesBill } from "../models/SalesBill.js";
 import { Distributor } from "../models/Distributor.js";
 import AccountDetails from "../models/AccountDetails.js";
 import {Customer} from '../models/Customer.js'
+import { verifyToken } from '../middleware/authMiddleware.js';
 const router = express.Router();
 
 // Get current payment number
@@ -104,7 +105,7 @@ router.get("/pending-invoices/:distributorId", async (req, res) => {
 });
 
 // only for payment out
-router.post("/make-payment", async (req, res) => {
+router.post("/make-payment", verifyToken, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   
@@ -145,7 +146,9 @@ router.post("/make-payment", async (req, res) => {
       micrCode,
       transactionNumber,
       accountId,
-      status: paymentMethod === "CHEQUE" ? "PENDING" : "COMPLETED"
+      status: paymentMethod === "CHEQUE" ? "PENDING" : "COMPLETED",
+      createdBy: req.user._id,
+      createByName : req.user.name,
     });
 
     // Handle account updates based on payment method

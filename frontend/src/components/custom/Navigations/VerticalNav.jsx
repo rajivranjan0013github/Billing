@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -65,10 +65,10 @@ export const navItems = [
     ],
   },
   { name: "Inventory", icon: Package, path: "/inventory" },
-  { name: "Distributors", icon: Users, path: "/distributors" },
-  { name: "Customers", icon: Users, path: "/customers" },
-  { name: "Accounts", icon: Wallet, path: "/accounts" },
   { name: "Payments", icon: IndianRupee, path: "/payments" },
+  { name: "Accounts", icon: Wallet, path: "/accounts" },
+  { name: "Customers", icon: Users, path: "/customers" },
+  { name: "Distributors", icon: Users, path: "/distributors" },
   { name: "Expenses", icon: WalletMinimal, path: "/expenses" },
   { name: "Dashboard", icon: ChartColumn, path: "/dashboard" },
   { name: "Staffs", icon: UsersIcon, path: "/staff" },
