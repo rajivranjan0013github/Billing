@@ -137,13 +137,6 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
       ...prev,
       productName: product.name,
       inventoryId: product._id,
-      productName: product.name,
-      mrp: product.mrp,
-      expiry: product.expiry,
-      pack: product.pack,
-      purchaseRate: product.purchaseRate,
-      HSN: product.HSN,
-      gstPer: product.gstPer,
     }));
     setProductSearch(product.name);
     if(product?.batch?.length) {

@@ -28,7 +28,7 @@ const salesBillSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    distributorId: {
+    customerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Customer",
       required: function () {
@@ -39,6 +39,7 @@ const salesBillSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    customerName: String,
     distributorName: String,
     mob: String,
     invoiceDate: {
@@ -67,6 +68,7 @@ const salesBillSchema = new mongoose.Schema(
         saleRate: Number,
         discount: Number,
         gstPer: Number,
+        mfcName:String,
         amount: Number,
       },
     ],

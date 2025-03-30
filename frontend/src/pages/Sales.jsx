@@ -15,15 +15,28 @@ import { formatCurrency } from "../utils/Helper";
 export default function SalesTransactions() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { bills: initialBills, dateRange, selectedPreset } = useSelector((state) => state.bill);
+  const { bills: initialBills, dateRange: reduxDateRange, selectedPreset } = useSelector((state) => state.bill);
   const [bills, setBills] = useState(initialBills);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState("invoice");
   const [lastFetchedRange, setLastFetchedRange] = useState(null);
 
+  // Convert ISO strings to Date objects for the component
+  const dateRange = {
+    from: reduxDateRange.from ? new Date(reduxDateRange.from) : null,
+    to: reduxDateRange.to ? new Date(reduxDateRange.to) : null
+  };
+
   const handleDateSelect = (range) => {
-    dispatch(setDateRange(range));
-    dispatch(setSelectedPreset("custom"));
+    if (range?.from && range?.to) {
+      // Serialize dates before dispatching
+      const serializedRange = {
+        from: range.from.toISOString(),
+        to: range.to.toISOString()
+      };
+      dispatch(setDateRange(serializedRange));
+      dispatch(setSelectedPreset("custom"));
+    }
   };
 
   const handleDatePresetChange = (value) => {
@@ -59,15 +72,26 @@ export default function SalesTransactions() {
         break;
     }
 
-    dispatch(setDateRange(newRange));
+    // Serialize dates before dispatching
+    const serializedRange = {
+      from: newRange.from.toISOString(),
+      to: newRange.to.toISOString()
+    };
+    dispatch(setDateRange(serializedRange));
     fetchBillsData(newRange);
   };
 
   const handleDateSearch = () => {
     if(!dateRange.to) {
-      const updatedRange = { ...dateRange, to: dateRange.from };
+      const updatedRange = { 
+        from: dateRange.from.toISOString(),
+        to: dateRange.from.toISOString()
+      };
       dispatch(setDateRange(updatedRange));
-      fetchBillsData(updatedRange);
+      fetchBillsData({
+        from: new Date(updatedRange.from),
+        to: new Date(updatedRange.to)
+      });
     } else {
       fetchBillsData(dateRange);
     }
@@ -78,16 +102,24 @@ export default function SalesTransactions() {
       from: subDays(new Date(), 7),
       to: new Date(),
     };
-    dispatch(setDateRange(newRange));
+    // Serialize dates before dispatching
+    const serializedRange = {
+      from: newRange.from.toISOString(),
+      to: newRange.to.toISOString()
+    };
+    dispatch(setDateRange(serializedRange));
     dispatch(setSelectedPreset("thisWeek"));
     fetchBillsData(newRange);
   };
 
   const fetchBillsData = (range = dateRange) => {
+    const fromDate = range.from instanceof Date ? range.from : new Date(range.from);
+    const toDate = range.to instanceof Date ? range.to : new Date(range.to);
+
     dispatch(
       fetchBills({
-        startDate: range.from.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
-        endDate: range.to.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
+        startDate: fromDate.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
+        endDate: toDate.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
       })
     ).then((res) => {
       setBills(res.payload);
@@ -97,8 +129,8 @@ export default function SalesTransactions() {
 
   useEffect(() => {
     const shouldFetch = !lastFetchedRange || 
-      lastFetchedRange.from?.getTime() !== dateRange.from?.getTime() || 
-      lastFetchedRange.to?.getTime() !== dateRange.to?.getTime();
+      (lastFetchedRange.from?.getTime() !== dateRange.from?.getTime() || 
+      lastFetchedRange.to?.getTime() !== dateRange.to?.getTime());
 
     if (shouldFetch && dateRange.from && dateRange.to) {
       fetchBillsData();
@@ -165,23 +197,23 @@ export default function SalesTransactions() {
         </div>
         <div className="grid grid-cols-4 gap-4 text-right">
           <div>
-            <div className="font-semibold">{summary.count}</div>
+            <div className="">{summary.count}</div>
             <div className="text-sm text-muted-foreground">Sales Count</div>
           </div>
           <div>
-            <div className="font-semibold">
+            <div className="">
               {formatCurrency(summary.salesAmount)}
             </div>
             <div className="text-sm text-muted-foreground">Sales Amount</div>
           </div>
           <div>
-            <div className="font-semibold">
+            <div className="">
               {formatCurrency(summary.amountPaid)}
             </div>
             <div className="text-sm text-muted-foreground">Amount Paid</div>
           </div>
           <div>
-            <div className="font-semibold text-pink-500">
+            <div className=" text-red-500">
               {formatCurrency(summary.salesAmount - summary.amountPaid)}
             </div>
             <div className="text-sm text-muted-foreground">To Receive</div>
@@ -285,7 +317,7 @@ export default function SalesTransactions() {
         </div>
       </div>
 
-      <div className="relative overflow-x-auto">
+      <div className="relative overflow-x-auto border-t">
         {bills.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <Users className="h-12 w-12 mb-4" />

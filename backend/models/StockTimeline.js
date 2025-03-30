@@ -31,7 +31,7 @@ const stockTimelineSchema = new mongoose.Schema(
     expiry: String,
     mrp: Number,
     purchaseRate: Number,
-    ptr: Number, // sale rate also
+    saleRate: Number, // sale rate also
     gstPer: Number,
     user: {
       type: mongoose.Schema.Types.ObjectId,

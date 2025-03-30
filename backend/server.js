@@ -5,6 +5,7 @@ import path from "path";
 import cors from "cors";
 import { fileURLToPath } from "url";
 import inventoryRoutes from "./routes/inventoryRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js"
 import staffRoutes from "./routes/staffRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import salesRoutes from "./routes/salesRoutes.js";
@@ -58,6 +59,7 @@ app.use("/api/purchase", purchaseRoutes);
 app.use("/api/accounts", accountRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/reports",reportRoutes)
 app.use("/api/customers", customerRoutes);
 
 // Serve index.html for any other routes

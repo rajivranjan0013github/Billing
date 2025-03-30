@@ -33,11 +33,11 @@ router.post("/", verifyToken, async (req, res) => {
 
     // If not a cash customer, validate and fetch distributor details
     if (!details.is_cash_customer) {
-      if (!mongoose.isValidObjectId(details.distributorId)) {
+      if (!mongoose.isValidObjectId(details.customerId)) {
         throw Error("distributor Id is not valid");
       }
       distributorDetails = await Customer.findById(
-        details.distributorId
+        details.customerId
       ).session(session);
       if (!distributorDetails) {
         throw Error("distributor not found");
@@ -65,8 +65,8 @@ router.post("/", verifyToken, async (req, res) => {
         paymentType: "Payment In",
         paymentMethod: payment.paymentMethod,
         paymentDate: payment.chequeDate || new Date(),
-        distributorId: details.distributorId,
-        distributorName: details.distributorName,
+        customerId: details.customerId,
+        customerName: details.customerName,
         accountId: payment.accountId,
         transactionNumber: payment.transactionNumber,
         chequeNumber: payment.chequeNumber,
@@ -170,8 +170,8 @@ router.post("/", verifyToken, async (req, res) => {
         pack,
         user: req.user._id,
         userName: req?.user?.name,
-        distributorName: details.distributorName,
-        distributorMob: details.mob || "",
+        customerName: details.customerName,
+        customerMob: details.mob || "",
       });
       await timeline.save({ session });
     }
@@ -366,7 +366,7 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
         mrp: batch.mrp,
         purchaseRate: batch.purchaseRate,
         gstPer: batch.gstPer,
-        ptr: batch.ptr,
+        saleRate: batch.saleRate,
         user: req.user._id,
         userName: req?.user?.name,
         distributorName: distributorDetails.name,
@@ -452,7 +452,7 @@ router.delete("/invoice/:id", verifyToken, async (req, res) => {
         mrp: batch.mrp,
         purchaseRate: batch.purchaseRate,
         gstPer: batch.gstPer,
-        ptr: batch.ptr,
+        saleRate: batch.saleRate,
         user: req.user._id,
         userName: req?.user?.name,
         distributorName: invoice.distributorName,
@@ -674,7 +674,7 @@ router.post("/return", verifyToken, async (req, res) => {
         mrp: batch.mrp,
         purchaseRate: batch.purchaseRate,
         gstPer: batch.gstPer,
-        ptr: batch.ptr,
+        saleRate: batch.saleRate,
         user: req.user._id,
         userName: req?.user?.name,
         distributorName: distributorName,

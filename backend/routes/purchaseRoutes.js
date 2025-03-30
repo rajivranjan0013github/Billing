@@ -179,7 +179,7 @@ router.post("/", verifyToken, async (req, res) => {
 
     // Process inventory updates
     for (const product of req.body.products) {
-      const { inventoryId, batchNumber, batchId, expiry, quantity, pack, purchaseRate, ptr, gstPer, HSN, mrp} = product;
+      const { inventoryId, batchNumber, batchId, expiry, quantity, pack, purchaseRate, saleRate, gstPer, HSN, mrp} = product;
 
       const inventorySchema = await Inventory.findById(inventoryId).session(session);
 
@@ -201,7 +201,6 @@ router.post("/", verifyToken, async (req, res) => {
         });
         
         await newBatch.save({ session });
-        inventorySchema.NewBatchOperation(newBatch);
         inventorySchema.batch.push(newBatch._id);
         
         // Update the batchId in the invoice's products array
@@ -229,7 +228,7 @@ router.post("/", verifyToken, async (req, res) => {
         mrp,
         purchaseRate,
         gstPer,
-        ptr,
+        saleRate,
         pack,
         user: req.user._id,
         userName: req?.user?.name,
@@ -315,7 +314,7 @@ router.post("/edit", verifyToken, async (req, res) => {
         mrp: oldProduct.mrp,
         purchaseRate: oldProduct.purchaseRate,
         gstPer: oldProduct.gstPer,
-        ptr: oldProduct.ptr,
+        saleRate: oldProduct.saleRate,
         pack: oldProduct.pack,
         user: req.user._id,
         userName: req?.user?.name,
@@ -381,7 +380,7 @@ router.post("/edit", verifyToken, async (req, res) => {
 
     // Process new inventory updates
     for (const product of req.body.products) {
-      const { inventoryId, batchNumber, batchId, expiry, quantity, pack, purchaseRate, ptr, gstPer, HSN, mrp } = product;
+      const { inventoryId, batchNumber, batchId, expiry, quantity, pack, purchaseRate, saleRate, gstPer, HSN, mrp } = product;
 
       const inventorySchema = await Inventory.findById(inventoryId).session(session);
       if (!inventorySchema) {
@@ -400,7 +399,6 @@ router.post("/edit", verifyToken, async (req, res) => {
           ...product,
         });
         await newBatch.save({ session });
-        inventorySchema.NewBatchOperation(newBatch);
         inventorySchema.batch.push(newBatch._id);
 
         // Update the batchId in the invoice's products array
@@ -428,7 +426,7 @@ router.post("/edit", verifyToken, async (req, res) => {
         mrp,
         purchaseRate,
         gstPer,
-        ptr,
+        saleRate,
         pack,
         user: req.user._id,
         userName: req?.user?.name,
@@ -811,7 +809,7 @@ router.delete("/:id", verifyToken, async (req, res) => {
         mrp: product.mrp,
         purchaseRate: product.purchaseRate,
         gstPer: product.gstPer,
-        ptr: product.ptr,
+        saleRate: product.saleRate,
         pack: product.pack,
         user: req.user._id,
         userName: req?.user?.name,

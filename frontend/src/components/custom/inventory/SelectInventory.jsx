@@ -1,44 +1,65 @@
-import React, { useState, useEffect, useRef } from "react"
-import { Check, Search, X, PackageX, Plus } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../ui/dialog'
-import { Input } from '../../ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table'
-import { cn } from '../../../lib/utils'
-import { Button } from "../../ui/button"
-import AddNewInventory from './AddNewInventory'
-import {useSelector, useDispatch} from 'react-redux'
-import {fetchItems} from '../../../redux/slices/inventorySlice'
-import { ScrollArea } from "../../ui/scroll-area"
-import { Separator } from "../../ui/separator"
-  
-export default function ProductSelector({ open, onOpenChange, onSelect, search, setSearch }) {
+import React, { useState, useEffect, useRef } from "react";
+import { Check, Search, X, PackageX, Plus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../../ui/dialog";
+import { Input } from "../../ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../ui/table";
+import { cn } from "../../../lib/utils";
+import { Button } from "../../ui/button";
+import AddNewInventory from "./AddNewInventory";
+import { useSelector, useDispatch } from "react-redux";
+import { fetchItems } from "../../../redux/slices/inventorySlice";
+import { ScrollArea } from "../../ui/scroll-area";
+import { Separator } from "../../ui/separator";
+
+export default function ProductSelector({
+  open,
+  onOpenChange,
+  onSelect,
+  search,
+  setSearch,
+}) {
   const [selectedId, setSelectedId] = useState(null);
   const [newItemDialogOpen, setNewItemDialogOpen] = useState(false);
-  const {items : products, itemsStatus} = useSelector(state => state.inventory);
+  const { items: products, itemsStatus } = useSelector(
+    (state) => state.inventory
+  );
   const dispatch = useDispatch();
   const searchRef = useRef();
 
   useEffect(() => {
-    if(!newItemDialogOpen) {
+    if (!newItemDialogOpen) {
       setTimeout(() => {
-        if(searchRef?.current) {
+        if (searchRef?.current) {
           searchRef?.current.focus();
         }
       }, 0);
     }
-  }, [newItemDialogOpen])
-  
+  }, [newItemDialogOpen]);
+
   useEffect(() => {
-    if(itemsStatus === 'idle'){
+    if (itemsStatus === "idle") {
       dispatch(fetchItems());
     }
   }, [dispatch, itemsStatus]);
-  
+
   // Update selectedId when dialog opens or filtered products change
   useEffect(() => {
-    const filteredProducts = products.filter(product =>
-      product.name.toLowerCase().includes(search.toLowerCase()) ||
-      product.mfcName.toLowerCase().includes(search.toLowerCase())
+    const filteredProducts = products?.filter(
+      (product) =>
+        product.name?.toLowerCase().includes(search?.toLowerCase()) ||
+        product.mfcName?.toLowerCase().includes(search?.toLowerCase())
     );
     // Set selectedId to the first item's ID if there are filtered results
     if (filteredProducts.length > 0) {
@@ -48,22 +69,27 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
     }
   }, [search, open, products]);
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(search.toLowerCase()) ||
-    product.mfcName.toLowerCase().includes(search.toLowerCase())
-  )
+  const filteredProducts = products?.filter(
+    (product) =>
+      product.name?.toLowerCase().includes(search?.toLowerCase()) ||
+      product.mfcName?.toLowerCase().includes(search?.toLowerCase())
+  );
 
   // Handle keyboard navigation
   const handleKeyDown = (e) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
-      const currentIndex = filteredProducts.findIndex(p => p._id === selectedId);
+      const currentIndex = filteredProducts.findIndex(
+        (p) => p._id === selectedId
+      );
       let newIndex;
 
       if (e.key === "ArrowDown") {
-        newIndex = currentIndex < filteredProducts.length - 1 ? currentIndex + 1 : 0;
+        newIndex =
+          currentIndex < filteredProducts.length - 1 ? currentIndex + 1 : 0;
       } else {
-        newIndex = currentIndex > 0 ? currentIndex - 1 : filteredProducts.length - 1;
+        newIndex =
+          currentIndex > 0 ? currentIndex - 1 : filteredProducts.length - 1;
       }
 
       const newSelectedId = filteredProducts[newIndex]._id;
@@ -76,7 +102,7 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
       });
     } else if (e.key === "Enter" && selectedId) {
       // Handle selection
-      handleSelect(filteredProducts.find(p => p._id === selectedId));
+      handleSelect(filteredProducts.find((p) => p._id === selectedId));
       onOpenChange(false);
     } else if (e.key === "Escape") {
       onOpenChange(false);
@@ -85,7 +111,7 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
 
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
-      if (e.key === "F2" &&  open) {
+      if (e.key === "F2" && open) {
         setNewItemDialogOpen(true);
       }
     };
@@ -99,17 +125,22 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
 
   // Add handling for selection
   const handleSelect = (product) => {
-    onSelect?.(product)
-    onOpenChange(false)
-  }
+    onSelect?.(product);
+    onOpenChange(false);
+  };
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-5xl p-0 gap-0" onKeyDown={handleKeyDown}>
+        <DialogContent
+          className="max-w-5xl p-0 gap-0"
+          onKeyDown={handleKeyDown}
+        >
           <DialogHeader className="px-4 py-2.5 flex flex-row items-center justify-between bg-gray-100 border-b">
             <div>
-              <DialogTitle className="text-base font-semibold">Select a Product</DialogTitle>
+              <DialogTitle className="text-base font-semibold">
+                Select a Product
+              </DialogTitle>
             </div>
             <div className="flex items-center gap-2 mr-6">
               <Button
@@ -127,7 +158,9 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
           <div className="p-4 border-b bg-white">
             <div className="flex gap-3">
               <div className="flex-1">
-                <div className="text-xs font-medium text-gray-700 mb-1.5">Enter Product Name</div>
+                <div className="text-xs font-medium text-gray-700 mb-1.5">
+                  Enter Product Name
+                </div>
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2 h-4 w-4 text-gray-400" />
                   <Input
@@ -147,12 +180,24 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
             <Table>
               <TableHeader className="sticky top-0 bg-gray-50 z-10">
                 <TableRow>
-                  <TableHead className="w-[30%] text-left text-sm font-semibold text-gray-600">PRODUCT NAME/COMPANY</TableHead>
-                  <TableHead className="w-[10%] text-left text-sm font-semibold text-gray-600">PACK</TableHead>
-                  <TableHead className="w-[15%] text-left text-sm font-semibold text-gray-600">STATUS</TableHead>
-                  <TableHead className="w-[15%] text-left text-sm font-semibold text-gray-600">MRP</TableHead>
-                  <TableHead className="w-[15%] text-left text-sm font-semibold text-gray-600">EXPIRY</TableHead>
-                  <TableHead className="w-[15%] text-left text-sm font-semibold text-gray-600">LOCATION</TableHead>
+                  <TableHead className="w-[30%] text-left text-sm font-semibold text-gray-600">
+                    PRODUCT NAME/COMPANY
+                  </TableHead>
+                  <TableHead className="w-[10%] text-left text-sm font-semibold text-gray-600">
+                    PACK
+                  </TableHead>
+                  <TableHead className="w-[15%] text-left text-sm font-semibold text-gray-600">
+                    STATUS
+                  </TableHead>
+                  <TableHead className="w-[15%] text-left text-sm font-semibold text-gray-600">
+                    MRP
+                  </TableHead>
+                  <TableHead className="w-[15%] text-left text-sm font-semibold text-gray-600">
+                    EXPIRY
+                  </TableHead>
+                  <TableHead className="w-[15%] text-left text-sm font-semibold text-gray-600">
+                    LOCATION
+                  </TableHead>
                 </TableRow>
               </TableHeader>
             </Table>
@@ -173,10 +218,14 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
                       <TableCell className="w-[30%] py-3">
                         <div>
                           <div className="font-medium">{product.name}</div>
-                          <div className="text-xs text-gray-500">{product.mfcName}</div>
+                          <div className="text-xs text-gray-500">
+                            {product.mfcName}
+                          </div>
                         </div>
                       </TableCell>
-                      <TableCell className="w-[10%] py-3">{product.pack}</TableCell>
+                      <TableCell className="w-[10%] py-3">
+                        {product.pack}
+                      </TableCell>
                       <TableCell className="w-[15%] py-3">
                         {product.quantity > 0 ? (
                           <div className="space-y-1">
@@ -192,9 +241,15 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="w-[15%] py-3">₹{product?.mrp?.toFixed(2)}</TableCell>
-                      <TableCell className="w-[15%] py-3">{product?.expiry}</TableCell>
-                      <TableCell className="w-[15%] py-3">{product?.location}</TableCell>
+                      <TableCell className="w-[15%] py-3">
+                        ₹{product?.mrp?.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="w-[15%] py-3">
+                        {product?.expiry}
+                      </TableCell>
+                      <TableCell className="w-[15%] py-3">
+                        {product?.location}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -214,11 +269,10 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
         </DialogContent>
       </Dialog>
 
-      <AddNewInventory 
-        open={newItemDialogOpen} 
+      <AddNewInventory
+        open={newItemDialogOpen}
         onOpenChange={setNewItemDialogOpen}
       />
     </>
-  )
+  );
 }
-

@@ -60,6 +60,7 @@ export default function AddNewInventory({ open, onOpenChange, inventoryDetails})
         pack: inventoryDetails.pack || "",
         composition: inventoryDetails.composition || "",
         medicine_form: category,
+        location : inventoryDetails?.location || ''
       });
       setCategorySearchValue(
         form

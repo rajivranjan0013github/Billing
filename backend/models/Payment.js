@@ -44,7 +44,13 @@ const paymentSchema = new mongoose.Schema(
     },
     distributorName: {
       type: String,
-      required: true,
+    },
+    customerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Customer",
+    },
+    customerName: {
+      type: String,
     },
     accountId: {
       type: mongoose.Schema.Types.ObjectId,

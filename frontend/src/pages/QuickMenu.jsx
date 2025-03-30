@@ -82,7 +82,7 @@ const QuickMenu = () => {
       title: "Inventory",
       description: "View and manage inventory",
       icon: Package,
-      action: () => navigate("/items-master"),
+      action: () => navigate("/inventory"),
       color: "bg-purple-200 text-purple-900 hover:bg-purple-300",
     },
     {

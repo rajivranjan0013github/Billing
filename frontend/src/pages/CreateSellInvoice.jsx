@@ -23,7 +23,7 @@ export const calculateTotals = (products) => {
       const quantity = Number(product?.quantity || 0);
       const pack = Number(product?.pack || 1);
       const free = Number(product?.free || 0);
-      const purchaseRate = Number(product?.ptr || 0);
+      const purchaseRate = Number(product?.saleRate || 0);
       const discountPercent =
         Number(product?.discount || 0) + Number(product?.schemePercent || 0);
       const gstPer = Number(product?.gstPer || 0);
@@ -92,8 +92,8 @@ export default function CreateSellInvoice() {
 
   const [formData, setFormData] = useState({
     saleType: "invoice",
-    distributorName: "",
-    distributorId: "",
+    customerName: "",
+    customerId: "",
     invoiceNumber: "",
     invoiceDate: new Date(),
     paymentDueDate: "",
@@ -144,7 +144,7 @@ export default function CreateSellInvoice() {
         !formData.invoiceNumber ||
         !formData.saleType ||
         !invoiceDate ||
-        (!formData.distributorName && !isCashCounter)
+        (!formData.customerName && !isCashCounter)
       ) {
         throw new Error("Please fill all required fields");
       }
@@ -156,8 +156,8 @@ export default function CreateSellInvoice() {
       // Instead of saving invoice here, open payment dialog
       setInvoiceForPayment({
         isCashCounter,
-        distributorName: isCashCounter ? "Cash/Counter" : formData.distributorName,
-        distributorId: isCashCounter ? null : formData.distributorId,
+        customerName: isCashCounter ? "Cash/Counter" : formData.customerName,
+        customerId: isCashCounter ? null : formData.customerId,
         invoiceNumber: formData.invoiceNumber,
         invoiceDate: invoiceDate,
         grandTotal: amountData.grandTotal,
@@ -191,7 +191,7 @@ export default function CreateSellInvoice() {
         saleRate: roundToTwo(Number(product.saleRate)),
         pack: Number(product.pack || 1),
         purchaseRate: roundToTwo(Number(product.purchaseRate)),
-        ptr: roundToTwo(Number(product.ptr)),
+        saleRate: roundToTwo(Number(product.saleRate)),
         discount: roundToTwo(Number(product.discount || 0)),
         gstPer: roundToTwo(Number(product.gstPer)),
         amount: roundToTwo(Number(product.amount)),
@@ -243,8 +243,8 @@ export default function CreateSellInvoice() {
       const finalData = {
         saleType: formData.saleType,
         invoiceNumber: formData.invoiceNumber,
-        distributorName: isCashCounter ? "Cash/Counter" : formData.distributorName,
-        distributorId: isCashCounter ? null : formData.distributorId,
+        customerName: isCashCounter ? "Cash/Counter" : formData.customerName,
+        customerId: isCashCounter ? null : formData.customerId,
         invoiceDate: invoiceDate,
         paymentDueDate: paymentStatus === "due" ? paymentData.dueDate : null,
         products: formattedProducts,
@@ -282,7 +282,7 @@ export default function CreateSellInvoice() {
           // Reset form
           setFormData({
             saleType: "invoice",
-            distributorName: "",
+            customerName: "",
             invoiceNumber: "",
             invoiceDate: "",
             paymentDueDate: "",
@@ -324,8 +324,8 @@ export default function CreateSellInvoice() {
     setCustomerName(customer.name);
     setFormData({
       ...formData,
-      distributorId: customer._id,
-      distributorName: customer.name,
+      customerId: customer._id,
+      customerName: customer.name,
     });
     setIsCashCounter(false); // Uncheck cash/counter when customer is selected
     if(inputRef && inputRef.current['product']) {
@@ -495,8 +495,8 @@ export default function CreateSellInvoice() {
                     setCustomerName("");
                     setFormData((prev) => ({
                       ...prev,
-                      distributorName: "",
-                      distributorId: "",
+                      customerName: "",
+                      customerId: "",
                     }));
                   }
                 }}

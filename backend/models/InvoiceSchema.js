@@ -27,7 +27,7 @@ const invoiceShema = new mongoose.Schema(
         pack: Number,
         purchaseRate: Number,
         saleRate: Number,
-        ptr: Number,
+        saleRate: Number,
         schemeInput1: Number,
         schemeInput2: Number,
         discount: Number,

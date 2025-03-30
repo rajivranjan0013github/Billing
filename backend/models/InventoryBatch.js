@@ -15,7 +15,7 @@ const InventoryBatchSchema = new mongoose.Schema({
     gstPer: Number,
     purchaseRate: Number, // excl gst
     netRate:Number,  // purchase rate + gst
-    ptr:Number, // without gst
+    saleRate:Number, // without gst
     pack:Number
 }, {timestamps : true});
 

@@ -35,18 +35,47 @@ import {
   RefreshCcw,
   Search,
   Users,
+  ChevronDown,
+  X,
 } from "lucide-react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import MonthPicker from "../components/ui/month_picker";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
+import { cn } from "../lib/utils";
+import { fetchSalesReport, clearReport } from "../redux/slices/reportSlice";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../components/ui/dialog";
+import SelectInventory from "../components/custom/inventory/SelectInventory";
 
 const Reports = () => {
-  // Add loading state
-  const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useDispatch();
+
+  // Get report state from Redux
+  const {
+    data: reportData,
+    status: reportStatus,
+    error: reportError,
+  } = useSelector((state) => state.report);
+
+  // Add error state
+  const [localError, setLocalError] = useState(null);
 
   // State for date filters
   const [dateRange, setDateRange] = useState({
-    from: undefined,
-    to: undefined,
+    from: null,
+    to: null,
   });
 
   // State for daily report
@@ -58,12 +87,27 @@ const Reports = () => {
   // State for active tab
   const [activeTab, setActiveTab] = useState("sales");
 
+  // State for filters
+  const [filters, setFilters] = useState({
+    manufacturer: "",
+    distributor: "all",
+    customer: "all",
+    product: "",
+  });
+
   // Get data from Redux store
   const salesData = useSelector((state) => state.bill.bills);
   const purchaseData = useSelector((state) => state.purchaseBill.bills);
   const inventoryData = useSelector((state) => state.inventory.items);
   const distributors = useSelector((state) => state.distributor.distributors);
   const customers = useSelector((state) => state.customers.customers);
+
+  // Add state for selected product
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  console.log(selectedProduct);
+  // Replace product dialog state with search state
+  const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
 
   // Report metadata with icons - using a more subtle approach
   const reportTypes = {
@@ -75,7 +119,7 @@ const Reports = () => {
         filters: ["dateRange"],
       },
       {
-        id: "customer-wise",
+        id: "distributor-wise",
         name: "Customer Wise",
         icon: Users,
         filters: ["dateRange", "customer"],
@@ -91,18 +135,6 @@ const Reports = () => {
         name: "Manufacturer Wise",
         icon: Store,
         filters: ["dateRange", "manufacturer"],
-      },
-      {
-        id: "daily-sales",
-        name: "Daily Summary",
-        icon: BarChart,
-        filters: ["singleDate"],
-      },
-      {
-        id: "monthly-sales",
-        name: "Monthly Summary",
-        icon: LineChart,
-        filters: ["month"],
       },
     ],
     purchase: [
@@ -129,18 +161,6 @@ const Reports = () => {
         name: "Manufacturer Wise",
         icon: Store,
         filters: ["dateRange", "manufacturer"],
-      },
-      {
-        id: "daily-purchases",
-        name: "Daily Summary",
-        icon: BarChart,
-        filters: ["singleDate"],
-      },
-      {
-        id: "monthly-purchases",
-        name: "Monthly Summary",
-        icon: LineChart,
-        filters: ["month"],
       },
     ],
     inventory: [
@@ -180,19 +200,23 @@ const Reports = () => {
     inventory: "stock-status",
   });
 
-  // State for other filters
-  const [filters, setFilters] = useState({
-    manufacturer: "",
-    distributor: "all",
-    customer: "all",
-    product: "",
-  });
-
   // Get the currently selected report
   const getSelectedReport = () => {
     return reportTypes[activeTab]?.find(
       (r) => r.id === selectedReportType[activeTab]
     );
+  };
+
+  // Clear report data when changing report type
+  const handleReportTypeChange = (newType) => {
+    setSelectedReportType({
+      ...selectedReportType,
+      [activeTab]: newType,
+    });
+    // Clear the report data
+    dispatch(clearReport());
+    // Clear any local errors
+    setLocalError(null);
   };
 
   // Check if a specific filter is needed for the current report
@@ -209,41 +233,122 @@ const Reports = () => {
     }));
   };
 
-  const generateReport = () => {
-    // Set loading state to true
-    setIsLoading(true);
+  // Function to handle product selection
+  const handleProductSelect = (product) => {
+    console.log("Selected product in handler:", product);
+    // Close the dialog
+    setIsProductDialogOpen(false);
+    // Set the selected product
+    setSelectedProduct(product);
+    // Update filters with the product name - use productName instead of name
+    handleFilterChange("product", product?.name || "");
+  };
 
-    // Log the report parameters
-    const selectedReport = getSelectedReport();
-    let reportData = {
-      reportType: selectedReportType[activeTab],
-      filters: {
-        ...filters,
-        customer:
-          filters.customer === "all" ? "All Customers" : filters.customer,
-        distributor:
-          filters.distributor === "all"
-            ? "All Distributors"
-            : filters.distributor,
-      },
-    };
+  // Get inventory items from Redux store
+  const inventoryItems = useSelector((state) => state.inventory.items);
 
-    // Add appropriate date information based on report type
-    if (selectedReport.filters.includes("dateRange")) {
-      reportData.dateRange = dateRange;
-    } else if (selectedReport.filters.includes("singleDate")) {
-      reportData.date = singleDate;
-    } else if (selectedReport.filters.includes("month")) {
-      reportData.month = selectedMonth;
+  // Filter inventory items based on search query
+  const filteredProducts = productSearch
+    ? inventoryItems?.filter((item) =>
+        item.productName.toLowerCase().includes(productSearch.toLowerCase())
+      )
+    : inventoryItems;
+
+  // Function to clear product selection
+  const clearProductSelection = (e) => {
+    e.stopPropagation();
+    setSelectedProduct(null);
+    handleFilterChange("product", "");
+  };
+
+  // Function to handle date range changes
+  const handleDateRangeChange = (field, value) => {
+    setDateRange((prev) => ({
+      ...prev,
+      [field]: value ? new Date(value) : null,
+    }));
+  };
+
+  // Function to generate report
+  const generateReport = async () => {
+    try {
+      // Get the selected report details
+      const selectedReport = getSelectedReport();
+
+      // Clear any previous errors
+      setLocalError(null);
+
+      // Validate date range if required
+      if (isFilterRequired("dateRange")) {
+        if (!dateRange.from || !dateRange.to) {
+          setLocalError("Please select both From and To dates");
+          return;
+        }
+      }
+
+      // Validate single date if required
+      if (isFilterRequired("singleDate") && !singleDate) {
+        setLocalError("Please select a date");
+        return;
+      }
+
+      // Validate month if required
+      if (isFilterRequired("month") && !selectedMonth) {
+        setLocalError("Please select a month");
+        return;
+      }
+
+      // For product-wise report, enforce product filter
+      if (selectedReportType[activeTab] === "product-wise") {
+        if (!filters.product || filters.product.trim() === "") {
+          setLocalError(
+            "Please select a product to generate product-wise report"
+          );
+          return;
+        }
+      }
+
+      // Prepare filter parameters - ensure all values are serializable
+      let params = {
+        reportType: selectedReportType[activeTab],
+      };
+
+      // Add date range filters - convert dates to ISO strings
+      if (isFilterRequired("dateRange") && dateRange.from && dateRange.to) {
+        params.startDate = format(dateRange.from, "yyyy-MM-dd");
+        params.endDate = format(dateRange.to, "yyyy-MM-dd");
+      }
+
+      // Add single date filter - convert date to ISO string
+      if (isFilterRequired("singleDate") && singleDate) {
+        params.date = format(singleDate, "yyyy-MM-dd");
+      }
+
+      // Add month filter - convert date to string
+      if (isFilterRequired("month") && selectedMonth) {
+        params.month = format(selectedMonth, "yyyy-MM");
+      }
+
+      // Add other filters - ensure all values are strings or primitives
+      if (filters.customer !== "all") params.customerId = filters.customer;
+      if (filters.distributor !== "all")
+        params.distributorId = filters.distributor;
+      if (filters.manufacturer) params.manufacturer = filters.manufacturer;
+      if (filters.product) params.product = filters.product;
+
+      // Dispatch the appropriate action based on the active tab
+      switch (activeTab) {
+        case "sales":
+          await dispatch(fetchSalesReport(params)).unwrap();
+          break;
+        // Add cases for purchase and inventory when implementing those
+        default:
+          throw new Error("Invalid report type");
+      }
+    } catch (err) {
+      setLocalError(err.message || "Failed to generate report");
+      console.error("Report generation failed:", err);
     }
-
-    console.log("Generating report with:", reportData);
-
-    // Simulate API call delay
-    setTimeout(() => {
-      // Set loading state back to false after "API call"
-      setIsLoading(false);
-    }, 1500);
   };
 
   // Function to render filters based on the active tab and report type
@@ -279,7 +384,7 @@ const Reports = () => {
               className="flex items-center"
               style={{
                 boxSizing: "border-box",
-                columnGap: "8px",
+                columnGap: "4px",
                 display: "flex",
                 flexDirection: "row",
                 flexWrap: "wrap",
@@ -289,54 +394,68 @@ const Reports = () => {
                 maxWidth: "calc(100% - 100px)",
                 rowGap: "8px",
                 unicodeBidi: "isolate",
-                width: "160px",
+                width: "auto",
               }}
             >
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-sm py-0 px-2 mr-1"
-                  >
-                    <CalendarIcon className="mr-1 h-3.5 w-3.5 opacity-70" />
-                    {dateRange.from ? format(dateRange.from, "PP") : "From"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={dateRange.from}
-                    onSelect={(date) =>
-                      setDateRange((prev) => ({ ...prev, from: date }))
-                    }
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <div className="flex items-center space-x-1">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-sm py-0 px-2"
+                    >
+                      <CalendarIcon className="mr-1 h-3.5 w-3.5 opacity-70" />
+                      {dateRange.from ? format(dateRange.from, "PP") : "From"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dateRange.from}
+                      onSelect={(date) => {
+                        if (date) {
+                          handleDateRangeChange("from", date);
+                        }
+                      }}
+                      disabled={(date) =>
+                        dateRange.to ? date > dateRange.to : false
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
 
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-sm py-0 px-2"
-                  >
-                    <CalendarIcon className="mr-1 h-3.5 w-3.5 opacity-70" />
-                    {dateRange.to ? format(dateRange.to, "PP") : "To"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={dateRange.to}
-                    onSelect={(date) =>
-                      setDateRange((prev) => ({ ...prev, to: date }))
-                    }
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+                <span className="text-gray-500">-</span>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-sm py-0 px-2"
+                    >
+                      <CalendarIcon className="mr-1 h-3.5 w-3.5 opacity-70" />
+                      {dateRange.to ? format(dateRange.to, "PP") : "To"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dateRange.to}
+                      onSelect={(date) => {
+                        if (date) {
+                          handleDateRangeChange("to", date);
+                        }
+                      }}
+                      disabled={(date) =>
+                        dateRange.from ? date < dateRange.from : false
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
           )}
 
@@ -356,29 +475,35 @@ const Reports = () => {
               }}
             >
               <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-sm py-0 px-2 w-full"
-                  >
-                    <CalendarIcon className="mr-1 h-3.5 w-3.5 opacity-70" />
-                    {singleDate ? format(singleDate, "PP") : "Select Date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={singleDate}
-                    onSelect={setSingleDate}
-                    initialFocus
-                  />
-                </PopoverContent>
+                {({ setOpen }) => (
+                  <>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-sm py-0 px-2 w-full"
+                      >
+                        <CalendarIcon className="mr-1 h-3.5 w-3.5 opacity-70" />
+                        {singleDate ? format(singleDate, "PP") : "Select Date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={singleDate}
+                        onSelect={(date) => {
+                          setSingleDate(date);
+                          setOpen(false);
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </>
+                )}
               </Popover>
             </div>
           )}
 
-          {/* Month picker for monthly reports */}
           {needsMonth && (
             <div
               style={{
@@ -393,24 +518,31 @@ const Reports = () => {
               }}
             >
               <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-sm py-0 px-2 w-full"
-                  >
-                    <CalendarIcon className="mr-1 h-3.5 w-3.5 opacity-70" />
-                    {selectedMonth
-                      ? format(selectedMonth, "MMMM yyyy")
-                      : "Select Month"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <MonthPicker
-                    currentMonth={selectedMonth || startOfMonth(new Date())}
-                    onMonthChange={(value) => setSelectedMonth(value)}
-                  />
-                </PopoverContent>
+                {({ setOpen }) => (
+                  <>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-sm py-0 px-2 w-full"
+                      >
+                        <CalendarIcon className="mr-1 h-3.5 w-3.5 opacity-70" />
+                        {selectedMonth
+                          ? format(selectedMonth, "MMMM yyyy")
+                          : "Select Month"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <MonthPicker
+                        currentMonth={selectedMonth || startOfMonth(new Date())}
+                        onMonthChange={(value) => {
+                          setSelectedMonth(value);
+                          setOpen(false);
+                        }}
+                      />
+                    </PopoverContent>
+                  </>
+                )}
               </Popover>
             </div>
           )}
@@ -509,17 +641,31 @@ const Reports = () => {
                 width: "160px",
               }}
             >
-              <div className="relative w-full">
-                <Search className="absolute left-2 top-2 h-3.5 w-3.5 opacity-50" />
-                <Input
-                  placeholder="Product"
-                  value={filters.product}
-                  onChange={(e) =>
-                    handleFilterChange("product", e.target.value)
-                  }
-                  className="pl-7 h-8 text-sm py-0 pr-2"
-                />
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-sm py-0 px-2 w-full flex justify-between items-center"
+                onClick={() => setIsProductDialogOpen(true)}
+              >
+                <span className="flex items-center truncate">
+                  <Package className="mr-2 h-3.5 w-3.5 opacity-70" />
+                  {filters.product || "Select Product"}
+                </span>
+                {filters.product && (
+                  <X
+                    className="h-3.5 w-3.5 opacity-70 hover:opacity-100"
+                    onClick={clearProductSelection}
+                  />
+                )}
+              </Button>
+
+              <SelectInventory
+                open={isProductDialogOpen}
+                onOpenChange={setIsProductDialogOpen}
+                onSelect={handleProductSelect}
+                search={productSearch}
+                setSearch={setProductSearch}
+              />
             </div>
           )}
 
@@ -566,9 +712,9 @@ const Reports = () => {
               onClick={generateReport}
               size="sm"
               className="h-8 py-0 px-4 text-sm bg-gray-900 hover:bg-black"
-              disabled={isLoading}
+              disabled={reportStatus === "loading"}
             >
-              {isLoading ? (
+              {reportStatus === "loading" ? (
                 <>
                   <span className="mr-1 h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
                   Generating...
@@ -602,12 +748,7 @@ const Reports = () => {
                   ? `ring-1 ring-gray-900 bg-gray-50`
                   : "border border-gray-200 hover:border-gray-300"
               }`}
-              onClick={() =>
-                setSelectedReportType({
-                  ...selectedReportType,
-                  [activeTab]: report.id,
-                })
-              }
+              onClick={() => handleReportTypeChange(report.id)}
             >
               <div className="flex flex-col items-center text-center p-2">
                 <ReportIcon className="h-4.5 w-4.5 mb-1 text-gray-800" />
@@ -622,23 +763,26 @@ const Reports = () => {
     );
   };
 
-  // Placeholder for report results
+  // Function to render the report results
   const renderReportResults = () => {
     // Get the selected report details
     const selectedReport = getSelectedReport();
+
+    // If no report is selected, return early
+    if (!selectedReport) {
+      return null;
+    }
 
     return (
       <div className="bg-white p-4 rounded-lg border border-gray-200">
         <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
           <div className="flex items-center">
-            {selectedReport?.icon && (
-              <div className="p-1.5 rounded-md bg-gray-100 mr-3">
-                <selectedReport.icon className="h-5 w-5 text-gray-800" />
-              </div>
-            )}
+            <div className="p-1.5 rounded-md bg-gray-100 mr-3">
+              <selectedReport.icon className="h-5 w-5 text-gray-800" />
+            </div>
             <div>
               <h3 className="text-base font-medium text-gray-800">
-                {selectedReport?.name || "Report"}
+                {selectedReport.name || "Report"}
               </h3>
               {isFilterRequired("dateRange") &&
                 dateRange.from &&
@@ -663,7 +807,7 @@ const Reports = () => {
           <Button
             variant="outline"
             size="sm"
-            disabled={isLoading}
+            disabled={reportStatus === "loading"}
             className="h-8 text-sm"
           >
             <DownloadIcon className="mr-1 h-3.5 w-3.5" />
@@ -671,7 +815,11 @@ const Reports = () => {
           </Button>
         </div>
 
-        {isLoading ? (
+        {localError || reportError ? (
+          <div className="flex flex-col items-center justify-center py-12 text-red-600">
+            <p className="text-base font-medium">{localError || reportError}</p>
+          </div>
+        ) : reportStatus === "loading" ? (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="h-10 w-10 rounded-full border-2 border-t-black border-r-black border-b-gray-300 border-l-gray-300 animate-spin mb-4"></div>
             <p className="text-base font-medium text-gray-800">
@@ -679,16 +827,22 @@ const Reports = () => {
             </p>
             <p className="text-sm text-gray-600 mt-1">This may take a moment</p>
           </div>
+        ) : reportData ? (
+          <div className="space-y-4">
+            <div className="overflow-x-auto">
+              {activeTab === "sales" && renderSalesTable()}
+            </div>
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="p-3 rounded-full bg-gray-100 mb-3">
               <selectedReport.icon className="h-6 w-6 text-gray-800" />
             </div>
             <p className="text-base font-medium text-gray-800 mb-1">
-              Your {selectedReport?.name} will appear here
+              Your {selectedReport.name} will appear here
             </p>
             <p className="text-sm text-gray-600 mb-3 text-center max-w-sm">
-              {selectedReport?.filters?.length > 0
+              {selectedReport.filters?.length > 0
                 ? "Select your filters and click Generate to create your report"
                 : "Click Generate to create your report"}
             </p>
@@ -706,6 +860,396 @@ const Reports = () => {
     );
   };
 
+  // Function to render the sales table based on report type
+  const renderSalesTable = () => {
+    if (!reportData) return null;
+
+    switch (selectedReportType[activeTab]) {
+      case "all-sales":
+        return (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>INVOICE NO</TableHead>
+                <TableHead>INVOICE DATE</TableHead>
+                <TableHead>CUSTOMER</TableHead>
+                <TableHead>TOTAL ITEMS</TableHead>
+                <TableHead>SUBTOTAL</TableHead>
+                <TableHead>GST</TableHead>
+                <TableHead>TOTAL</TableHead>
+                <TableHead>STATUS</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reportData.sales?.map((sale) => (
+                <TableRow key={sale._id}>
+                  <TableCell>{sale.invoiceNumber}</TableCell>
+                  <TableCell>
+                    {format(new Date(sale.invoiceDate), "dd/MM/yyyy")}
+                  </TableCell>
+                  <TableCell>
+                    <div>{sale.distributorName}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {sale.mob}
+                    </div>
+                  </TableCell>
+                  <TableCell>{sale.billSummary.productCount}</TableCell>
+                  <TableCell>₹{sale.billSummary.subtotal.toFixed(2)}</TableCell>
+                  <TableCell>
+                    ₹{sale.billSummary.gstAmount.toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    ₹{sale.billSummary.grandTotal.toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium",
+                        {
+                          "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20":
+                            sale.paymentStatus === "paid",
+                          "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20":
+                            sale.paymentStatus === "due",
+                        }
+                      )}
+                    >
+                      {sale.paymentStatus === "paid" ? "Paid" : "Due"}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        );
+
+      case "customer-wise":
+        return (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>CUSTOMER</TableHead>
+                <TableHead>TOTAL BILLS</TableHead>
+                <TableHead>TOTAL AMOUNT</TableHead>
+                <TableHead>AVERAGE BILL VALUE</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reportData.customerSummary?.map((customer) => (
+                <TableRow key={customer.customerId}>
+                  <TableCell>{customer.customerName}</TableCell>
+                  <TableCell>{customer.totalSales}</TableCell>
+                  <TableCell>₹{customer.totalAmount.toFixed(2)}</TableCell>
+                  <TableCell>
+                    ₹{(customer.totalAmount / customer.totalSales).toFixed(2)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        );
+
+      case "manufacturer-wise":
+        return (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>MANUFACTURER</TableHead>
+                <TableHead>PRODUCTS SOLD</TableHead>
+                <TableHead>TOTAL QUANTITY</TableHead>
+                <TableHead>TOTAL AMOUNT</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reportData.manufacturerSummary?.map((mfr) => (
+                <TableRow key={mfr.manufacturer}>
+                  <TableCell>{mfr.manufacturer}</TableCell>
+                  <TableCell>{mfr.uniqueProducts}</TableCell>
+                  <TableCell>{mfr.totalQuantity}</TableCell>
+                  <TableCell>₹{mfr.totalAmount.toFixed(2)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        );
+
+      case "product-wise":
+        return (
+          <div className="space-y-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>PRODUCT</TableHead>
+                  <TableHead>BATCH</TableHead>
+                  <TableHead>MANUFACTURER</TableHead>
+                  <TableHead>QUANTITY SOLD</TableHead>
+                  <TableHead>TOTAL AMOUNT</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reportData.productSummary?.map((product) => {
+                  const productKey = `${product.productName}-${product.batchNumber}`;
+                  const isSelected = selectedProduct === productKey;
+
+                  return (
+                    <React.Fragment key={productKey}>
+                      <TableRow
+                        className={cn(
+                          "cursor-pointer hover:bg-gray-50",
+                          isSelected && "bg-gray-50"
+                        )}
+                        onClick={() =>
+                          setSelectedProduct(isSelected ? null : productKey)
+                        }
+                      >
+                        <TableCell>{product.productName}</TableCell>
+                        <TableCell>{product.batchNumber}</TableCell>
+                        <TableCell>{product.manufacturer}</TableCell>
+                        <TableCell>{product.quantitySold}</TableCell>
+                        <TableCell>₹{product.totalAmount.toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedProduct(
+                                isSelected ? null : productKey
+                              );
+                            }}
+                          >
+                            <ChevronDown
+                              className={cn(
+                                "h-4 w-4 transition-transform",
+                                isSelected && "transform rotate-180"
+                              )}
+                            />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+
+                      {isSelected && reportData.productSales[productKey] && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="p-0">
+                            <div className="bg-gray-50 p-4">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="text-xs">
+                                      INVOICE NO
+                                    </TableHead>
+                                    <TableHead className="text-xs">
+                                      DATE
+                                    </TableHead>
+                                    <TableHead className="text-xs">
+                                      CUSTOMER
+                                    </TableHead>
+                                    <TableHead className="text-xs">
+                                      QUANTITY
+                                    </TableHead>
+                                    <TableHead className="text-xs">
+                                      RATE
+                                    </TableHead>
+                                    <TableHead className="text-xs">
+                                      AMOUNT
+                                    </TableHead>
+                                    <TableHead className="text-xs">
+                                      GST
+                                    </TableHead>
+                                    <TableHead className="text-xs">
+                                      TOTAL
+                                    </TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {reportData.productSales[productKey].map(
+                                    (sale, index) => (
+                                      <TableRow
+                                        key={`${sale.invoiceNumber}-${index}`}
+                                      >
+                                        <TableCell className="text-xs">
+                                          {sale.invoiceNumber}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          {format(
+                                            new Date(sale.invoiceDate),
+                                            "dd/MM/yyyy"
+                                          )}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          {sale.customerName}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          {sale.quantity}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          ₹{sale.rate.toFixed(2)}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          ₹{sale.amount.toFixed(2)}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          {sale.gst}%
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          ₹{sale.totalAmount.toFixed(2)}
+                                        </TableCell>
+                                      </TableRow>
+                                    )
+                                  )}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        );
+
+      case "daily-sales":
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-4 gap-4 mb-6">
+              <div className="bg-white p-4 rounded-lg border border-gray-200">
+                <h3 className="text-sm font-medium text-gray-600 mb-2">
+                  Total Sales
+                </h3>
+                <p className="text-2xl font-semibold">
+                  ₹{reportData.dailySummary.totalSales.toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-white p-4 rounded-lg border border-gray-200">
+                <h3 className="text-sm font-medium text-gray-600 mb-2">
+                  Total Bills
+                </h3>
+                <p className="text-2xl font-semibold">
+                  {reportData.dailySummary.totalBills}
+                </p>
+              </div>
+              <div className="bg-white p-4 rounded-lg border border-gray-200">
+                <h3 className="text-sm font-medium text-gray-600 mb-2">
+                  Average Bill Value
+                </h3>
+                <p className="text-2xl font-semibold">
+                  ₹{reportData.dailySummary.averageBillValue.toFixed(2)}
+                </p>
+              </div>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>HOUR</TableHead>
+                  <TableHead>BILLS</TableHead>
+                  <TableHead>SALES AMOUNT</TableHead>
+                  <TableHead>TOTAL AMOUNT</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reportData.hourlyData.map((hour) => (
+                  <TableRow key={hour.hour}>
+                    <TableCell>{`${hour.hour
+                      .toString()
+                      .padStart(2, "0")}:00 - ${(hour.hour + 1)
+                      .toString()
+                      .padStart(2, "0")}:00`}</TableCell>
+                    <TableCell>{hour.billCount}</TableCell>
+                    <TableCell>₹{hour.totalSales.toFixed(2)}</TableCell>
+                    <TableCell>₹{hour.totalAmount.toFixed(2)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        );
+
+      case "monthly-sales":
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-5 gap-4 mb-6">
+              <div className="bg-white p-4 rounded-lg border border-gray-200">
+                <h3 className="text-sm font-medium text-gray-600 mb-2">
+                  Total Sales
+                </h3>
+                <p className="text-2xl font-semibold">
+                  ₹{reportData.monthlySummary.totalSales.toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-white p-4 rounded-lg border border-gray-200">
+                <h3 className="text-sm font-medium text-gray-600 mb-2">
+                  Total Bills
+                </h3>
+                <p className="text-2xl font-semibold">
+                  {reportData.monthlySummary.totalBills}
+                </p>
+              </div>
+              <div className="bg-white p-4 rounded-lg border border-gray-200">
+                <h3 className="text-sm font-medium text-gray-600 mb-2">
+                  Average Bill Value
+                </h3>
+                <p className="text-2xl font-semibold">
+                  ₹{reportData.monthlySummary.averageBillValue.toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-white p-4 rounded-lg border border-gray-200">
+                <h3 className="text-sm font-medium text-gray-600 mb-2">
+                  Average Daily Sales
+                </h3>
+                <p className="text-2xl font-semibold">
+                  ₹{reportData.monthlySummary.averageDailySales.toFixed(2)}
+                </p>
+              </div>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>DATE</TableHead>
+                  <TableHead>BILLS</TableHead>
+                  <TableHead>SALES AMOUNT</TableHead>
+                  <TableHead>TOTAL AMOUNT</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reportData.dailyData.map((day) => (
+                  <TableRow key={day.day}>
+                    <TableCell>
+                      {format(
+                        new Date(
+                          reportData.monthlySummary.month +
+                            `-${day.day.toString().padStart(2, "0")}`
+                        ),
+                        "dd MMM yyyy"
+                      )}
+                    </TableCell>
+                    <TableCell>{day.billCount}</TableCell>
+                    <TableCell>₹{day.totalSales.toFixed(2)}</TableCell>
+                    <TableCell>₹{day.totalAmount.toFixed(2)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  // Handle tab change
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    // Clear the report data when changing tabs
+    dispatch(clearReport());
+    // Clear any local errors
+    setLocalError(null);
+  };
+
   return (
     <div className="p-4 space-y-3 bg-gray-50">
       <div className="flex justify-between items-center mb-2">
@@ -720,25 +1264,28 @@ const Reports = () => {
         <Tabs
           defaultValue="sales"
           value={activeTab}
-          onValueChange={setActiveTab}
+          onValueChange={handleTabChange}
           className="w-full"
         >
           <TabsList className="w-full border-b border-gray-200 rounded-none p-0 h-10 bg-gray-50">
             <TabsTrigger
               value="sales"
               className="rounded-none data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-gray-900 data-[state=active]:shadow-none h-10 text-sm font-medium"
+              onClick={() => handleTabChange("sales")}
             >
               Sales
             </TabsTrigger>
             <TabsTrigger
               value="purchase"
               className="rounded-none data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-gray-900 data-[state=active]:shadow-none h-10 text-sm font-medium"
+              onClick={() => handleTabChange("purchase")}
             >
               Purchase
             </TabsTrigger>
             <TabsTrigger
               value="inventory"
               className="rounded-none data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-gray-900 data-[state=active]:shadow-none h-10 text-sm font-medium"
+              onClick={() => handleTabChange("inventory")}
             >
               Inventory
             </TabsTrigger>

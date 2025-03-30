@@ -200,7 +200,7 @@ const BatchSuggestion = forwardRef(({ value, setValue, onSuggestionSelect, inven
                   <div>
                     <div className="text-xs text-gray-500">SALE RATE</div>
                     <div className="text-sm uppercase font-medium">
-                      ₹{suggestion?.ptr}
+                      ₹{suggestion?.saleRate}
                     </div>
                   </div>
                 </li>

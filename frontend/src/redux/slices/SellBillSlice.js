@@ -90,8 +90,8 @@ const billSlice = createSlice({
   initialState: {
     bills: [],
     dateRange: {
-      from: new Date(),
-      to: new Date()
+      from: new Date().toISOString(),
+      to: new Date().toISOString()
     },
     selectedPreset: "today",
     createBillStatus: "idle",
@@ -105,7 +105,10 @@ const billSlice = createSlice({
       state.error = null;
     },
     setDateRange: (state, action) => {
-      state.dateRange = action.payload;
+      state.dateRange = {
+        from: action.payload.from instanceof Date ? action.payload.from.toISOString() : action.payload.from,
+        to: action.payload.to instanceof Date ? action.payload.to.toISOString() : action.payload.to
+      };
     },
     setSelectedPreset: (state, action) => {
       state.selectedPreset = action.payload;
