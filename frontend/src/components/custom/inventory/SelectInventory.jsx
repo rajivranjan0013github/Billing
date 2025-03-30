@@ -16,6 +16,17 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
   const [newItemDialogOpen, setNewItemDialogOpen] = useState(false);
   const {items : products, itemsStatus} = useSelector(state => state.inventory);
   const dispatch = useDispatch();
+  const searchRef = useRef();
+
+  useEffect(() => {
+    if(!newItemDialogOpen) {
+      setTimeout(() => {
+        if(searchRef?.current) {
+          searchRef?.current.focus();
+        }
+      }, 0);
+    }
+  }, [newItemDialogOpen])
   
   useEffect(() => {
     if(itemsStatus === 'idle'){
@@ -74,7 +85,7 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
 
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
-      if (e.key === "F2") {
+      if (e.key === "F2" &&  open) {
         setNewItemDialogOpen(true);
       }
     };
@@ -84,7 +95,7 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
     return () => {
       window.removeEventListener("keydown", handleGlobalKeyDown);
     };
-  }, [newItemDialogOpen]);
+  }, [newItemDialogOpen, open]);
 
   // Add handling for selection
   const handleSelect = (product) => {
@@ -125,6 +136,7 @@ export default function ProductSelector({ open, onOpenChange, onSelect, search, 
                     className="pl-8 h-8 text-sm border rounded-md focus:ring-2 focus:ring-blue-500"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
+                    ref={searchRef}
                   />
                 </div>
               </div>

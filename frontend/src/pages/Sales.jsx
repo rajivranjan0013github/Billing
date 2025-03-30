@@ -1,90 +1,133 @@
-import { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { fetchBills } from "../redux/slices/SellBillSlice";
-import { Backend_URL } from "../assets/Data";
-import { Calendar, ChevronDown, Filter, Search, X, ArrowLeft } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Search, Users, X, ArrowLeft } from "lucide-react";
 import { Button } from "../components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Input } from "../components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { cn } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
-import { format, subDays } from "date-fns";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchBills, searchBills, setDateRange, setSelectedPreset } from "../redux/slices/SellBillSlice";
+import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { DateRangePicker } from "../components/ui/date-range-picker";
+import { formatCurrency } from "../utils/Helper";
 
-export default function Sales() {
-  const dispatch = useDispatch();
+export default function SalesTransactions() {
   const navigate = useNavigate();
-  const { bills: initialBills } = useSelector((state) => state.bill);
+  const dispatch = useDispatch();
+  const { bills: initialBills, dateRange, selectedPreset } = useSelector((state) => state.bill);
   const [bills, setBills] = useState(initialBills);
   const [searchQuery, setSearchQuery] = useState("");
-  const [dateRange, setDateRange] = useState({
-    from: subDays(new Date(), 7),
-    to: new Date(),
-  });
+  const [searchType, setSearchType] = useState("invoice");
+  const [lastFetchedRange, setLastFetchedRange] = useState(null);
 
   const handleDateSelect = (range) => {
-    setDateRange(range);
+    dispatch(setDateRange(range));
+    dispatch(setSelectedPreset("custom"));
+  };
+
+  const handleDatePresetChange = (value) => {
+    dispatch(setSelectedPreset(value));
+    
+    if (value === "custom") {
+      return;
+    }
+
+    let newRange = { from: new Date(), to: new Date() };
+
+    switch (value) {
+      case "today":
+        newRange = { from: new Date(), to: new Date() };
+        break;
+      case "yesterday":
+        const yesterday = subDays(new Date(), 1);
+        newRange = { from: yesterday, to: yesterday };
+        break;
+      case "thisWeek":
+        newRange = {
+          from: startOfWeek(new Date(), { weekStartsOn: 1 }),
+          to: endOfWeek(new Date(), { weekStartsOn: 1 }),
+        };
+        break;
+      case "thisMonth":
+        newRange = {
+          from: startOfMonth(new Date()),
+          to: endOfMonth(new Date()),
+        };
+        break;
+      default:
+        break;
+    }
+
+    dispatch(setDateRange(newRange));
+    fetchBillsData(newRange);
   };
 
   const handleDateSearch = () => {
-    fetchBillsHere();
-  };
-
-  const fetchBillsHere = () => {
-    dispatch(
-      fetchBills({
-        startDate: dateRange.from
-          .toLocaleDateString("en-IN", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })
-          .split("/")
-          .reverse()
-          .join("-"),
-        endDate: dateRange.to
-          .toLocaleDateString("en-IN", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })
-          .split("/")
-          .reverse()
-          .join("-"),
-      })
-    ).then((res) => {
-      setBills(res.payload);
-    });
+    if(!dateRange.to) {
+      const updatedRange = { ...dateRange, to: dateRange.from };
+      dispatch(setDateRange(updatedRange));
+      fetchBillsData(updatedRange);
+    } else {
+      fetchBillsData(dateRange);
+    }
   };
 
   const handleDateCancel = () => {
-    setDateRange({
+    const newRange = {
       from: subDays(new Date(), 7),
       to: new Date(),
+    };
+    dispatch(setDateRange(newRange));
+    dispatch(setSelectedPreset("thisWeek"));
+    fetchBillsData(newRange);
+  };
+
+  const fetchBillsData = (range = dateRange) => {
+    dispatch(
+      fetchBills({
+        startDate: range.from.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
+        endDate: range.to.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
+      })
+    ).then((res) => {
+      setBills(res.payload);
+      setLastFetchedRange(range);
     });
   };
 
   useEffect(() => {
-    fetchBillsHere();
-  }, []);
+    const shouldFetch = !lastFetchedRange || 
+      lastFetchedRange.from?.getTime() !== dateRange.from?.getTime() || 
+      lastFetchedRange.to?.getTime() !== dateRange.to?.getTime();
+
+    if (shouldFetch && dateRange.from && dateRange.to) {
+      fetchBillsData();
+    }
+  }, [dateRange.from, dateRange.to]);
 
   useEffect(() => {
     setBills(initialBills);
   }, [initialBills]);
+
+  const summary = (bills || []).reduce(
+    (acc, bill) => {
+      if (!bill) return acc;
+      
+      acc.count++;
+      acc.salesAmount += bill.billSummary?.grandTotal || 0;
+      acc.amountPaid += bill.amountPaid || 0;
+      return acc;
+    },
+    { count: 0, salesAmount: 0, amountPaid: 0 }
+  );
+
+  const getFilteredBills = () => {
+    if (!searchQuery) return bills;
+
+    return bills.filter((bill) =>
+      bill.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
 
   const handleSearch = async (value) => {
     setSearchQuery(value);
@@ -99,48 +142,20 @@ export default function Sales() {
     );
 
     if (localResults.length === 0) {
-      try {
-        const response = await fetch(
-          `${Backend_URL}/api/sales/search?query=${value}`,
-          {
-            credentials: "include",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        const data = await response.json();
-        setBills(data);
-      } catch (error) {
-        console.error("Error searching bills:", error);
-      }
-    } else {
-      setBills(localResults);
+      dispatch(
+        searchBills({
+          query: value,
+          startDate: dateRange.from.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
+          endDate: dateRange.to.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
+        })
+      ).then((res) => {
+        setBills(res.payload);
+      });
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 2,
-    })
-      .format(amount)
-      .replace(/^(\D+)/, "₹");
-  };
-
-  const summary = bills.reduce(
-    (acc, bill) => {
-      acc.count++;
-      acc.salesAmount += bill.grandTotal || 0;
-      acc.amountPaid += bill.amountPaid || 0;
-      return acc;
-    },
-    { count: 0, salesAmount: 0, amountPaid: 0 }
-  );
-
   return (
-    <div className="relative p-4 rounded-lg space-y-4">
+    <div className="relative p-4 space-y-2">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
@@ -174,11 +189,29 @@ export default function Sales() {
         </div>
       </div>
 
-      <div className="flex gap-4">
-        <div className="relative flex-1">
+      <div className="flex gap-2">
+        <div className="relative">
           <div className="relative flex items-center bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
-            <div className="relative flex items-center px-3 border-r border-slate-200">
-              <span className="text-sm text-slate-500">INVOICE NO</span>
+            <div className="relative flex items-center border-r border-slate-200">
+              <Select
+                defaultValue="invoice"
+                onValueChange={(value) => setSearchType(value)}
+              >
+                <SelectTrigger className="h-9 w-[120px] border-0 bg-transparent hover:bg-slate-100 focus:ring-0 focus:ring-offset-0">
+                  <SelectValue placeholder="Search by" />
+                </SelectTrigger>
+                <SelectContent align="start" className="w-[120px]">
+                  <SelectItem value="invoice" className="text-sm">
+                    Invoice No
+                  </SelectItem>
+                  <SelectItem value="customer" className="text-sm">
+                    Customer
+                  </SelectItem>
+                  <SelectItem value="grn" className="text-sm">
+                    GRN No
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex-1 relative flex items-center">
@@ -186,8 +219,14 @@ export default function Sales() {
                 <Search className="h-4 w-4 text-slate-400" />
               </div>
               <Input
-                className="w-full pl-10 pr-10 border-0 focus-visible:ring-0 placeholder:text-slate-400"
-                placeholder="Search by invoice number..."
+                className="w-full h-9 pl-10 pr-10 border-0 focus-visible:ring-0 placeholder:text-slate-400"
+                placeholder={`Search by ${
+                  searchType === "invoice"
+                    ? "invoice number"
+                    : searchType === "customer"
+                    ? "customer name"
+                    : "GRN number"
+                }...`}
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
               />
@@ -210,21 +249,36 @@ export default function Sales() {
           </div>
         </div>
 
-        <div className="relative w-[300px]">
-          <DateRangePicker
-            from={dateRange.from}
-            to={dateRange.to}
-            onSelect={handleDateSelect}
-            onSearch={handleDateSearch}
-            onCancel={handleDateCancel}
-            className="border border-slate-200 rounded-md hover:border-slate-300 transition-colors"
-          />
-        </div>
+        <Select value={selectedPreset} onValueChange={handleDatePresetChange}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Select range" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="yesterday">Yesterday</SelectItem>
+            <SelectItem value="thisWeek">This Week</SelectItem>
+            <SelectItem value="thisMonth">This Month</SelectItem>
+            <SelectItem value="custom">Custom</SelectItem>
+          </SelectContent>
+        </Select>
 
-        <div className="flex gap-2">
+        {selectedPreset === "custom" && (
+          <div className="relative w-[300px]">
+            <DateRangePicker
+              from={dateRange.from}
+              to={dateRange.to}
+              onSelect={handleDateSelect}
+              onSearch={handleDateSearch}
+              onCancel={handleDateCancel}
+              className="border border-slate-200 rounded-md hover:border-slate-300 transition-colors"
+            />
+          </div>
+        )}
+
+        <div className="flex-1 flex justify-end gap-2">
           <Button
-            className="w-[200px]"
-            onClick={() => navigate("/sales/create-sell-invoice")}
+            variant='outline'
+            onClick={() => navigate(`/sales/create-sell-invoice`)}
           >
             Create Sales Invoice
           </Button>
@@ -233,63 +287,85 @@ export default function Sales() {
 
       <div className="relative overflow-x-auto">
         {bills.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <svg
-              className="h-12 w-12 mb-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-            <p>No sales transactions found</p>
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <Users className="h-12 w-12 mb-4" />
+            <p className="text-lg">No sales bills found</p>
+            <p className="text-sm">
+              Create a new sales invoice to get started
+            </p>
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className='pl-5'>S.NO</TableHead>
                 <TableHead>INVOICE NO</TableHead>
-                <TableHead>CUSTOMER</TableHead>
+                <TableHead>CUSTOMER Name</TableHead>
+                <TableHead>INVOICE DATE</TableHead>
+                <TableHead>GST</TableHead>
                 <TableHead>BILLED ON</TableHead>
-                <TableHead>INV AMT</TableHead>
-                <TableHead>RECEIVABLE</TableHead>
-                <TableHead>BALANCE</TableHead>
-                <TableHead>STATUS</TableHead>
-                <TableHead />
+                <TableHead>BILL TOTAL</TableHead>
+                <TableHead>Due Amt</TableHead>
+                <TableHead>PAID / DUE</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
-              {bills.map((bill) => (
+            <TableBody className='border'>
+              {getFilteredBills().map((bill, index) => (
                 <TableRow
                   key={bill._id}
                   className="group cursor-pointer"
-                  onClick={() => navigate(`/sale/${bill._id}`)}
+                  onClick={() => navigate(`/sales/${bill._id}`)}
                 >
-                  <TableCell>{bill.invoiceNumber}</TableCell>
-                  <TableCell>
-                    <div>{bill.distributorName || "Cash Sale"}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {bill.mob || "-"}
-                    </div>
+                  <TableCell className="font-medium pl-5">
+                    {index+1}
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {bill.invoiceNumber}
                   </TableCell>
                   <TableCell>
-                    <div>
-                      {new Date(bill.invoiceDate).toLocaleDateString("en-IN", {
+                    <div className="font-medium">{bill.distributorName}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {bill.mob}
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {new Date(bill.invoiceDate).toLocaleDateString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "2-digit",
+                    })}
+                  </TableCell>
+                  <TableCell>
+                    {bill.withGst ? "With GST" : "Without GST"}
+                  </TableCell>
+                  <TableCell>
+                    <div className="font-medium">
+                      {new Date(bill.createdAt).toLocaleDateString("en-IN", {
                         day: "2-digit",
                         month: "short",
                         year: "2-digit",
                       })}
                     </div>
                   </TableCell>
-                  <TableCell>{formatCurrency(bill.grandTotal)}</TableCell>
-                  <TableCell>{formatCurrency(bill.grandTotal)}</TableCell>
+                  <TableCell className="font-medium">
+                    {formatCurrency(bill.billSummary?.grandTotal||0)}
+                  </TableCell>
                   <TableCell>
-                    {formatCurrency(bill.grandTotal - bill.amountPaid)}
+                    <div className="font-medium">
+                      {formatCurrency((bill.billSummary?.grandTotal || 0) - (bill.amountPaid || 0))}
+                    </div>
+                    {bill.paymentDueDate && (
+                      <div className="text-sm text-muted-foreground">
+                        {new Date(bill.paymentDueDate).toLocaleDateString(
+                          "en-IN",
+                          {
+                            day: "2-digit",
+                            month: "short",
+                            year: "2-digit",
+                          }
+                        )}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -298,26 +374,14 @@ export default function Sales() {
                           "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium",
                           {
                             "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20":
-                              bill.amountPaid >= bill.grandTotal,
-                            "bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-600/20":
-                              bill.amountPaid > 0 &&
-                              bill.amountPaid < bill.grandTotal,
+                              bill.paymentStatus === "paid",
                             "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20":
-                              bill.amountPaid === 0,
+                              bill.paymentStatus === "due",
                           }
                         )}
                       >
-                        {bill.amountPaid >= bill.grandTotal
-                          ? "Paid"
-                          : bill.amountPaid > 0
-                          ? "Partial"
-                          : "Unpaid"}
+                        {bill.paymentStatus === "paid" ? "Paid" : "Due"}
                       </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="opacity-0 group-hover:opacity-100 text-pink-500 transition-opacity">
-                      →
                     </div>
                   </TableCell>
                 </TableRow>
@@ -325,14 +389,6 @@ export default function Sales() {
             </TableBody>
           </Table>
         )}
-      </div>
-
-      <div className="fixed bottom-2 flex justify-between items-center">
-        <div className="text-sm text-muted-foreground">
-          Create New Sale - <span className="font-medium">F2</span> | Move Up or
-          Down - <span className="font-medium">Arrow Keys</span> | To Open -{" "}
-          <span className="font-medium">Enter</span>
-        </div>
       </div>
     </div>
   );

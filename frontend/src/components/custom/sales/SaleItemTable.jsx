@@ -14,7 +14,6 @@ export default function SaleTable({
   handleKeyDown,
   viewMode,
 }) {
-  console.log(products);
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(true);
   const [newProduct, setNewProduct] = useState({});
@@ -157,7 +156,7 @@ export default function SaleTable({
           <div className="text-xs font-semibold col-span-5">PRODUCT</div>
         </div>
         <div className="col-span-2">
-          <p className="text-xs font-semibold">BATCH</p>
+          <p className="text-xs font-semibold tracking-wide">BATCH</p>
         </div>
         <div className=" ">
           <p className="text-xs font-semibold">HSN</p>

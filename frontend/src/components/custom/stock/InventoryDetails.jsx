@@ -39,6 +39,7 @@ import {
   AlertDialogTitle,
 } from "../../ui/alert-dialog";
 import PurchaseTab from "./PurchaseTab";
+import {formatCurrency} from '../../../utils/Helper'
 
 export default function InventoryDetails({ inventoryId }) {
   const [inventoryDetails, setItemDetails] = useState(null);
@@ -195,7 +196,7 @@ export default function InventoryDetails({ inventoryId }) {
           </div>
         </div>
         <div>
-          <div className="text-muted-foreground">PTR</div>
+          <div className="text-muted-foreground">SALE RATE</div>
           <div>
             {inventoryDetails?.ptr
               ? `₹${inventoryDetails?.ptr?.toFixed(2)}`
@@ -215,7 +216,7 @@ export default function InventoryDetails({ inventoryId }) {
 
       {/* Tabs */}
       <Tabs defaultValue="batches">
-        <div className="flex items-center justify-between border-b">
+        <div className="flex items-center justify-between border-b mt-2">
           <TabsList>
             <TabsTrigger value="batches" className="relative">
               BATCHES
@@ -232,7 +233,7 @@ export default function InventoryDetails({ inventoryId }) {
           </div>
         </div>
 
-        <TabsContent value="batches" className="mt-4">
+        <TabsContent value="batches" className="mt-2">
           {!inventoryDetails?.batch || inventoryDetails.batch.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <PackageX className="h-12 w-12 mb-2" />
@@ -248,13 +249,13 @@ export default function InventoryDetails({ inventoryId }) {
                   <TableHead>STATUS</TableHead>
                   <TableHead>MRP</TableHead>
                   <TableHead>PURC RATE</TableHead>
-                  <TableHead>NET RATE</TableHead>
-                  <TableHead>PTR</TableHead>
+                  <TableHead className='text-center'>NET RATE</TableHead>
+                  <TableHead className='text-center'>SALE RATE</TableHead>
                   <TableHead>STOCK QTY</TableHead>
-                  <TableHead></TableHead>
+                  <TableHead>ACTION</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <TableBody className='border'>
                 {inventoryDetails.batch.map((batch) => (
                   <TableRow key={batch._id}>
                     <TableCell className="font-medium">
@@ -266,15 +267,15 @@ export default function InventoryDetails({ inventoryId }) {
                       <span
                         className={`${
                           batch.quantity > 0 ? "bg-green-500" : "bg-red-500"
-                        } text-white px-2 py-1 rounded-full text-xs`}
+                        } text-white px-2 py-1 text-xs`}
                       >
                         {batch.quantity > 0 ? "In Stock" : "Out of Stock"}
                       </span>
                     </TableCell>
-                    <TableCell>₹{batch.mrp?.toFixed(2)}</TableCell>
-                    <TableCell>₹{batch.purchaseRate?.toFixed(2)}</TableCell>
-                    <TableCell>₹{batch.netRate?.toFixed(2)}</TableCell>
-                    <TableCell>₹{batch.ptr?.toFixed(2)}</TableCell>
+                    <TableCell>{formatCurrency(batch.mrp)}</TableCell>
+                    <TableCell>{formatCurrency(batch.purchaseRate)}</TableCell>
+                    <TableCell className='text-center'>{batch?.netRate ? formatCurrency(batch.netRate) : '-'}</TableCell>
+                    <TableCell className='text-center'>{batch.ptr ? formatCurrency(batch.ptr) : '-'}</TableCell>
                     <TableCell>
                       {convertQuantity(batch?.quantity, batch?.pack)}
                     </TableCell>

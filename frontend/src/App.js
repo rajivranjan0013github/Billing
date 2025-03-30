@@ -138,7 +138,7 @@ const AppContent = () => {
                 path="/purchase/:invoiceId"
                 element={<EditPurchaseInvoice />}
               />
-              <Route path="/sale/:invoiceId" element={<EditSaleInvoice />} />
+              <Route path="/sales/:invoiceId" element={<EditSaleInvoice />} />
               <Route
                 path="/distributor-details/:distributorId"
                 element={<DistributorDetails />}

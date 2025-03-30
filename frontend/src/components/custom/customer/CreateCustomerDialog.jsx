@@ -21,6 +21,7 @@ export default function CreateCustomerDialog({
   onOpenChange,
   onSuccess,
   editingCustomer = null,
+  initialData = null,
 }) {
   const dispatch = useDispatch();
   const { toast } = useToast();
@@ -39,6 +40,12 @@ export default function CreateCustomerDialog({
         mobileNumber: editingCustomer.mobileNumber,
         address: editingCustomer.address,
       });
+    } else if (initialData) {
+      setFormData({
+        name: initialData.name || "",
+        mobileNumber: initialData.mobileNumber || "",
+        address: initialData.address || "",
+      });
     } else {
       setFormData({
         name: "",
@@ -46,7 +53,7 @@ export default function CreateCustomerDialog({
         address: "",
       });
     }
-  }, [editingCustomer]);
+  }, [editingCustomer, initialData]);
 
   const handleKeyDown = (e, currentKey) => {
     if (e.key === 'Enter') {

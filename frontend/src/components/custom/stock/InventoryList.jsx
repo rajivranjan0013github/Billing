@@ -15,6 +15,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { fetchItems } from "../../../redux/slices/inventorySlice";
 import ManageInventory from "../inventory/ManageInventory";
 import { convertQuantity } from "../../../assets/Data";
+import { formatCurrency } from "../../../utils/Helper"; 
 
 const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,43 +54,21 @@ const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
   return (
     <div className="flex flex-col h-full p-4">
       {/* Header */}
-      <div className="flex justify-between mb-4">
+      <div className="flex justify-between mb-2">
         <div>
           <h2 className="text-xl font-semibold">Stock on hand</h2>
           <p className="text-xs text-muted-foreground">SKU: {items.length}</p>
         </div>
         <div className="text-right">
           <h2 className="text-xl font-semibold">
-            ₹
-            {items
-              .reduce(
-                (acc, item) => acc + item.mrp * (item.quantity / item.pack),
-                0
-              )
-              .toFixed(2)}
+            {formatCurrency(items.reduce((acc, item) => acc + item.mrp * (item.quantity / item.pack),0))}
           </h2>
           <p className="text-xs text-muted-foreground">Stock Value</p>
         </div>
       </div>
 
       {/* Search and Filter Section */}
-      <div className="space-y-3 mb-4">
-        {/* <div className="flex gap-2">
-          <Button
-            variant="outline"
-            className="flex-1 justify-between text-sm h-9"
-          >
-            <Filter className="h-3 w-3" />
-            FILTER BY
-          </Button>
-          <Button
-            variant="outline"
-            className="flex-1 justify-between text-sm h-9"
-          >
-            <ArrowUpDown className="h-3 w-3" />
-            SORT BY
-          </Button>
-        </div> */}
+      <div className="space-y-3 mb-2">
         <Button
           onClick={() => setIsManageInventoryOpen(true)}
           className="w-full h-9"
@@ -135,7 +114,7 @@ const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1 mb-0.5">
-                      <span className="font-medium truncate">{item?.name}</span>
+                      <span className="font-medium truncate capitalize">{item?.name}</span>
                       <CircleCheckBig className="h-3 w-3 text-blue-500 shrink-0" />
                     </div>
                     <p className="text-xs text-muted-foreground truncate">
@@ -144,7 +123,7 @@ const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
                     <div className="flex items-center gap-2 mt-1">
                       <Badge
                         variant={item?.quantity > 0 ? "success" : "destructive"}
-                        className="h-5 text-xs whitespace-nowrap"
+                        className="h-5 text-xs font-medium rounded-none"
                       >
                         {item?.quantity > 0 ? "In Stock" : "Out of Stock"}
                       </Badge>
@@ -158,9 +137,7 @@ const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
                       Exp: {item?.expiry}
                     </p>
                     <p className="text-sm font-medium">
-                      {item?.quantity
-                        ? convertQuantity(item.quantity, item.pack)
-                        : ""}
+                      {item?.quantity ? convertQuantity(item.quantity, item.pack) : ""}
                     </p>
                   </div>
                 </div>

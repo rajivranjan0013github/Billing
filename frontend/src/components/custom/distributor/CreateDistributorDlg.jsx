@@ -117,16 +117,20 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
     }
   };
 
-  // when dialog is open autofocus on first input
-  useEffect(()=> {
-    if(open && inputRef.current['name']) {
-      inputRef.current['name']?.focus();
-    }
-  }, [open])
+  useEffect(() => {
+    // Add a small delay to ensure the component is fully rendered
+    const timer = setTimeout(() => {
+      if(open && inputRef.current['name']) {
+        inputRef.current['name']?.focus();
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl p-0 gap-0">
+      <DialogContent className="max-w-4xl p-0 gap-0 font-roboto">
         <DialogHeader className="px-6 py-2.5 flex flex-row items-center justify-between bg-gray-100 border-b">
           <DialogTitle className="text-base font-semibold">
             Create Distributor
@@ -139,7 +143,7 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 <div className="flex-1">
-                  <Label htmlFor="name" className="text-xs font-medium text-gray-700">
+                  <Label htmlFor="name" className="text-xs font-medium">
                     Distributor Name<span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -155,7 +159,7 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
                   />
                 </div>
                 <div className="w-[180px]">
-                  <Label htmlFor="openBalance" className="text-xs font-medium text-gray-700">
+                  <Label htmlFor="openBalance" className="text-xs font-medium">
                     Balance
                   </Label>
                   <Input
@@ -171,7 +175,7 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
                   />
                 </div>
                 <div className="w-[160px]">
-                  <Label className="text-xs font-medium text-gray-700">Type</Label>
+                  <Label className="text-xs font-medium ">Type</Label>
                   <Select
                     value={formData.balance_type}
                     onValueChange={(value) => handleSelectChange("balance_type", value)}
@@ -193,7 +197,7 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
 
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <Label htmlFor="mob" className="text-xs font-medium text-gray-700">
+                  <Label htmlFor="mob" className="text-xs font-medium ">
                     Mobile Number
                   </Label>
                   <Input
@@ -208,7 +212,7 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
                   />
                 </div>
                 <div>
-                  <Label htmlFor="email" className="text-xs font-medium text-gray-700">
+                  <Label htmlFor="email" className="text-xs font-medium ">
                     Email
                   </Label>
                   <Input
@@ -229,7 +233,7 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
             <div>
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <Label htmlFor="gstin" className="text-xs font-medium text-gray-700">
+                  <Label htmlFor="gstin" className="text-xs font-medium ">
                     GSTIN
                   </Label>
                   <Input
@@ -244,7 +248,7 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
                   />
                 </div>
                 <div>
-                  <Label htmlFor="panNumber" className="text-xs font-medium text-gray-700">
+                  <Label htmlFor="panNumber" className="text-xs font-medium ">
                     PAN Number
                   </Label>
                   <Input
@@ -260,7 +264,7 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
                 </div>
               </div>
               <div className="mt-3">
-                <Label htmlFor="DLNumber" className="text-xs font-medium text-gray-700">
+                <Label htmlFor="DLNumber" className="text-xs font-medium ">
                   Drug License Number
                 </Label>
                 <Input
@@ -279,7 +283,7 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
             <div>
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <Label htmlFor="address" className="text-xs font-medium text-gray-700">
+                  <Label htmlFor="address" className="text-xs font-medium ">
                     Address Details
                   </Label>
                   <Textarea
@@ -295,7 +299,7 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="creditPeriod" className="text-xs font-medium text-gray-700">
+                    <Label htmlFor="creditPeriod" className="text-xs font-medium ">
                       Credit Period
                     </Label>
                     <div className="relative mt-1">
@@ -315,7 +319,7 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="creditLimit" className="text-xs font-medium text-gray-700">
+                    <Label htmlFor="creditLimit" className="text-xs font-medium ">
                       Credit Limit
                     </Label>
                     <Input

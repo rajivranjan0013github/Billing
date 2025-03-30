@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle} from "../../ui/dialog
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Button } from "../../ui/button";
-import { Lightbulb } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { manageInventory } from "../../../redux/slices/inventorySlice";
 import { useToast } from "../../../hooks/use-toast";
@@ -19,6 +18,7 @@ const FORMDATAINITIAL = {
   composition: "",
   medicine_form: "",
   form_primary_pack: 1,
+  location: "",
 };
 
 // Input keys in order of navigation
@@ -28,6 +28,7 @@ const inputKeys = [
   'mfcName',
   'pack',
   'composition',
+  'location',
   'submitButton'
 ];
 
@@ -244,16 +245,25 @@ export default function AddNewInventory({ open, onOpenChange, inventoryDetails})
                   className="h-9"
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="location" className="text-sm font-medium text-gray-700">
+                  Location
+                </Label>
+                <Input
+                  id="location"
+                  placeholder="Enter Storage Location"
+                  value={formData.location}
+                  onChange={(e) =>
+                    setFormData({ ...formData, location: e.target.value })
+                  }
+                  onKeyDown={(e) => handleKeyDown(e, 'location')}
+                  ref={el => inputRef.current['location'] = el}
+                  className="h-9"
+                />
+              </div>
             </div>
 
-            {/* <div className="bg-blue-50 p-3 rounded-lg flex items-start gap-2 mt-4">
-              <Lightbulb className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-blue-700">
-                Mention Volume or Weight at the end of Product Name
-                <br />
-                'Electral Sachet 4.4gm' is better than 'Electral Sachet'
-              </p>
-            </div> */}
           </form>
         </div>
 

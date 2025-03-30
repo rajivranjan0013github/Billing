@@ -254,6 +254,7 @@ const Payments = () => {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className='pl-3'>S.NO</TableHead>
               <TableHead className="w-[150px]">Date</TableHead>
               <TableHead>Payment Number</TableHead>
               <TableHead>Name</TableHead>
@@ -264,12 +265,13 @@ const Payments = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredPayments.map((payment) => (
+            {filteredPayments.map((payment, index) => (
               <TableRow 
                 key={payment._id} 
                 className="cursor-pointer hover:bg-muted/50 px-10 h-12" 
                 onClick={() => navigate(`/${payment.paymentType === 'Payment In' ? 'sales' : 'purchase'}/payment-${payment.paymentType === 'Payment In' ? 'in' : 'out'}/${payment._id}`)}
               >
+                <TableCell className='pl-5' >{index+1}</TableCell>
                 <TableCell>
                   {new Date(payment.paymentDate).toLocaleDateString('en-IN', {
                     day: '2-digit',
