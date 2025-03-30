@@ -171,18 +171,12 @@ export default function ManageInventory({
     if (isProductSelectorOpen) return;
 
     const expiry = `${formData.expiryMonth}/${formData.expiryYear}`;
-    const purchaseRate =
-      formData.purchaseGstType === "Excl gst"
-        ? formData.purchaseRate
-        : formData.purchaseRate / (1 + formData.gstPer / 100);
 
-    const saleRate =
-      formData.saleGstType === "Excl gst"
-        ? formData.saleRate
-        : formData.saleRate / (1 + formData.gstPer / 100);
+    const purchaseRate = formData.purchaseGstType === "Excl gst" ? formData.purchaseRate : formData.purchaseRate / (1 + formData.gstPer / 100);
 
-    const quantity =
-      Number(formData.packs) * Number(formData.pack) + Number(formData.loose);
+    const saleRate = formData.saleGstType === "Excl gst"  ? formData.saleRate * (1+formData.gstPer/100)  : formData.saleRate;
+
+    const quantity = Number(formData.packs) * Number(formData.pack) + Number(formData.loose);
     const finalFormData = {
       inventoryId: formData.inventoryId,
       batchNumber: formData.batchNumber,

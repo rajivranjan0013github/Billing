@@ -73,6 +73,8 @@ const paymentSchema = new mongoose.Schema(
         ref: "SalesBill",
       },
     ],
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "Staff" },
+    createdByName : String,
   },{ timestamps: true});
 
 paymentSchema.plugin(hospitalPlugin);

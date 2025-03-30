@@ -4,6 +4,7 @@ import { Backend_URL } from "../../assets/Data";
 import { setAccountsStatusIdle } from "./accountSlice";
 import { setItemStatusIdle } from "./inventorySlice";
 import { setCustomerStatusIdle } from "./CustomerSlice";
+import { setPaymentIdle } from "./paymentSlice";
 
 // Create new bill
 export const createBill = createLoadingAsyncThunk(
@@ -26,6 +27,7 @@ export const createBill = createLoadingAsyncThunk(
       await dispatch(setAccountsStatusIdle());
       await dispatch(setCustomerStatusIdle());
       await dispatch(setItemStatusIdle());
+      await dispatch(setPaymentIdle());
       return data;
     } catch (error) {
       throw new Error("Failed to create bill");

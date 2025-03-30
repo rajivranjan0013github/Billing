@@ -33,11 +33,8 @@ const stockTimelineSchema = new mongoose.Schema(
     purchaseRate: Number,
     saleRate: Number, // sale rate also
     gstPer: Number,
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
-    userName: String,
+    createdBy: {type: mongoose.Schema.Types.ObjectId,ref: "User",},
+    createdByName: String,
     distributorName: String,
     distributorMob: String,
     remarks: String,

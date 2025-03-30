@@ -53,28 +53,15 @@ const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
 
   return (
     <div className="flex flex-col h-full p-4">
-      {/* Header */}
-      <div className="flex justify-between mb-2">
-        <div>
-          <h2 className="text-xl font-semibold">Inventory Value</h2>
-          <p className="text-xs text-muted-foreground">SKU: {items.length}</p>
-        </div>
-        <div className="text-right">
-          <h2 className="text-xl font-semibold">
-            {formatCurrency(items.reduce((acc, item) => acc + item.mrp * (item.quantity / item.pack),0))}
-          </h2>
-          <p className="text-xs text-muted-foreground">total</p>
-        </div>
-      </div>
-
       {/* Search and Filter Section */}
       <div className="space-y-3 mb-2">
         <Button
           onClick={() => setIsManageInventoryOpen(true)}
           className="w-full h-9"
+          variant='outline'
         >
           <Plus className="h-4 w-4 mr-2" />
-          Add New Item
+          Create New Item
         </Button>
       </div>
 

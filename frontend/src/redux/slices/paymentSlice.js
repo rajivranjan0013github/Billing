@@ -72,8 +72,8 @@ const paymentSlice = createSlice({
   initialState: {
     payments: [],
     dateRange: {
-      from: new Date().toISOString(),
-      to: new Date().toISOString()
+      from: new Date(),
+      to: new Date()
     },
     selectedPreset: "today",
     paymentsStatus: "idle",
@@ -93,6 +93,8 @@ const paymentSlice = createSlice({
     },
     setPaymentIdle: (state) => {
       state.paymentsStatus = 'idle';
+      state.selectedPreset = 'today';
+      state.payments = [];
     }
   },
   extraReducers: (builder) => {
@@ -134,5 +136,5 @@ const paymentSlice = createSlice({
   },
 });
 
-export const { setDateRange, setSelectedPreset } = paymentSlice.actions;
+export const { setDateRange, setSelectedPreset, setPaymentIdle } = paymentSlice.actions;
 export default paymentSlice.reducer;

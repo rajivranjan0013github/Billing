@@ -62,13 +62,24 @@ export default function Timeline({inventoryId}) {
                     </div>
                   </td>
                   <td className="px-4 py-2">
-                    <Badge className="bg-purple-600 hover:bg-purple-700">
+                    <Badge 
+                      className={`
+                        ${transaction.type === "PURCHASE" && "bg-green-600 hover:bg-green-700"}
+                        ${transaction.type === "SALE" && "bg-blue-600 hover:bg-blue-700"}
+                        ${transaction.type === "PURCHASE_RETURN" && "bg-orange-600 hover:bg-orange-700"}
+                        ${transaction.type === "SALE_RETURN" && "bg-red-600 hover:bg-red-700"}
+                        ${transaction.type === "Adjustment" && "bg-purple-600 hover:bg-purple-700"}
+                        ${transaction.type === "SALE_EDIT" && "bg-yellow-600 hover:bg-yellow-700"}
+                        ${transaction.type === "PURCHASE_EDIT" && "bg-indigo-600 hover:bg-indigo-700"}
+                        ${transaction.type === "PURCHASE_DELETE" && "bg-rose-600 hover:bg-rose-700"}
+                      `}
+                    >
                       {transaction.type}
                     </Badge>
                   </td>
                   <td className="px-4 py-2">
                     <div className="text-sm">{transaction.invoiceNumber || '-'}</div>
-                    <div className="text-xs text-gray-500">User: {transaction.userName || '-'}</div>
+                    <div className="text-xs text-gray-500">User: {transaction.createdByName || '-'}</div>
                   </td>
                   <td className="px-4 py-2">
                     <div className="text-sm">{transaction.distributorName || '-'}</div>

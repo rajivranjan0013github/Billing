@@ -112,6 +112,29 @@ const Payments = () => {
 
   const netTotal = totalPaymentIn - totalPaymentOut;
 
+  // Calculate payment method breakdowns
+  const calculatePaymentMethodTotals = (payments) => {
+    return payments.reduce((acc, payment) => {
+      const method = payment.paymentMethod || 'Other';
+      acc[method] = (acc[method] || 0) + (payment.amount || 0);
+      return acc;
+    }, {});
+  };
+
+  const paymentInMethodTotals = calculatePaymentMethodTotals(
+    filteredPayments.filter(payment => payment.paymentType === 'Payment In')
+  );
+
+  const paymentOutMethodTotals = calculatePaymentMethodTotals(
+    filteredPayments.filter(payment => payment.paymentType === 'Payment Out')
+  );
+
+  const netMethodTotals = Object.keys({ ...paymentInMethodTotals, ...paymentOutMethodTotals })
+    .reduce((acc, method) => {
+      acc[method] = (paymentInMethodTotals[method] || 0) - (paymentOutMethodTotals[method] || 0);
+      return acc;
+    }, {});
+
   return (
     <div className="w-full p-4 space-y-2">
       <div className="flex items-center justify-between">
@@ -193,7 +216,7 @@ const Payments = () => {
       {/* Payment Summary Cards */}
       <div className="grid grid-cols-3 gap-4">
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-green-500" />
@@ -208,11 +231,19 @@ const Payments = () => {
                 +₹ {totalPaymentIn.toLocaleString('en-IN')}
               </span>
             </div>
+            <div className="mt-2 flex items-center gap-3 overflow-x-auto">
+              {Object.entries(paymentInMethodTotals).map(([method, amount]) => (
+                <div key={method} className="flex items-center gap-2 text-sm whitespace-nowrap">
+                  <span className="text-muted-foreground">{method}:</span>
+                  <span className="font-medium text-green-600">+₹ {amount.toLocaleString('en-IN')}</span>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <TrendingDown className="h-4 w-4 text-red-500" />
@@ -227,11 +258,19 @@ const Payments = () => {
                 -₹ {totalPaymentOut.toLocaleString('en-IN')}
               </span>
             </div>
+            <div className="mt-2 flex items-center gap-3 overflow-x-auto">
+              {Object.entries(paymentOutMethodTotals).map(([method, amount]) => (
+                <div key={method} className="flex items-center gap-2 text-sm whitespace-nowrap">
+                  <span className="text-muted-foreground">{method}:</span>
+                  <span className="font-medium text-red-600">-₹ {amount.toLocaleString('en-IN')}</span>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ArrowRightLeft className="h-4 w-4 text-blue-500" />
@@ -245,6 +284,16 @@ const Payments = () => {
               <span className={`text-2xl font-bold ${netTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {netTotal >= 0 ? '+' : '-'}₹ {Math.abs(netTotal).toLocaleString('en-IN')}
               </span>
+            </div>
+            <div className="mt-2 flex items-center gap-3 overflow-x-auto">
+              {Object.entries(netMethodTotals).map(([method, amount]) => (
+                <div key={method} className="flex items-center gap-2 text-sm whitespace-nowrap">
+                  <span className="text-muted-foreground">{method}:</span>
+                  <span className={`font-medium ${amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {amount >= 0 ? '+' : '-'}₹ {Math.abs(amount).toLocaleString('en-IN')}
+                  </span>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>

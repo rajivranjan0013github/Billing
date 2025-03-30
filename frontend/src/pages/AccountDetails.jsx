@@ -559,7 +559,7 @@ export default function AccountDetails() {
                         </div>
                         <div>
                           <Label>Current Balance</Label>
-                          <div className="text-lg font-semibold">
+                          <div className={`text-lg font-semibold ${account.balance < 0 ? 'text-red-600' : ''}`}>
                             ₹{account.balance || 0}
                           </div>
                         </div>
@@ -590,7 +590,7 @@ export default function AccountDetails() {
                         </div>
                         <div>
                           <Label>Current Balance</Label>
-                          <div className="text-lg font-semibold">
+                          <div className={`text-lg font-semibold ${account.balance < 0 ? 'text-red-600' : ''}`}>
                             ₹{account.balance || 0}
                           </div>
                         </div>
@@ -614,7 +614,7 @@ export default function AccountDetails() {
                         </div>
                         <div>
                           <Label>Current Balance</Label>
-                          <div className="text-lg font-semibold">
+                          <div className={`text-lg font-semibold ${account.balance < 0 ? 'text-red-600' : ''}`}>
                             ₹{account.balance || 0}
                           </div>
                         </div>
