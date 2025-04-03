@@ -7,13 +7,11 @@ import InventorySuggestion from "./InventorySuggestion";
 import BatchSuggestion from "./BatchSuggestion";
 import { Input } from "../../ui/input";
 
-export default function SaleTable({
-  inputRef,
-  products,
-  setProducts,
-  handleKeyDown,
-  viewMode,
-}) {
+const roundToTwo = (num) => {
+  return Math.round((num + Number.EPSILON) * 100) / 100;
+};
+
+export default function SaleTable({ inputRef, products, setProducts, handleKeyDown, viewMode}) {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(true);
   const [newProduct, setNewProduct] = useState({});
@@ -52,8 +50,8 @@ export default function SaleTable({
       (updatedProduct?.packs || updatedProduct?.loose) &&
       updatedProduct?.mrp
     ) {
-      const discount = Number(updatedProduct?.discount) || 0;
-      const gstPer = Number(updatedProduct?.gstPer) || 0;
+      // const discount = Number(updatedProduct?.discount) || 0;
+      // const gstPer = Number(updatedProduct?.gstPer) || 0;
       const packs = Number(updatedProduct?.packs || 0); // for quantity
       const loose = Number(updatedProduct?.loose || 0);
 
@@ -78,7 +76,6 @@ export default function SaleTable({
     }
 
     const {pack, currentStocks, quantity} = newProduct;
-    console.log(newProduct);
     
     if(currentStocks < quantity) {
       toast({title : `${convertQuantity(currentStocks, pack)} are in stocks`, variant : 'destructive'})
@@ -124,6 +121,13 @@ export default function SaleTable({
   };
 
   const handleBatchSelect = (batch) => {
+    let tempDiscount = 0, tempSaleRate; 
+    if(batch?.saleRate) {
+      tempDiscount = (batch.mrp - batch.saleRate)/batch.mrp*100;
+      tempSaleRate = batch.saleRate;
+    } else {
+      tempSaleRate = batch.mrp;
+    }
     setNewProduct({
       ...newProduct,
       batchNumber: batch.batchNumber,
@@ -131,11 +135,12 @@ export default function SaleTable({
       mrp: batch.mrp,
       saleRate: batch.mrp,
       expiry: batch.expiry,
-      saleRate: batch.saleRate,
+      saleRate: tempSaleRate,
       gstPer: batch.gstPer,
       HSN: batch.HSN,
       pack: batch.pack,
-      currentStocks : batch.quantity
+      currentStocks : batch.quantity,
+      discount : roundToTwo(tempDiscount)
     });
     if (inputRef?.current["packs"]) {
       inputRef?.current["packs"].focus();

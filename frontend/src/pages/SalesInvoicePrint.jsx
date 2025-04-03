@@ -26,7 +26,7 @@ const SalesInvoicePrint = () => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, []);
+  }, [pageSize, invoiceData, hospitalInfo]);
 
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
@@ -264,37 +264,37 @@ const SalesInvoicePrint = () => {
             <tbody className="min-h-[180px]">
               {invoiceData.products.map((product, index) => (
                 <tr key={index} className="">
-                  <td className="border-r-[1px] border-gray-800 text-center p-1.5">
+                  <td className="border-r-[1px] border-gray-800 text-center px-1.5">
                     {index + 1}
                   </td>
-                  <td className="border-r-[1px] border-gray-800 pl-2 p-1.5">
+                  <td className="border-r-[1px] border-gray-800 px-1.5">
                     {product.productName}
                   </td>
-                  <td className="border-r-[1px] border-gray-800 text-center p-1.5">
+                  <td className="border-r-[1px] border-gray-800 text-center px-1.5">
                     {product.HSN}
                   </td>
-                  <td className="border-r-[1px] border-gray-800 text-center p-1.5">
+                  <td className="border-r-[1px] border-gray-800 text-center px-1.5">
                     {product.batchNumber}
                   </td>
-                  <td className="border-r-[1px] border-gray-800 text-center p-1.5">
+                  <td className="border-r-[1px] border-gray-800 text-center px-1.5">
                     {product.expiry}
                   </td>
-                  <td className="border-r-[1px] border-gray-800 text-center p-1.5">
+                  <td className="border-r-[1px] border-gray-800 text-center px-1.5">
                     {product.quantity / (product.pack || 1)}
                   </td>
-                  <td className="border-r-[1px] border-gray-800 text-center p-1.5">
+                  <td className="border-r-[1px] border-gray-800 text-center px-1.5">
                     {product.mrp}
                   </td>
-                  <td className="border-r-[1px] border-gray-800 text-center p-1.5">
+                  <td className="border-r-[1px] border-gray-800 text-center px-1.5">
                     {product.saleRate}
                   </td>
-                  <td className="border-r-[1px] border-gray-800 text-center p-1.5">
+                  <td className="border-r-[1px] border-gray-800 text-center px-1.5">
                     {product.discount}%
                   </td>
-                  <td className="border-r-[1px] border-gray-800 text-center p-1.5">
+                  <td className="border-r-[1px] border-gray-800 text-center px-1.5">
                     {product.gstPer}%
                   </td>
-                  <td className=" text-right p-1.5">
+                  <td className=" text-right px-1.5">
                     {product.amount}
                   </td>
                 </tr>
@@ -326,7 +326,7 @@ const SalesInvoicePrint = () => {
             </div>
           </div>
           {/* Tax Summary */}
-          <div className="col-span-3 border-r-[1px] border-l-[1px] border-gray-800">
+          <div className="col-span-3 border-r-[1px] border-l-[1px] border-gray-800 px-3">
             <table className="w-full text-xs ">
               <thead className="border-b-[1px] py-2">
                 <tr className="">
@@ -363,20 +363,21 @@ const SalesInvoicePrint = () => {
                       </td>
                     </tr>
                   ))}
-                <tr className="font-medium">
+                <tr className="font-medium border-t-[1px]">
                   <td>Total</td>
                   <td className="text-right">
                     ₹{invoiceData.billSummary.taxableAmount.toFixed(2)}
                   </td>
-                  <td className="text-right">
+                  <td className="text-right border-b">
                     ₹{(invoiceData.billSummary.gstAmount / 2).toFixed(2)}
                   </td>
-                  <td className="text-right">
+                  <td className="text-right border-b">
                     ₹{(invoiceData.billSummary.gstAmount / 2).toFixed(2)}
                   </td>
                 </tr>
               </tbody>
             </table>
+              <div className="text-right col-span-2 text-xs">GST : {formatCurrency(invoiceData.billSummary.gstAmount)}</div>
           </div>
 
           {/* Bill Summary */}
@@ -392,10 +393,10 @@ const SalesInvoicePrint = () => {
                   ₹{invoiceData.billSummary.discountAmount.toFixed(2)}
                 </span>
               </div>
-              <div className="flex justify-between px-2">
+              {/* <div className="flex justify-between px-2">
                 <span className="">GST Amount:</span>
                 <span>₹{invoiceData.billSummary.gstAmount.toFixed(2)}</span>
-              </div>
+              </div> */}
               <div className="flex justify-between border-t-[1px] border-b-[1px] border-gray-800 font-medium bg-gray-200 py-1 px-2 text-sm box-border">
                 <span>Total Amount:</span>
                 <span>{formatCurrency(invoiceData?.grandTotal)}</span>

@@ -36,15 +36,17 @@ export default function SelectDistributorDlg({ open, setOpen, search, setSearch,
     }
   }, [fetchStatus]);
 
+  
+
   // Filter distributors based on search
-  const filteredDistributors = distributors.filter((distributor) =>
-    distributor.name.toLowerCase().includes(search.toLowerCase())
+  const filteredDistributors =(distributors || []).filter((distributor) =>
+    distributor?.name?.toLowerCase().includes(search?.toLowerCase())
   );
 
   // Add effect to set initial selection when dialog opens or search changes
   useEffect(() => {
-    const filtered = distributors.filter((distributor) =>
-      distributor.name.toLowerCase().includes(search.trim().toLowerCase())
+    const filtered = (distributors || []).filter((distributor) =>
+      distributor?.name?.toLowerCase().includes(search?.toLowerCase())
     );
     if (filtered.length > 0) {
       setSelectedId(filtered[0]._id);

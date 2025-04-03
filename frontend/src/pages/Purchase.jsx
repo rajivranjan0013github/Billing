@@ -330,11 +330,8 @@ export default function PurchasesTransactions() {
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">
-                    {new Date(bill.invoiceDate).toLocaleDateString("en-IN", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "2-digit",
-                    })}
+                    <p>{new Date(bill.invoiceDate).toLocaleDateString("en-IN", {day: "2-digit",month: "short",year: "2-digit",})}</p>
+                    <p className="text-xs text-gray-500">By : {bill.createdByName}</p>
                   </TableCell>
                   <TableCell>
                     {bill.withGst ? "With GST" : "Without GST"}
