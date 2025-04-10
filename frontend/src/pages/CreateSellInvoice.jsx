@@ -24,10 +24,15 @@ export const calculateTotals = (products) => {
       const pack = Number(product?.pack || 1);
       const free = Number(product?.free || 0);
       const purchaseRate = Number(product?.saleRate || 0);
-      const discountPercent =
-        Number(product?.discount || 0) + Number(product?.schemePercent || 0);
+      const discountPercent = Number(product?.discount || 0) + Number(product?.schemePercent || 0);
       const gstPer = Number(product?.gstPer || 0);
       const amount = Number(product?.amount || 0);
+
+      if(product.types === 'return') {
+        total.returnAmount += roundToTwo(amount);
+        total.grandTotal += roundToTwo(amount);
+        return total;
+      }
 
       const subtotal = roundToTwo((quantity * product?.mrp) / pack);
       const discount = roundToTwo(
@@ -54,6 +59,7 @@ export const calculateTotals = (products) => {
       productCount: 0,
       totalQuantity: 0,
       grandTotal: 0,
+      returnAmount : 0
     }
   );
 };
@@ -62,7 +68,7 @@ const roundToTwo = (num) => {
   return Math.round((num + Number.EPSILON) * 100) / 100;
 };
 
-const inputKeys = ['customerName', 'product',  'batchNumber', 'hsn', 'pack', 'expiry', 'mrp', 'packs', 'loose', 'saleRate', 'discount', 'gstPer', 'add' ];
+const inputKeys = ['customerName', 'doctorName', 'product',  'batchNumber', 'hsn', 'pack', 'expiry', 'mrp', 'packs', 'loose', 'saleRate', 'discount', 'gstPer', 'add' ];
 
 export default function CreateSellInvoice() {
   const navigate = useNavigate();
@@ -71,7 +77,6 @@ export default function CreateSellInvoice() {
   const {createBillStatus} = useSelector(state=>state.bill)
   const {isCollapsed} = useSelector(state=>state.loader);
   const [invoiceDate, setInvoiceDate] = useState(new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric",}).split("/").reverse().join("-"));
-  const [dueDate, setDueDate] = useState();
   const [products, setProducts] = useState([]);
   const [customerName, setCustomerName] = useState("");
   const { toast } = useToast();
@@ -96,7 +101,7 @@ export default function CreateSellInvoice() {
     customerId: "",
     invoiceNumber: "",
     invoiceDate: new Date(),
-    paymentDueDate: "",
+    doctorName: "",
     overallDiscount: "", // in percentage
   });
   const [isCashCounter, setIsCashCounter] = useState(true);
@@ -121,7 +126,7 @@ export default function CreateSellInvoice() {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [products, formData, invoiceDate, dueDate, isCashCounter, customerName]); // Add dependencies that handleSaveInvoice uses
+  }, [products, formData, invoiceDate, isCashCounter, customerName]); // Add dependencies that handleSaveInvoice uses
 
   useEffect(() => {
     fetch(`${Backend_URL}/api/sales/invoice-number`, {
@@ -155,13 +160,13 @@ export default function CreateSellInvoice() {
 
       // Instead of saving invoice here, open payment dialog
       setInvoiceForPayment({
+        invoiceType : 'sales',
         isCashCounter,
-        customerName: isCashCounter ? "Cash/Counter" : formData.customerName,
+        distributorName: isCashCounter ? "Cash/Counter" : formData.customerName,
         customerId: isCashCounter ? null : formData.customerId,
         invoiceNumber: formData.invoiceNumber,
         invoiceDate: invoiceDate,
         grandTotal: amountData.grandTotal,
-        dueDate: dueDate
       });
       setPaymentDialogOpen(true);
     } catch (error) {
@@ -180,6 +185,7 @@ export default function CreateSellInvoice() {
       setLoading(true);
       // Format products data to match schema
       const formattedProducts = products.map((product) => ({
+        types : product.types,
         inventoryId: product.inventoryId,
         productName: product.productName,
         batchNumber: product.batchNumber,
@@ -206,6 +212,7 @@ export default function CreateSellInvoice() {
         totalQuantity: amountData.totalQuantity,
         productCount: amountData.productCount,
         grandTotal: roundToTwo(amountData.grandTotal),
+        returnAmount : roundToTwo(amountData.returnAmount),
         gstSummary: {
           0: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
           5: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
@@ -217,6 +224,7 @@ export default function CreateSellInvoice() {
 
       // Calculate GST summary
       products.forEach((product) => {
+        if(product.types ==='return') return;
         const quantity = Number(product.quantity || 0);
         const pack = Number(product.pack || 1);
         const mrp = roundToTwo(Number(product.mrp || 0));
@@ -250,14 +258,15 @@ export default function CreateSellInvoice() {
         products: formattedProducts,
         grandTotal: roundToTwo(amountData.grandTotal),
         is_cash_customer: isCashCounter,
+        doctorName : formData?.doctorName,
         billSummary,
         // Payment details
         paymentStatus: paymentStatus,
         amountPaid: amountPaid,
         // Payment info
-        payment: amountPaid > 0 ? {
+        payment: amountPaid !== 0 ? {
           amount: amountPaid,
-          paymentType: "Payment In",
+          paymentType: amountPaid > 0 ? "Payment In" : 'Payment Out',
           paymentMethod: paymentData.paymentMethod,
           paymentDate: paymentData.chequeDate || new Date(),
           accountId: paymentData.accountId,
@@ -285,12 +294,11 @@ export default function CreateSellInvoice() {
             customerName: "",
             invoiceNumber: "",
             invoiceDate: "",
-            paymentDueDate: "",
+            doctorName: "",
             overallDiscount: "",
           });
           setCustomerName("");
           setInvoiceDate(null);
-          setDueDate(null);
           setProducts([]);
           setPaymentDialogOpen(false);
           setInvoiceForPayment(null);
@@ -308,6 +316,8 @@ export default function CreateSellInvoice() {
             variant: "destructive",
           });
         });
+      // console.log(finalData);
+      
     } catch (error) {
       toast({
         title: "Error",
@@ -422,21 +432,19 @@ export default function CreateSellInvoice() {
 
               <div>
                 <RadioGroupItem
-                  value="deliveryChallan"
-                  id="deliveryChallan"
+                  value="return"
+                  id="return"
                   className="peer sr-only"
                 />
                 <Label
-                  htmlFor="deliveryChallan"
+                  htmlFor="return"
                   className="flex items-center gap-3 rounded-md border-2 border-muted bg-popover p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                 >
-                  <ClipboardList className="h-5 w-5 text-orange-500 shrink-0" />
+                   <ClipboardList className="h-5 w-5 text-orange-500 shrink-0" />
                   <div className="space-y-0.5">
-                    <p className="text-sm font-medium leading-none">
-                      Delivery Challan
-                    </p>
+                    <p className="text-sm font-medium leading-none">Sales Return</p>
                     <p className="text-xs text-muted-foreground">
-                      For delivery purposes
+                      Sales return invoice
                     </p>
                   </div>
                 </Label>
@@ -444,12 +452,12 @@ export default function CreateSellInvoice() {
 
               <div>
                 <RadioGroupItem
-                  value="Quotation"
-                  id="Quotation"
+                  value="quotation"
+                  id="quotation"
                   className="peer sr-only"
                 />
                 <Label
-                  htmlFor="Quotation"
+                  htmlFor="quotation"
                   className="flex items-center gap-3 rounded-md border-2 border-muted bg-popover p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                 >
                   <ScrollText className="h-5 w-5 text-green-500 shrink-0" />
@@ -465,8 +473,8 @@ export default function CreateSellInvoice() {
               </div>
             </RadioGroup>
           </div>
-          <div>
-            <div>
+          <div className="col-span-4 grid-cols-4 grid gap-4">
+            <div >
               <Label className="text-sm font-medium">
                 CUSTOMER NAME<span className="text-rose-500">*REQUIRED</span>
               </Label>
@@ -478,76 +486,92 @@ export default function CreateSellInvoice() {
                 onKeyDown={(e) => handleKeyDown(e, 'customerName')}
                 ref={(el) => (inputRef.current["customerName"] = el)}
               />
+              <div className="flex items-center gap-2 mt-1 text-sm font-semibold">
+                <Checkbox
+                  checked={isCashCounter}
+                  onCheckedChange={(checked) => {
+                    if (!checked && !customerName) {
+                      toast({
+                        title: "Please select customer to uncheck",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    setIsCashCounter(checked);
+                    if (checked) {
+                      setCustomerName("");
+                      setFormData((prev) => ({
+                        ...prev,
+                        customerName: "",
+                        customerId: "",
+                      }));
+                    }
+                  }}
+                />
+                Cash/Counter Sale
+              </div>
             </div>
-            <div className="flex items-center gap-2 mt-1 text-sm font-semibold">
-              <Checkbox
-                checked={isCashCounter}
-                onCheckedChange={(checked) => {
-                  if (!checked && !customerName) {
-                    toast({
-                      title: "Please select customer to uncheck",
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-                  setIsCashCounter(checked);
-                  if (checked) {
-                    setCustomerName("");
-                    setFormData((prev) => ({
-                      ...prev,
-                      customerName: "",
-                      customerId: "",
-                    }));
-                  }
-                }}
+            
+            <div>
+              <Label className="text-sm font-medium">
+                INVOICE NO<span className="text-rose-500">*REQUIRED</span>
+              </Label>
+              <Input
+                value={formData?.invoiceNumber}
+                onChange={(e) =>
+                  handleInputChange("invoiceNumber", e.target.value)
+                }
+                placeholder="Invoice No"
               />
-              Cash/Counter Sale
             </div>
+            <div>
+              <Label className="text-sm font-medium">
+                INVOICE DATE<span className="text-rose-500">*REQUIRED</span>
+              </Label>
+              <Input
+                type="date"
+                value={invoiceDate}
+                onChange={(e) => setInvoiceDate(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">DOCTOR NAME</Label>
+              <Input
+                type="text"
+                ref={(el) => (inputRef.current["doctorName"] = el)}
+                value={formData.doctorName}
+                onChange={(e) => handleInputChange("doctorName", e.target.value)}
+                className="w-full"
+                placeholder="Enter doctor name"
+                onKeyDown={(e)=>handleKeyDown(e,'doctorName')}
+              />
+            </div>
+            {formData?.saleType === 'return' && <div>
+              <Label className="text-sm font-medium">OLD INVOICE NUMBER</Label>
+              <Input
+                type="text"
+                ref={(el) => (inputRef.current["doctorName"] = el)}
+                value={formData.doctorName}
+                onChange={(e) => handleInputChange("doctorName", e.target.value)}
+                className="w-full"
+                placeholder="Enter doctor name"
+                onKeyDown={(e)=>handleKeyDown(e,'doctorName')}
+              />
+            </div>}
           </div>
-          <div>
-            <Label className="text-sm font-medium">
-              INVOICE NO<span className="text-rose-500">*REQUIRED</span>
-            </Label>
-            <Input
-              value={formData?.invoiceNumber}
-              onChange={(e) =>
-                handleInputChange("invoiceNumber", e.target.value)
-              }
-              placeholder="Invoice No"
-            />
-          </div>
-          <div>
-            <Label className="text-sm font-medium">
-              INVOICE DATE<span className="text-rose-500">*REQUIRED</span>
-            </Label>
-            <Input
-              type="date"
-              value={invoiceDate}
-              onChange={(e) => setInvoiceDate(e.target.value)}
-              className="w-full"
-            />
-          </div>
-          <div>
-            <Label className="text-sm font-medium">PAYMENT DUE DATE</Label>
-            <Input
-              type="date"
-              ref={(el) => (inputRef.current["dueDate"] = el)}
-              value={dueDate ? dueDate.toISOString().split('T')[0] : ''}
-              onChange={(e) => setDueDate(new Date(e.target.value))}
-              className="w-full"
-              onKeyDown={(e)=>handleKeyDown(e,'dueDate')}
-            />
-          </div>
+
         </div>
       </div>
 
-      {/* purchase table */}
+      {/* sales  table */}
       <div className="my-4">
         <SaleItemTable
           inputRef={inputRef}
           products={products}
           setProducts={setProducts}
           handleKeyDown={handleKeyDown}
+          saleType={formData?.saleType}
         />
       </div>
 
@@ -609,12 +633,12 @@ export default function CreateSellInvoice() {
           <div className='text-lg'>{formatCurrency(amountData?.gstAmount)}</div>
         </div>
         <div className="py-2">
-          <div className="">(-) Adjustment</div>
-          <div className='text-lg'>{formatCurrency(0)}</div>
+          <div className="">{formData.saleType === 'return' ? 'Return Amount' : '(+) Custom Charge'}</div>
+          <div className='text-lg'>{formatCurrency(amountData?.returnAmount)}</div>
         </div>
         <div className="py-2">
-          <div className="">(+) Delivery Charge</div>
-          <div className='text-lg'>{formatCurrency(0.00)}</div>
+          <div className="">(-) Adjustment</div>
+          <div className='text-lg'>{formatCurrency(0)}</div>
         </div>
         <div className="bg-rose-500 py-2">
           <div className="">Total Amount</div>

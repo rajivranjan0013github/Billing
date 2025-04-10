@@ -99,12 +99,21 @@ const billSlice = createSlice({
     createBillStatus: "idle",
     fetchStatus: "idle",
     searchStatus: "idle",
+    saleTypeFilter: "all",
     error: null,
   },
   reducers: {
     resetStatus: (state) => {
       state.fetchStatus = "idle";
       state.error = null;
+    },
+    resetFilters: (state) => {
+      state.dateRange = {
+        from: new Date().toISOString(),
+        to: new Date().toISOString()
+      };
+      state.selectedPreset = "today";
+      state.saleTypeFilter = "all";
     },
     setDateRange: (state, action) => {
       state.dateRange = {
@@ -114,6 +123,9 @@ const billSlice = createSlice({
     },
     setSelectedPreset: (state, action) => {
       state.selectedPreset = action.payload;
+    },
+    setSaleTypeFilter: (state, action) => {
+      state.saleTypeFilter = action.payload;
     }
   },
   extraReducers: (builder) => {
@@ -156,5 +168,5 @@ const billSlice = createSlice({
   },
 });
 
-export const { resetStatus, setDateRange, setSelectedPreset } = billSlice.actions;
+export const { resetStatus, resetFilters, setDateRange, setSelectedPreset, setSaleTypeFilter } = billSlice.actions;
 export default billSlice.reducer;

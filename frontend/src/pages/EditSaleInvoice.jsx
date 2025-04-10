@@ -66,26 +66,13 @@ export default function EditSaleInvoice() {
     const fetchBill = async () => {
       try {
         setLoading(true);
-        const response = await fetch(
-          `${Backend_URL}/api/sales/invoice/${invoiceId}`,
-          { credentials: "include" }
-        );
+        const response = await fetch(`${Backend_URL}/api/sales/invoice/${invoiceId}`,{ credentials: "include" });
         if (!response.ok) {
           throw new Error("Something went wrong");
         }
         const data = await response.json();
         setCompleteData(data);
-        const {
-          distributorName,
-          distributorId,
-          invoiceNumber,
-          products,
-          invoiceDate,
-          paymentDueDate,
-          withGst,
-          amountPaid,
-          payments,
-        } = data;
+        const { distributorName, distributorId, invoiceNumber, products, invoiceDate, paymentDueDate, withGst, amountPaid, payments, saleType} = data;
         const fomateProduct = products.map((item) => {
           const temp = convertQuantityValue(item.quantity, item.pack);
           return { ...item, ...temp };
@@ -101,6 +88,7 @@ export default function EditSaleInvoice() {
           invoiceDate,
           paymentDueDate,
           invoiceNumber,
+          saleType,
           withGst: withGst ? "yes" : "no",
         });
         setdistributorName(distributorName);
@@ -271,6 +259,11 @@ export default function EditSaleInvoice() {
     setdistributorSelectDialog(false);
   };
 
+  console.log(formData);
+  console.log('complete',completeData);
+  
+  
+
   return (
     <div className="relative rounded-lg h-[100vh] pt-2 ">
       {/* Header */}
@@ -350,8 +343,8 @@ export default function EditSaleInvoice() {
                   <Label htmlFor="invoice">INVOICE</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="challan" id="challan" />
-                  <Label htmlFor="challan">DELIVERY CHALLAN</Label>
+                  <RadioGroupItem value="return" id="return" />
+                  <Label htmlFor="challan">SALE RETURN</Label>
                 </div>
               </RadioGroup>
             </div>
@@ -605,12 +598,12 @@ export default function EditSaleInvoice() {
           <div className='text-lg'>{formatCurrency(amountData?.gstAmount)}</div>
         </div>
         <div className="py-2">
-          <div className="">(-) Adjustment</div>
-          <div className='text-lg'>{formatCurrency(0)}</div>
+          <div className="">{formData?.saleType === 'return' ? 'Return Amount' : '(+) Custom Charge'}</div>
+          <div className='text-lg'>{formatCurrency(amountData?.returnAmount)}</div>
         </div>
         <div className="py-2">
-          <div className="">(+) Custom Charge</div>
-          <div className='text-lg'>{formatCurrency(0.00)}</div>
+          <div className="">(-) Adjustment</div>
+          <div className='text-lg'>{formatCurrency(0)}</div>
         </div>
         <div className="bg-rose-500 py-2">
           <div className="">Total Amount</div>

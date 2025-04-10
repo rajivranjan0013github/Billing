@@ -329,7 +329,7 @@ const Payments = () => {
                   })}
                 </TableCell>
                 <TableCell >{payment?.paymentNumber}</TableCell>
-                <TableCell className='font-semibold'>{ payment?.distributorName}</TableCell>
+                <TableCell className='font-semibold'>{ payment?.distributorName || payment?.customerName || '--'}</TableCell>
                 <TableCell>{payment?.paymentType}</TableCell>
                 <TableCell>{payment?.paymentMethod}</TableCell>
                 <TableCell>{payment?.remarks || '-'}</TableCell>

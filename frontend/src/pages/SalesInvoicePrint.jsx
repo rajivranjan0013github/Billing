@@ -200,22 +200,22 @@ const SalesInvoicePrint = () => {
                     {format(new Date(invoiceData.invoiceDate), "dd-MM-yyyy")}
                   </span>
               </div>
-              <div className="text-xs font-medium p-2">
-                <div className="grid grid-cols-3">
+              <div className="text-xs font-medium p-2 space-y-1">
+                <div className="grid grid-cols-5">
                   <span className="">Name:</span>
-                  <span className="col-span-2 capitalize">{invoiceData.customerName}</span>
+                  <span className="col-span-4 capitalize">{invoiceData.customerName}</span>
                 </div>
-                <div className="grid grid-cols-3">
+                <div className="grid grid-cols-5">
                   <span className="">Mob No:</span>
-                  <span className="col-span-2">{invoiceData.customerMob||"---"}</span>
+                  <span className="col-span-4">{invoiceData.customerMob||"---"}</span>
                 </div>
-                <div className="grid grid-cols-3">
+                {/* <div className="grid grid-cols-3">
                   <span className="">Address:</span>
                   <span className="col-span-2">{invoiceData.customerAddress||"---"}</span>
-                </div>
-                <div className="grid grid-cols-3">
+                </div> */}
+                <div className="grid grid-cols-5">
                   <span className="">Doctor:</span>
-                  <span className="col-span-2">{invoiceData.doctorName||"---"}</span>
+                  <span className="col-span-4">{invoiceData.doctorName||"---"}</span>
                 </div>
               </div>
             </div>
@@ -295,7 +295,7 @@ const SalesInvoicePrint = () => {
                     {product.gstPer}%
                   </td>
                   <td className=" text-right px-1.5">
-                    {product.amount}
+                    {product.amount} {product.types === 'return' && <span className="text-red-500">R</span>}
                   </td>
                 </tr>
               ))}
@@ -385,18 +385,18 @@ const SalesInvoicePrint = () => {
             <div className="space-y-1 text-xs py-1">
               <div className="flex justify-between px-2">
                 <span className="">Subtotal:</span>
-                <span>₹{invoiceData.billSummary.subtotal.toFixed(2)}</span>
+                <span>{formatCurrency(invoiceData?.billSummary?.subtotal)}</span>
               </div>
               <div className="flex justify-between px-2">
                 <span className="">Discount:</span>
                 <span>
-                  ₹{invoiceData.billSummary.discountAmount.toFixed(2)}
+                 {invoiceData?.billSummary?.discountAmount !== 0 && '-'} {formatCurrency(invoiceData?.billSummary?.discountAmount)}
                 </span>
               </div>
-              {/* <div className="flex justify-between px-2">
-                <span className="">GST Amount:</span>
-                <span>₹{invoiceData.billSummary.gstAmount.toFixed(2)}</span>
-              </div> */}
+              {invoiceData?.saleType === 'return' && <div className="flex justify-between px-2">
+                <span className="">Return Value:</span>
+                <span>{formatCurrency(invoiceData?.billSummary?.returnAmount)}</span>
+              </div>}
               <div className="flex justify-between border-t-[1px] border-b-[1px] border-gray-800 font-medium bg-gray-200 py-1 px-2 text-sm box-border">
                 <span>Total Amount:</span>
                 <span>{formatCurrency(invoiceData?.grandTotal)}</span>

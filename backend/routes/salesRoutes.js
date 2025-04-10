@@ -53,17 +53,18 @@ router.post("/", verifyToken, async (req, res) => {
       invoiceNumber,
       createdBy: req?.user._id,
       createdByName : req?.user?.name,
-      mob: distributorDetails?.mob || "",
+      mob: distributorDetails?.mobileNumber || "",
+      address  : distributorDetails?.address
     });
 
     // Handle payment if provided
-    if (payment && payment.amount > 0) {
+    if (payment && payment.amount !== 0) {
       // Create payment record
       const paymentNumber = await Payment.getNextPaymentNumber(session);
       const paymentDoc = new Payment({
         amount: payment.amount,
         paymentNumber,
-        paymentType: "Payment In",
+        paymentType: payment?.amount > 0 ? "Payment In" : "Payment Out",
         paymentMethod: payment.paymentMethod,
         paymentDate: payment.chequeDate || new Date(),
         customerId: details.customerId,
@@ -84,8 +85,7 @@ router.post("/", verifyToken, async (req, res) => {
       if (payment.paymentMethod === "CHEQUE") {
         // Update distributor balance since it's still a payment promise
         if (distributorDetails) {
-          distributorDetails.currentBalance =
-            (distributorDetails.currentBalance || 0) + payment.amount;
+          distributorDetails.currentBalance = (distributorDetails.currentBalance || 0) + payment.amount;
           await distributorDetails.save({ session });
         }
       } else {
@@ -95,9 +95,7 @@ router.post("/", verifyToken, async (req, res) => {
         }
 
         // Validate account exists
-        const account = await AccountDetails.findById(
-          payment.accountId
-        ).session(session);
+        const account = await AccountDetails.findById(payment.accountId).session(session);
         if (!account) {
           throw new Error("Account not found");
         }
@@ -109,36 +107,22 @@ router.post("/", verifyToken, async (req, res) => {
 
         // Update distributor balance if not cash customer
         if (distributorDetails) {
-          distributorDetails.currentBalance =
-            (distributorDetails.currentBalance || 0) + payment.amount;
+          distributorDetails.currentBalance = (distributorDetails.currentBalance || 0) + payment.amount;
           await distributorDetails.save({ session });
         }
       }
 
       await paymentDoc.save({ session });
       newSalesBill.payments.push(paymentDoc._id);
-      newSalesBill.payment = payment;
+      // newSalesBill.payment = payment;
     }
 
     // Process inventory updates
     for (const product of details.products) {
-      const {
-        inventoryId,
-        batchNumber,
-        batchId,
-        expiry,
-        quantity,
-        pack,
-        purchaseRate,
-        saleRate,
-        gstPer,
-        HSN,
-        mrp,
-      } = product;
+      const { inventoryId, batchNumber, batchId, expiry, quantity, pack, purchaseRate, saleRate, gstPer, HSN, mrp, types} = product;
 
-      const inventorySchema = await Inventory.findById(inventoryId).session(
-        session
-      );
+      const inventorySchema = await Inventory.findById(inventoryId).session(session);
+
       if (!inventorySchema) {
         throw new Error(`Inventory not found : ${inventoryId}`);
       }
@@ -148,37 +132,38 @@ router.post("/", verifyToken, async (req, res) => {
         throw new Error(`Batch not found : ${batchId}`);
       }
 
-      // Update batch quantity
-      batch.quantity -= quantity;
-      await batch.save({ session });
-
-      // Update inventory quantity
-      inventorySchema.quantity -= quantity;
-      await inventorySchema.save({ session });
-
       // Record timeline
       const timeline = new StockTimeline({
         inventoryId: inventoryId,
         invoiceId: newSalesBill._id,
-        type: "SALE",
+        type: types === 'return' ? 'SALE_RETURN' : "SALE",
         invoiceNumber: invoiceNumber,
-        debit: quantity,
-        balance: inventorySchema.quantity,
+        expiry: expiry, 
         batchNumber,
-        expiry: expiry,
-        mrp,
-        purchaseRate,
-        saleRate,
-        gstPer,
-        pack,
+        mrp, purchaseRate, saleRate, gstPer, pack,
         createdBy: req?.user._id,
         createdByName : req?.user?.name,
         customerName: details.customerName,
         customerMob: details.mob || "",
       });
+     
+      // Update batch & inventory quantity
+      if(types === 'return') {
+        batch.quantity += quantity;
+        inventorySchema.quantity += quantity;
+        timeline.credit = quantity;
+      } else {
+        inventorySchema.quantity -= quantity;
+        batch.quantity -= quantity;
+        timeline.debit = quantity;
+      }
+      timeline.balance = inventorySchema.quantity;
+      await batch.save({ session });
+      await inventorySchema.save({ session });
       await timeline.save({ session });
     }
 
+    
     // Save the sales bill
     const savedSalesBill = await newSalesBill.save({ session });
 

@@ -6,15 +6,16 @@ import { useToast } from "../../../hooks/use-toast";
 import InventorySuggestion from "./InventorySuggestion";
 import BatchSuggestion from "./BatchSuggestion";
 import { Input } from "../../ui/input";
+import { Checkbox } from "../../ui/checkbox";
 
 const roundToTwo = (num) => {
   return Math.round((num + Number.EPSILON) * 100) / 100;
 };
 
-export default function SaleTable({ inputRef, products, setProducts, handleKeyDown, viewMode}) {
+export default function SaleTable({ inputRef, products, setProducts, handleKeyDown, saleType, viewMode}) {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(true);
-  const [newProduct, setNewProduct] = useState({});
+  const [newProduct, setNewProduct] = useState({types : 'sale'});
   const [productSearch, setProductSearch] = useState(""); // for product Input-> which is passing in inventory suggestion
   const [batchNumber, setBatchNumber] = useState("");
 
@@ -60,7 +61,7 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
       const quantity = pack * packs + loose;
       const subtotal = quantity * (saleRate / pack);
       const total = subtotal;
-      updatedProduct.amount = convertToFraction(total);
+      updatedProduct.amount = (updatedProduct.types === 'return' ? -1 : 1) * convertToFraction(total);
       updatedProduct.quantity = quantity;
     } else {
       updatedProduct.amount = "";
@@ -77,7 +78,7 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
 
     const {pack, currentStocks, quantity} = newProduct;
     
-    if(currentStocks < quantity) {
+    if(currentStocks < quantity && newProduct?.types === 'sale') {
       toast({title : `${convertQuantity(currentStocks, pack)} are in stocks`, variant : 'destructive'})
       return;
     }
@@ -87,7 +88,7 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
     } else {
       setProducts((pre) => [...pre, { ...newProduct, batchNumber }]);
     }
-    setNewProduct({});
+    setNewProduct({types : 'sale'});
     setProductSearch("");
     setBatchNumber("");
     inputRef.current["product"].focus();
@@ -111,10 +112,11 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
   };
 
   const handleProductSelect = (product) => {
-    setNewProduct({
+    setNewProduct(pre=>({
+      ...pre,
       productName: product.name,
       inventoryId: product._id,
-    });
+    }));
     if (inputRef?.current["batchNumber"]) {
       inputRef.current["batchNumber"].focus();
     }
@@ -196,7 +198,16 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
       {!viewMode && (
         <div className="grid grid-cols-16 w-full space-x-1">
           <div className="col-span-3 grid grid-cols-6">
-            <div></div>
+            <div className="flex items-center justify-center">{saleType === 'return' && <>
+              <span className="text-red-500 text-sm">R</span>
+              <Checkbox
+                checked={newProduct.types === 'return'}
+                onCheckedChange={(checked)=> {
+                    handleInputChange('types', checked ? 'return' : 'sale')
+                }}
+              />
+             
+            </>}</div>
             <div className="col-span-5">
               <InventorySuggestion
                 inputRef={inputRef}
@@ -362,7 +373,7 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
               key={product?.inventoryId}
             >
               <div className="col-span-3 grid grid-cols-6">
-                <span className="text-center font-semibold">{index + 1}.</span>
+                <div className="items-center font-semibold justify-center flex">{index + 1}.<span className="text-sm text-red-500">{product.types === 'return' && 'R'}</span></div>
                 <Input
                   disabled
                   value={product?.productName}

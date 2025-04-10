@@ -5,21 +5,32 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Input } from "../components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { cn } from "../lib/utils";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchBills, searchBills, setDateRange, setSelectedPreset } from "../redux/slices/SellBillSlice";
+import { fetchBills, searchBills, setDateRange, setSelectedPreset, setSaleTypeFilter, resetFilters } from "../redux/slices/SellBillSlice";
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { DateRangePicker } from "../components/ui/date-range-picker";
 import { formatCurrency } from "../utils/Helper";
 
 export default function SalesTransactions() {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
-  const { bills: initialBills, dateRange: reduxDateRange, selectedPreset } = useSelector((state) => state.bill);
+  const { bills: initialBills, dateRange: reduxDateRange, selectedPreset, saleTypeFilter } = useSelector((state) => state.bill);
   const [bills, setBills] = useState(initialBills);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState("invoice");
   const [lastFetchedRange, setLastFetchedRange] = useState(null);
+
+  // Add cleanup effect
+  useEffect(() => {
+    return () => {
+      // Only reset if navigating away from sales routes
+      if (!location.pathname.startsWith('/sales')) {
+        dispatch(resetFilters());
+      }
+    };
+  }, [location.pathname, dispatch]);
 
   // Convert ISO strings to Date objects for the component
   const dateRange = {
@@ -154,11 +165,25 @@ export default function SalesTransactions() {
   );
 
   const getFilteredBills = () => {
-    if (!searchQuery) return bills;
+    let filteredBills = bills;
 
-    return bills.filter((bill) =>
-      bill.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // Apply sale type filter
+    if (saleTypeFilter !== "all") {
+      filteredBills = filteredBills.filter(bill => {
+        if (saleTypeFilter === "sales") return bill.saleType !== "return";
+        if (saleTypeFilter === "returns") return bill.saleType === "return";
+        return true;
+      });
+    }
+
+    // Apply search filter
+    if (searchQuery) {
+      filteredBills = filteredBills.filter((bill) =>
+        bill.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    return filteredBills;
   };
 
   const handleSearch = async (value) => {
@@ -307,6 +332,17 @@ export default function SalesTransactions() {
           </div>
         )}
 
+        <Select value={saleTypeFilter} onValueChange={(value) => dispatch(setSaleTypeFilter(value))}>
+          <SelectTrigger className="w-[120px]">
+            <SelectValue placeholder="Filter by type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="sales">Sales</SelectItem>
+            <SelectItem value="returns">Returns</SelectItem>
+          </SelectContent>
+        </Select>
+
         <div className="flex-1 flex justify-end gap-2">
           <Button
             variant='outline'
@@ -338,7 +374,7 @@ export default function SalesTransactions() {
                 <TableHead>BILLED ON</TableHead>
                 <TableHead>BILL TOTAL</TableHead>
                 <TableHead>Due Amt</TableHead>
-                <TableHead>PAID / DUE</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className='border'>
@@ -349,13 +385,13 @@ export default function SalesTransactions() {
                   onClick={() => navigate(`/sales/${bill._id}`)}
                 >
                   <TableCell className="font-medium pl-5">
-                    {index+1}
+                    {index+1} {bill?.saleType === 'return' && <span className="text-red-500">R</span>}
                   </TableCell>
                   <TableCell className="font-medium">
                     {bill.invoiceNumber}
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium">{bill.distributorName}</div>
+                    <div className="font-medium">{bill.customerName}</div>
                     <div className="text-sm text-muted-foreground">
                       {bill.mob}
                     </div>
@@ -400,7 +436,7 @@ export default function SalesTransactions() {
                     <div className="flex items-center gap-2">
                       <span
                         className={cn(
-                          "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium",
+                          "inline-flex items-center  px-2 py-1 text-xs font-medium",
                           {
                             "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20":
                               bill.paymentStatus === "paid",

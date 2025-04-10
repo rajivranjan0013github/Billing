@@ -18,7 +18,7 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
   const { accounts, fetchStatus } = useSelector((state) => state.accounts);
   const [step, setStep] = useState(1);
   const [paymentStatus, setPaymentStatus] = useState('due');
-  const [dueDate, setDueDate] = useState(new Date(invoiceData?.dueDate || new Date()));
+  const [dueDate, setDueDate] = useState();
   const [showDetails, setShowDetails] = useState(false);
   const [selectedMethodIndex, setSelectedMethodIndex] = useState(1);
 
@@ -64,7 +64,7 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
       // Reset all states when dialog opens
       setStep(invoiceData?.isCashCounter ? 2 : 1);
       setPaymentStatus(invoiceData?.isCashCounter ? 'paid' : "due");
-      setDueDate(new Date(invoiceData?.dueDate || new Date()));
+      // setDueDate(new Date(invoiceData?.dueDate || new Date()));
       setShowDetails(false); // Always start with showDetails false
       setSelectedMethodIndex(1);
       setPaymentData({
@@ -180,7 +180,7 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
     if (paymentStatus === "due") return true;
 
     const amount = Number(paymentData.amount);
-    if (!amount || amount <= 0) return false;
+    // if (!amount || amount <= 0) return false;
     
     switch (paymentData.paymentMethod) {
       case "CHEQUE":
@@ -527,7 +527,7 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
                 {/* Invoice Summary Section - Only in step 1 */}
                 <div className="grid grid-cols-2 gap-2 py-2 px-4 bg-gray-50 rounded-lg">
                   <div className="col-span-2">
-                    <Label className="">Distributor Name</Label>
+                    <Label className="">{invoiceData?.invoiceType === 'sales' ? 'Customer Name' :  'Distributor Name'}</Label>
                     <Input value={invoiceData?.distributorName} disabled={true} className='font-bold border-gray-500' />
                   </div>
                   <div>

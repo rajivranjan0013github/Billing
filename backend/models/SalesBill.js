@@ -20,13 +20,16 @@ const salesBillSchema = new mongoose.Schema(
   {
     saleType: {
       type: String,
-      enum: ["invoice", "deliveryChallan", "Quotation"],
+      enum: ["invoice", "deliveryChallan", "quotation", "return"],
       required: true,
     },
 
     invoiceNumber: {
       type: String,
       required: true,
+    },
+    returnInvoiceNumber : {
+      type : String,
     },
     customerId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -40,8 +43,8 @@ const salesBillSchema = new mongoose.Schema(
       default: true,
     },
     customerName: String,
-    distributorName: String,
     mob: String,
+    doctorName : String,
     invoiceDate: {
       type: Date,
       default: Date.now,
@@ -49,6 +52,11 @@ const salesBillSchema = new mongoose.Schema(
     paymentDueDate: Date,
     products: [
       {
+        types : {
+          type : String,
+          enum : ['sale', 'return'],
+          default : 'sale'
+        },
         inventoryId: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Inventory",
@@ -147,6 +155,7 @@ const salesBillSchema = new mongoose.Schema(
       totalQuantity: { type: Number, required: true },
       productCount: { type: Number, required: true },
       grandTotal: { type: Number, required: true },
+      returnAmount : {type : Number}
     },
   },
   {

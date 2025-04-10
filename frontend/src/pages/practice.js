@@ -1,4 +1,8 @@
-const t = "";
-const p = Number(t);
-console.log(p);
+const roundToTwo = (num) => {
+    return Math.round((num + Number.EPSILON) * 100) / 100;
+  };
 
+  const p = roundToTwo(-5);
+
+  console.log(p);
+  
