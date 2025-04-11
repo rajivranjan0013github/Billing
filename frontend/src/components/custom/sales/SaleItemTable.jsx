@@ -72,7 +72,12 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
   // handle add product to list
   const handleAdd = () => {
     if (!newProduct.productName) {
-      toast({ variant: "destructive", title: "Please add product" });
+      toast({ variant: "destructive", title: "Please select item" });
+      return;
+    }
+
+    if(!newProduct?.quantity && !newProduct?.loose) {
+      toast({ variant: "destructive", title: "Please add quantity" });
       return;
     }
 

@@ -138,7 +138,7 @@ export default function PaymentDetailsIn() {
           <div className="grid grid-cols-3 gap-6">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">CUSTOMER NAME</p>
-              <p className="font-medium">{paymentDetails.distributorName}</p>
+              <p className="font-medium">{paymentDetails?.distributorName || paymentDetails?.customerName || '--'}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">PAYMENT DATE</p>

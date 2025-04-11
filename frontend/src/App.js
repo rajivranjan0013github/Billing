@@ -48,6 +48,7 @@ import Payments from "./pages/Payments";
 import QuickMenu from "./pages/QuickMenu";
 import Reports from "./pages/Reports";
 import PaymentInvoicePrint from "./pages/PaymentInvoicePrint";
+import BillingSettings from "./pages/BillingSettings";
 
 const AppContent = () => {
   const dispatch = useDispatch();
@@ -175,6 +176,7 @@ const AppContent = () => {
               />
               <Route path="/sales/invoice-print" element={<SalesInvoicePrint />} />
               <Route path="/payment/invoice-print" element={<PaymentInvoicePrint />} />
+              <Route path="/settings/config" element={<BillingSettings />} />
             </>
           )}
         </Routes>
