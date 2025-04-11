@@ -55,7 +55,7 @@ export default function SalesTab({inventoryId}) {
                                     </td>
                                     <td className="px-4 py-2">
                                         <div className="text-sm font-medium flex items-center gap-2">
-                                            {sale.distributorName}
+                                            {sale?.distributorName || sale?.customerName || '--'}
                                         </div>
                                         {sale.distributorMob && (
                                             <div className="text-xs text-gray-500">Mobile: {sale.distributorMob}</div>

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, forwardRef } from 'react';
 import { Input } from "../../ui/input";
 import { Badge } from "../../ui/badge"; // Add this import
-import { ChevronsUpDown } from "lucide-react";
 
 export const SearchSuggestion = forwardRef(({ suggestions=[], placeholder, value, setValue, onSuggestionSelect, showAmount=false, onKeyDown }, ref) => {
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
@@ -80,9 +79,9 @@ export const SearchSuggestion = forwardRef(({ suggestions=[], placeholder, value
           onFocus={() => setShowSuggestions(true)}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
           placeholder={placeholder || "Search or type"}
-          className="pr-8 hover:cursor-pointer font-semibold" // Add right padding to accommodate the icon
+          className="pr-8 hover:cursor-pointer" // Add right padding to accommodate the icon
         />
-        <ChevronsUpDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 opacity-50 " />
+        {/* <ChevronsUpDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 opacity-50 " /> */}
       </div>
 
       {showSuggestions && filteredSuggestions.length > 0 && (
@@ -94,12 +93,12 @@ export const SearchSuggestion = forwardRef(({ suggestions=[], placeholder, value
             <li
               key={suggestion._id}
               onClick={() => handleSuggestionClick(suggestion)}
-              className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${
-                index === selectedIndex ? 'bg-gray-100' : ''
+              className={`px-4 py-2 cursor-pointer hover:bg-blue-200 ${
+                index === selectedIndex ? 'bg-blue-200' : ''
               }`}
             >
               <div className="flex justify-between items-center">
-                <span className='capitalize'>{suggestion.name}</span>
+                <span className='capitalize text-sm'>{suggestion.name}</span>
                 {showAmount && suggestion?.currentBalance !== undefined && (
                   <Badge variant={suggestion?.currentBalance <= 0 ? "destructive" : "success"}>
                     {suggestion?.currentBalance || 0}

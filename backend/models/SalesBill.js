@@ -155,7 +155,8 @@ const salesBillSchema = new mongoose.Schema(
       totalQuantity: { type: Number, required: true },
       productCount: { type: Number, required: true },
       grandTotal: { type: Number, required: true },
-      returnAmount : {type : Number}
+      returnAmount : {type : Number},
+      adjustment : {type : Number, default : 0}
     },
   },
   {

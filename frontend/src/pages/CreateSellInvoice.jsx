@@ -22,10 +22,12 @@ import { fetchItems } from "../redux/slices/inventorySlice";
 import { useNavigate } from "react-router-dom";
 import PaymentDialog from "../components/custom/payment/PaymentDialog";
 import { formatCurrency } from "../utils/Helper";
+import SearchSuggestion from "../components/custom/custom-fields/CustomSearchSuggestion";
+import { fetchSettings } from '../redux/slices/settingsSlice'
 
 // for sale only
-export const calculateTotals = (products) => {
-  return products.reduce(
+export const calculateTotals = (products, adjustment=false) => {
+  const total =  products.reduce(
     (total, product) => {
       const quantity = Number(product?.quantity || 0);
       const pack = Number(product?.pack || 1);
@@ -43,13 +45,13 @@ export const calculateTotals = (products) => {
       }
 
       const subtotal = roundToTwo((quantity * product?.mrp) / pack);
-      const discount = Math.round(roundToTwo(
+      const discount = roundToTwo(
         (((product?.quantity * product?.mrp) / pack) * discountPercent) / 100
-      ));
-      const taxable = Math.round(roundToTwo(
+      );
+      const taxable =roundToTwo(
         ((subtotal - discount) * 100) / (100 + gstPer)
-      ));
-      const gstAmount = Math.round(roundToTwo((taxable * gstPer) / 100));
+      );
+      const gstAmount = roundToTwo((taxable * gstPer) / 100);
 
       total.grandTotal = roundToTwo(total.grandTotal + taxable + gstAmount);
       total.productCount += 1;
@@ -58,7 +60,6 @@ export const calculateTotals = (products) => {
       total.discountAmount = roundToTwo(total.discountAmount + discount);
       total.taxable = roundToTwo(total.taxable + taxable);
       total.gstAmount = roundToTwo(total.gstAmount + gstAmount);
-
       return total;
     },
     {
@@ -72,6 +73,12 @@ export const calculateTotals = (products) => {
       returnAmount: 0,
     }
   );
+  if(adjustment) {
+    const grandTotal = total?.grandTotal;
+    total.grandTotal = Math.round(grandTotal);
+    total.adjustment = total.grandTotal - grandTotal
+  }
+  return total;
 };
 
 const roundToTwo = (num) => {
@@ -99,24 +106,16 @@ export default function CreateSellInvoice() {
   const navigate = useNavigate();
   const inputRef = useRef({});
   const dispatch = useDispatch();
-  const { createBillStatus } = useSelector((state) => state.bill);
-  const { isCollapsed } = useSelector((state) => state.loader);
-  const [invoiceDate, setInvoiceDate] = useState(
-    new Date()
-      .toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })
-      .split("/")
-      .reverse()
-      .join("-")
-  );
+  const {createBillStatus} = useSelector(state=>state.bill);
+  const {settings, status } = useSelector(state => state.settings)
+  const { isCollapsed } = useSelector(state=>state.loader);
+  const [invoiceDate, setInvoiceDate] = useState(new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric",}).split("/").reverse().join("-"));
   const [products, setProducts] = useState([]);
   const [customerName, setCustomerName] = useState("");
   const { toast } = useToast();
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [invoiceForPayment, setInvoiceForPayment] = useState(null);
+  const [additionalDiscount, setAdditionalDiscount] = useState({per : '', value : ''}); // in percentage
 
   // Add useEffect to focus on customer name input when component mounts
   useEffect(() => {
@@ -130,6 +129,19 @@ export default function CreateSellInvoice() {
     return () => clearTimeout(timer);
   }, []);
 
+  // fetching setting config
+  useEffect(()=> {
+    if(status === 'idle') {
+      dispatch(fetchSettings());
+    }
+  }, [status, settings])
+
+   // Convert doctors array to the format expected by CustomSearchSuggestion
+  const doctorSuggestions = settings?.doctors.map((name, index) => ({
+    _id: index + 1,
+    name: name
+  }));
+
   const [formData, setFormData] = useState({
     saleType: "invoice",
     customerName: "",
@@ -137,12 +149,12 @@ export default function CreateSellInvoice() {
     invoiceNumber: "",
     invoiceDate: new Date(),
     doctorName: "",
-    overallDiscount: "", // in percentage
+    returnInvoiceNumber : '',
   });
   const [isCashCounter, setIsCashCounter] = useState(true);
 
   // caculating total of the product
-  const amountData = useMemo(() => calculateTotals(products), [products]);
+  const amountData = useMemo(() => calculateTotals(products, settings?.adjustment), [products, settings]);
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -306,7 +318,8 @@ export default function CreateSellInvoice() {
         products: formattedProducts,
         grandTotal: roundToTwo(amountData.grandTotal),
         is_cash_customer: isCashCounter,
-        doctorName: formData?.doctorName,
+        doctorName : formData?.doctorName,
+        returnInvoiceNumber : formData?.returnInvoiceNumber,
         billSummary,
         // Payment details
         paymentStatus: paymentStatus,
@@ -370,7 +383,8 @@ export default function CreateSellInvoice() {
             variant: "destructive",
           });
         });
-      // console.log(finalData);
+      console.log(finalData);
+      
     } catch (error) {
       toast({
         title: "Error",
@@ -391,8 +405,8 @@ export default function CreateSellInvoice() {
       customerName: customer.name,
     });
     setIsCashCounter(false); // Uncheck cash/counter when customer is selected
-    if (inputRef && inputRef.current["product"]) {
-      inputRef.current["product"].focus();
+    if(inputRef && inputRef.current['doctorName']) {
+      inputRef.current['doctorName'].focus();
     }
   };
 
@@ -418,6 +432,64 @@ export default function CreateSellInvoice() {
       }
     }
   };
+
+  const onAdditionalDiscountChange = (key, num) => {
+    if(!amountData?.subtotal) {
+      toast({variant : 'destructive', message : 'Please add alteast on product'}); return;
+    }
+    const tempNum = Number(num);
+    const tempSubtotal = amountData?.subtotal;
+    if(key === 'per') {
+      const value = roundToTwo(tempSubtotal*tempNum/100)
+      setAdditionalDiscount({per : tempNum,   value})
+    } else {
+      const per = roundToTwo(tempNum/tempSubtotal*100);
+      setAdditionalDiscount({per, value : tempNum});
+    }
+  }
+
+  const handleAdditionalDiscountApply = () => {
+    const additionalDiscountTemp = Number(additionalDiscount?.per || 0);
+    if (additionalDiscountTemp <= 0) return;
+
+    setProducts(prevProducts => 
+      prevProducts.map(product => {
+        const newDiscount = Number(product.discount || 0) + additionalDiscountTemp;
+        const mrp = Number(product.mrp || 0);
+        const newSaleRate = (mrp * (1 - newDiscount / 100)).toFixed(2);
+
+        return {
+          ...product,
+          discount: newDiscount,
+          saleRate: newSaleRate,
+          amount: calculateProductAmount({
+            ...product,
+            discount: newDiscount,
+            saleRate: newSaleRate
+          })
+        };
+      })
+    );
+
+    // Reset additional discount after applying
+    setAdditionalDiscount({ per: '', value: '' });
+  }
+
+  // Helper function to calculate product amount with updated discount
+  const calculateProductAmount = (product) => {
+    const quantity = Number(product?.quantity || 0);
+    const pack = Number(product?.pack || 1);
+    const mrp = Number(product?.mrp || 0);
+    const discountPercent = Number(product?.discount || 0);
+    const gstPer = Number(product?.gstPer || 0);
+
+    const subtotal = roundToTwo((quantity * mrp) / pack);
+    const discount = roundToTwo((subtotal * discountPercent) / 100);
+    const taxable = roundToTwo(((subtotal - discount) * 100) / (100 + gstPer));
+    const gstAmount = roundToTwo((taxable * gstPer) / 100);
+
+    return roundToTwo(taxable + gstAmount);
+  }
 
   return (
     <div className="relative rounded-lg h-[100vh] pt-4">
@@ -566,7 +638,20 @@ export default function CreateSellInvoice() {
                 Cash/Counter Sale
               </div>
             </div>
-
+            <div>
+              <Label className="text-sm font-medium">DOCTOR NAME</Label>
+              <SearchSuggestion
+                suggestions={doctorSuggestions}
+                placeholder="Enter or select doctor name"
+                value={formData.doctorName}
+                setValue={(value) => handleInputChange("doctorName", value)}
+                onSuggestionSelect={(selected) => {
+                  handleInputChange("doctorName", selected.name);
+                }}
+                onKeyDown={(e) => handleKeyDown(e, 'doctorName')}
+                ref={(el) => (inputRef.current["doctorName"] = el)}
+              />
+            </div>
             <div>
               <Label className="text-sm font-medium">
                 INVOICE NO<span className="text-rose-500">*REQUIRED</span>
@@ -590,38 +675,18 @@ export default function CreateSellInvoice() {
                 className="w-full"
               />
             </div>
-            <div>
-              <Label className="text-sm font-medium">DOCTOR NAME</Label>
+            {formData?.saleType === 'return' && <div>
+              <Label className="text-sm font-medium">OLD INVOICE NUMBER</Label>
               <Input
                 type="text"
-                ref={(el) => (inputRef.current["doctorName"] = el)}
-                value={formData.doctorName}
-                onChange={(e) =>
-                  handleInputChange("doctorName", e.target.value)
-                }
+                ref={(el) => (inputRef.current["returnInvoiceNumber"] = el)}
+                value={formData.returnInvoiceNumber}
+                onChange={(e) => handleInputChange("returnInvoiceNumber", e.target.value)}
                 className="w-full"
-                placeholder="Enter doctor name"
-                onKeyDown={(e) => handleKeyDown(e, "doctorName")}
+                placeholder="Enter Old Invoice number"
+                onKeyDown={(e)=>handleKeyDown(e,'returnInvoiceNumber')}
               />
-            </div>
-            {formData?.saleType === "return" && (
-              <div>
-                <Label className="text-sm font-medium">
-                  OLD INVOICE NUMBER
-                </Label>
-                <Input
-                  type="text"
-                  ref={(el) => (inputRef.current["doctorName"] = el)}
-                  value={formData.doctorName}
-                  onChange={(e) =>
-                    handleInputChange("doctorName", e.target.value)
-                  }
-                  className="w-full"
-                  placeholder="Enter doctor name"
-                  onKeyDown={(e) => handleKeyDown(e, "doctorName")}
-                />
-              </div>
-            )}
+            </div>}
           </div>
         </div>
       </div>
@@ -638,19 +703,26 @@ export default function CreateSellInvoice() {
       </div>
 
       <div className="grid grid-cols-4 gap-4">
-        <div className="p-4 border rounded-lg">
-          <h3 className="mb-4 text-sm font-medium">OVERALL BILL DISCOUNT</h3>
+        <div className="p-4 border rounded-lg ">
+          <div className="flex justify-between">
+            <h3 className="mb-4 text-sm font-medium">OVERALL BILL DISCOUNT</h3>
+            <Button size='sm' onClick={handleAdditionalDiscountApply}  className='h-5'>Apply</Button>
+          </div>
           <div className="flex gap-4">
-            <Input
-              placeholder="Value"
-              className="w-24"
-              value={formData?.overallDiscount}
-              onChange={(e) =>
-                handleInputChange("overallDiscount", e.target.value)
-              }
-            />
-            %<span className="px-2 py-1">OR</span>
-            <Input placeholder="₹ Value" className="flex-1" />
+            <div className="relative">
+              <Input
+                placeholder="Value"
+                className="w-24 pr-5"
+                value={additionalDiscount?.per}
+                onChange={(e)=>onAdditionalDiscountChange('per', e.target.value)}
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2">%</span>
+            </div>
+            <span className="px-2 py-1">OR</span>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-0">₹</span>
+              <Input placeholder="Value" className="flex-1 pl-5" value={additionalDiscount?.value}  onChange={(e)=>onAdditionalDiscountChange('value', e.target.value)} />
+            </div>
           </div>
         </div>
         <div className="p-4 border rounded-lg">
@@ -708,7 +780,7 @@ export default function CreateSellInvoice() {
         </div>
         <div className="py-2">
           <div className="">(-) Adjustment</div>
-          <div className="text-lg">{formatCurrency(0)}</div>
+          <div className='text-lg'>{formatCurrency(amountData?.adjustment || 0)}</div>
         </div>
         <div className="bg-rose-500 py-2">
           <div className="">Total Amount</div>

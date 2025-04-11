@@ -143,8 +143,8 @@ router.post("/", verifyToken, async (req, res) => {
         mrp, purchaseRate, saleRate, gstPer, pack,
         createdBy: req?.user._id,
         createdByName : req?.user?.name,
-        customerName: details.customerName,
-        customerMob: details.mob || "",
+        distributorName: details.customerName,
+        distributorMob: details.mob || "",
       });
      
       // Update batch & inventory quantity
