@@ -50,6 +50,7 @@ export const fetchUserData = createLoadingAsyncThunk(
       }
 
       const data = await response.json();
+      console.log(data)
       return data;
     } catch (error) {
       return rejectWithValue(error.message);
@@ -104,6 +105,7 @@ const userSlice = createSlice({
       })
       .addCase(fetchUserData.rejected, (state, action) => {
         state.status = 'failed';
+        console.log(action.payload)
         state.error = action.payload;
         state.isAuthenticated = false;
       });

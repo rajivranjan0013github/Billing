@@ -3,15 +3,23 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import { ArrowLeft, Pencil, Save, FileText, Trash2, ChevronRight} from "lucide-react";
+import { Checkbox } from "../components/ui/checkbox";
+import {
+  ArrowLeft,
+  Pencil,
+  Save,
+  FileText,
+  Trash2,
+  ChevronRight,
+} from "lucide-react";
 import { format } from "date-fns";
 import { Backend_URL, convertQuantityValue } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
-import SelectdistributorDialog from "../components/custom/distributor/SelectDistributorDlg";
+import { CustomerSuggestionWithDialog } from "../components/custom/sales/customerSuggestion";
 import { calculateTotals } from "./CreateSellInvoice";
 import { useParams, useNavigate } from "react-router-dom";
 import SaleItemTable from "../components/custom/sales/SaleItemTable";
-import MakePaymentDlg from "../components/custom/payment/MakePaymentDlg";
+import PaymentDialog from "../components/custom/payment/PaymentDialog";
 import { useSelector } from "react-redux";
 import { formatCurrency } from "../utils/Helper";
 
@@ -20,19 +28,36 @@ const roundToTwo = (num) => {
   return Math.round((num + Number.EPSILON) * 100) / 100;
 };
 
+const inputKeys = [
+  "customerName",
+  "doctorName",
+  "product",
+  "batchNumber",
+  "hsn",
+  "pack",
+  "expiry",
+  "mrp",
+  "packs",
+  "loose",
+  "saleRate",
+  "discount",
+  "gstPer",
+  "add",
+];
+
 export default function EditSaleInvoice() {
   const inputRef = useRef([]);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const {isCollapsed} = useSelector(state=>state.loader);
+  const { isCollapsed } = useSelector((state) => state.loader);
   const { invoiceId } = useParams();
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState(true);
   const [invoiceDate, setInvoiceDate] = useState();
   const [dueDate, setDueDate] = useState();
   const [products, setProducts] = useState([]);
-  const [distributorSelectDialog, setdistributorSelectDialog] = useState(false);
-  const [distributorName, setdistributorName] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [isCashCounter, setIsCashCounter] = useState(false);
   const [completeData, setCompleteData] = useState(null);
   const [amountPaid, setAmountPaid] = useState(0);
   const [payments, setPayments] = useState([]);
@@ -41,19 +66,21 @@ export default function EditSaleInvoice() {
     distributorId: "",
     distributorName: "",
     amount: 0,
-    bills: [{
-      billId: "",
-      billNumber: "",
-      grandTotal: 0,
-      amountPaid: 0
-    }]
+    bills: [
+      {
+        billId: "",
+        billNumber: "",
+        grandTotal: 0,
+        amountPaid: 0,
+      },
+    ],
   });
   const [paymentOutDialogOpen, setPaymentOutDialogOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     saleType: "invoice",
-    distributorName: "",
-    distributorId: "",
+    customerName: "",
+    customerId: "",
     invoiceNumber: "",
     invoiceDate: "",
     paymentDueDate: "",
@@ -66,13 +93,28 @@ export default function EditSaleInvoice() {
     const fetchBill = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${Backend_URL}/api/sales/invoice/${invoiceId}`,{ credentials: "include" });
+        const response = await fetch(
+          `${Backend_URL}/api/sales/invoice/${invoiceId}`,
+          { credentials: "include" }
+        );
         if (!response.ok) {
           throw new Error("Something went wrong");
         }
         const data = await response.json();
         setCompleteData(data);
-        const { distributorName, distributorId, invoiceNumber, products, invoiceDate, paymentDueDate, withGst, amountPaid, payments, saleType} = data;
+        const {
+          customerName,
+          customerId,
+          invoiceNumber,
+          products,
+          invoiceDate,
+          paymentDueDate,
+          withGst,
+          amountPaid,
+          payments,
+          saleType,
+          is_cash_customer,
+        } = data;
         const fomateProduct = products.map((item) => {
           const temp = convertQuantityValue(item.quantity, item.pack);
           return { ...item, ...temp };
@@ -83,15 +125,16 @@ export default function EditSaleInvoice() {
         setAmountPaid(amountPaid);
         setFormData({
           ...formData,
-          distributorName,
-          distributorId,
+          customerName,
+          customerId,
           invoiceDate,
           paymentDueDate,
           invoiceNumber,
           saleType,
           withGst: withGst ? "yes" : "no",
         });
-        setdistributorName(distributorName);
+        setCustomerName(customerName);
+        setIsCashCounter(is_cash_customer);
         setPayments(payments);
       } catch (error) {
         console.error("Error fetching bill:", error);
@@ -119,14 +162,42 @@ export default function EditSaleInvoice() {
   const handleSaveInvoice = async () => {
     try {
       setLoading(true);
-
-      if (!formData.distributorName || !formData.invoiceNumber || !invoiceDate) {
+      console.log(formData);
+      if (!formData.customerName || !formData.invoiceNumber || !invoiceDate) {
         throw new Error("Please fill all required fields");
       }
 
       if (products.length === 0) {
         throw new Error("Please add at least one product");
       }
+
+      // Open payment dialog instead of saving directly
+      setPaymentOutData({
+        invoiceType: "sales",
+        isCashCounter,
+        distributorName: isCashCounter ? "Cash/Counter" : formData.customerName,
+        customerId: isCashCounter ? null : formData.customerId,
+        invoiceNumber: formData.invoiceNumber,
+        invoiceDate: invoiceDate,
+        grandTotal: amountData.grandTotal,
+        alreadyPaid: amountPaid,
+        isNewInvoice: false,
+      });
+      setPaymentOutDialogOpen(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to validate invoice",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePaymentSubmit = async (paymentData) => {
+    try {
+      setLoading(true);
       const formattedProducts = products.map((product) => ({
         inventoryId: product.inventoryId,
         productName: product.productName,
@@ -148,10 +219,11 @@ export default function EditSaleInvoice() {
         _id: invoiceId,
         invoiceType: "SALE",
         invoiceNumber: formData.invoiceNumber,
-        distributorName: formData.distributorName,
-        distributorId: formData.distributorId,
+        customerName: isCashCounter ? "Cash/Counter" : formData.customerName,
+        customerId: isCashCounter ? null : formData.customerId,
+        is_cash_customer: isCashCounter,
         invoiceDate: invoiceDate,
-        paymentDueDate: dueDate,
+        paymentDueDate: paymentData.dueDate || dueDate,
         products: formattedProducts,
         withGst: formData.withGst === "yes",
         grandTotal: amountData.grandTotal,
@@ -171,8 +243,30 @@ export default function EditSaleInvoice() {
             28: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
           },
         },
-        paymentStatus: "due",
-        amountPaid: 0,
+        paymentStatus: paymentData.status,
+        amountPaid:
+          paymentData.status === "due"
+            ? amountPaid
+            : Number(paymentData.amount || 0) + amountPaid,
+        payment:
+          paymentData.status === "paid"
+            ? {
+                amount: Number(paymentData.amount || 0),
+                paymentType: "Payment In",
+                paymentMethod: paymentData.paymentMethod,
+                paymentDate: paymentData.chequeDate || new Date(),
+                accountId: paymentData.accountId,
+                transactionNumber: paymentData.transactionNumber,
+                chequeNumber: paymentData.chequeNumber,
+                chequeDate: paymentData.chequeDate,
+                micrCode: paymentData.micrCode,
+                status:
+                  paymentData.paymentMethod === "CHEQUE"
+                    ? "PENDING"
+                    : "COMPLETED",
+                remarks: paymentData.notes,
+              }
+            : null,
       };
 
       // Calculate GST summary
@@ -236,33 +330,61 @@ export default function EditSaleInvoice() {
     }
   };
 
-  const handleCustomerNameChange = (e) => {
-    e.preventDefault();
-    const value = e.target.value;
-
-    if (value.length === 1 && value === " ") {
-      setdistributorSelectDialog(true);
-      return;
-    }
-    if (value.length > 0 && value[0] !== " ") {
-      setdistributorName(value);
-      setdistributorSelectDialog(true);
-    }
-  };
   const handleCustomerSelect = (customer) => {
-    setdistributorName(customer.name);
+    setCustomerName(customer.name);
     setFormData({
       ...formData,
-      distributorId: customer._id,
-      distributorName: customer.name,
+      customerId: customer._id,
+      customerName: customer.name,
     });
-    setdistributorSelectDialog(false);
+    setIsCashCounter(false);
+    if (inputRef && inputRef.current["product"]) {
+      inputRef.current["product"].focus();
+    }
+  };
+
+  const handleKeyDown = (e, currentInputId) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const currentInputIndex = inputKeys.indexOf(currentInputId);
+      if (e.shiftKey) {
+        if (currentInputIndex > 0) {
+          const newInputId = inputKeys[currentInputIndex - 1];
+          if (newInputId && inputRef.current[newInputId]) {
+            inputRef.current[newInputId].focus();
+          }
+        }
+      } else {
+        if (currentInputIndex < inputKeys.length - 1) {
+          const newInputId = inputKeys[currentInputIndex + 1];
+          if (newInputId && inputRef.current[newInputId]) {
+            inputRef.current[newInputId].focus();
+          }
+        }
+      }
+    }
   };
 
   console.log(formData);
-  console.log('complete',completeData);
-  
-  
+  console.log("complete", completeData);
+
+  const handleAddNewPayment = () => {
+    setPaymentOutData({
+      paymentType: "Payment In",
+      distributorId: formData.customerId,
+      distributorName: formData.customerName,
+      amount: Math.round(roundToTwo(amountData?.grandTotal - amountPaid)),
+      bills: [
+        {
+          billId: invoiceId,
+          billNumber: formData.invoiceNumber,
+          grandTotal: Math.round(roundToTwo(amountData?.grandTotal)),
+          amountPaid: Math.round(roundToTwo(amountPaid)),
+        },
+      ],
+    });
+    setPaymentOutDialogOpen(true);
+  };
 
   return (
     <div className="relative rounded-lg h-[100vh] pt-2 ">
@@ -371,12 +493,38 @@ export default function EditSaleInvoice() {
             <Label className="text-sm font-medium">
               CUSTOMER NAME<span className="text-rose-500">*REQUIRED</span>
             </Label>
-            <Input
-              value={distributorName || ""}
-              onChange={handleCustomerNameChange}
-              placeholder="Type or Press space"
-              disabled={viewMode}
+            <CustomerSuggestionWithDialog
+              inputRef={inputRef}
+              value={customerName}
+              setValue={setCustomerName}
+              onSuggestionSelect={handleCustomerSelect}
+              onKeyDown={(e) => handleKeyDown(e, "customerName")}
+              ref={(el) => (inputRef.current["customerName"] = el)}
             />
+            <div className="flex items-center gap-2 mt-1 text-sm font-semibold">
+              <Checkbox
+                checked={isCashCounter}
+                onCheckedChange={(checked) => {
+                  if (!checked && !customerName) {
+                    toast({
+                      title: "Please select customer to uncheck",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  setIsCashCounter(checked);
+                  if (checked) {
+                    setCustomerName("");
+                    setFormData((prev) => ({
+                      ...prev,
+                      customerName: "",
+                      customerId: "",
+                    }));
+                  }
+                }}
+              />
+              Cash/Counter Sale
+            </div>
           </div>
           <div>
             <Label className="text-sm font-medium">
@@ -397,7 +545,7 @@ export default function EditSaleInvoice() {
             </Label>
             <Input
               type="date"
-              value={invoiceDate ? format(invoiceDate, 'yyyy-MM-dd') : ''}
+              value={invoiceDate ? format(invoiceDate, "yyyy-MM-dd") : ""}
               onChange={(e) => setInvoiceDate(new Date(e.target.value))}
               disabled={viewMode}
               className="w-full"
@@ -407,7 +555,7 @@ export default function EditSaleInvoice() {
             <Label className="text-sm font-medium">PAYMENT DUE DATE</Label>
             <Input
               type="date"
-              value={dueDate ? format(dueDate, 'yyyy-MM-dd') : ''}
+              value={dueDate ? format(dueDate, "yyyy-MM-dd") : ""}
               onChange={(e) => setDueDate(new Date(e.target.value))}
               disabled={viewMode}
               className="w-full"
@@ -423,6 +571,7 @@ export default function EditSaleInvoice() {
           products={products}
           setProducts={setProducts}
           viewMode={viewMode}
+          handleKeyDown={handleKeyDown}
         />
       </div>
 
@@ -472,46 +621,50 @@ export default function EditSaleInvoice() {
               variant="outline"
               size="sm"
               disabled={amountPaid >= amountData?.grandTotal}
-              onClick={() => {
-                setPaymentOutData({
-                  paymentType: "Payment In",
-                  distributorId: formData.distributorId,
-                  distributorName: formData.distributorName,
-                  amount: roundToTwo(amountData?.grandTotal - amountPaid),
-                  bills: [{
-                    billId: invoiceId,
-                    billNumber: formData.invoiceNumber,
-                    grandTotal: roundToTwo(amountData?.grandTotal),
-                    amountPaid: roundToTwo(amountPaid)
-                  }]
-                });
-                setPaymentOutDialogOpen(true);
-              }}
+              onClick={handleAddNewPayment}
             >
               Add New Payment
             </Button>
           </div>
-          
+
           {payments.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-100 text-left">
-                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Date</th>
-                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Payment Number</th>
-                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Amount</th>
-                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Method</th>
-                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Status</th>
-                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Reference</th>
-                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Remarks</th>
-                    <th className="px-4 py-3 text-sm font-medium text-gray-600">Actions</th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">
+                      Date
+                    </th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">
+                      Payment Number
+                    </th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">
+                      Amount
+                    </th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">
+                      Method
+                    </th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">
+                      Reference
+                    </th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">
+                      Remarks
+                    </th>
+                    <th className="px-4 py-3 text-sm font-medium text-gray-600">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {payments.map((payment, index) => (
-                    <tr 
+                    <tr
                       key={payment._id || index}
-                      className={`border-t ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                      className={`border-t ${
+                        index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                      }`}
                     >
                       <td className="px-4 py-3 text-sm">
                         {new Date(payment.paymentDate).toLocaleDateString()}
@@ -520,7 +673,7 @@ export default function EditSaleInvoice() {
                         {payment.paymentNumber}
                       </td>
                       <td className="px-4 py-3 text-sm font-medium">
-                        ₹{payment.amount.toLocaleString('en-IN')}
+                        ₹{payment.amount.toLocaleString("en-IN")}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">
@@ -528,35 +681,40 @@ export default function EditSaleInvoice() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          payment.status === "PENDING" 
-                            ? "bg-yellow-100 text-yellow-800"
-                            : payment.status === "COMPLETED"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs ${
+                            payment.status === "PENDING"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : payment.status === "COMPLETED"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
                           {payment.status}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {payment.paymentMethod === "CHEQUE" 
+                        {payment.paymentMethod === "CHEQUE"
                           ? `Cheque: ${payment.chequeNumber}`
-                          : payment.paymentMethod === "BANK" || payment.paymentMethod === "UPI"
-                          ? `Txn: ${payment.transactionNumber || 'N/A'}`
+                          : payment.paymentMethod === "BANK" ||
+                            payment.paymentMethod === "UPI"
+                          ? `Txn: ${payment.transactionNumber || "N/A"}`
                           : payment.paymentMethod}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {payment.remarks || '-'}
+                        {payment.remarks || "-"}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => navigate(`/sales/payment-in/${payment._id}`)}
-                            className='h-6 w-6'
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() =>
+                            navigate(`/sales/payment-in/${payment._id}`)
+                          }
+                          className="h-6 w-6"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -566,75 +724,80 @@ export default function EditSaleInvoice() {
           ) : (
             <div className="text-center text-gray-500 py-8">
               <p className="text-sm">No payment records found</p>
-              <p className="text-xs text-gray-400 mt-1">Click 'Add New Payment' to record a payment</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Click 'Add New Payment' to record a payment
+              </p>
             </div>
           )}
         </div>
       </div>
 
-      <div className={`fixed bottom-0 text-sm ${isCollapsed ? 'w-[calc(100%-95px)]' : 'w-[calc(100%-225px)]'} grid grid-cols-10 gap-4 text-white bg-gray-900 rounded-lg transition-all duration-300 text-center`}>
+      <div
+        className={`fixed bottom-0 text-sm ${
+          isCollapsed ? "w-[calc(100%-95px)]" : "w-[calc(100%-225px)]"
+        } grid grid-cols-10 gap-4 text-white bg-gray-900 rounded-lg transition-all duration-300 text-center`}
+      >
         <div className="py-2">
-          <div >
-            Products: {amountData?.productCount}
-          </div>
-          <div >
-            Quantity: {amountData?.totalQuantity}
-          </div>
+          <div>Products: {amountData?.productCount}</div>
+          <div>Quantity: {amountData?.totalQuantity}</div>
         </div>
         <div className="py-2">
-          <div >Subtotal</div>
+          <div>Subtotal</div>
           <div className="text-lg">{formatCurrency(amountData?.subtotal)}</div>
         </div>
         <div className="py-2">
-          <div >(-) Discount</div>
-          <div className='text-lg'>{formatCurrency(amountData?.discountAmount)}</div>
+          <div>(-) Discount</div>
+          <div className="text-lg">
+            {formatCurrency(amountData?.discountAmount)}
+          </div>
         </div>
         <div className="py-2">
-          <div >Taxable</div>
-          <div className='text-lg'>{formatCurrency(amountData?.taxable)}</div>
+          <div>Taxable</div>
+          <div className="text-lg">{formatCurrency(amountData?.taxable)}</div>
         </div>
         <div className="py-2">
           <div className="">(+) GST Amount</div>
-          <div className='text-lg'>{formatCurrency(amountData?.gstAmount)}</div>
+          <div className="text-lg">{formatCurrency(amountData?.gstAmount)}</div>
         </div>
         <div className="py-2">
-          <div className="">{formData?.saleType === 'return' ? 'Return Amount' : '(+) Custom Charge'}</div>
-          <div className='text-lg'>{formatCurrency(amountData?.returnAmount)}</div>
+          <div className="">
+            {formData?.saleType === "return"
+              ? "Return Amount"
+              : "(+) Custom Charge"}
+          </div>
+          <div className="text-lg">
+            {formatCurrency(amountData?.returnAmount)}
+          </div>
         </div>
         <div className="py-2">
           <div className="">(-) Adjustment</div>
-          <div className='text-lg'>{formatCurrency(0)}</div>
+          <div className="text-lg">{formatCurrency(0)}</div>
         </div>
         <div className="bg-rose-500 py-2">
           <div className="">Total Amount</div>
-          <div className='text-lg'>{formatCurrency(amountData?.grandTotal)}</div>
+          <div className="text-lg">
+            {formatCurrency(Math.round(amountData?.grandTotal))}
+          </div>
         </div>
         <div className="py-2">
-          <div >Amount Paid</div>
-          <div className='text-lg'>{formatCurrency(amountPaid)}</div>
+          <div>Amount Paid</div>
+          <div className="text-lg">{formatCurrency(amountPaid)}</div>
         </div>
         <div className="py-2">
-          <div >Due Amount</div>
-          <div className='text-lg'>{formatCurrency(amountData?.grandTotal - amountPaid)}</div>
+          <div>Due Amount</div>
+          <div className="text-lg">
+            {formatCurrency(amountData?.grandTotal - amountPaid)}
+          </div>
         </div>
-      </div> 
-
-
-      {/* distributor Selection Dialog */}
-      <SelectdistributorDialog
-        open={distributorSelectDialog}
-        setOpen={setdistributorSelectDialog}
-        search={distributorName}
-        setSearch={setdistributorName}
-        onSelect={handleCustomerSelect}
-      />
+      </div>
 
       {/* Payment Dialog */}
-      <MakePaymentDlg
+      <PaymentDialog
         open={paymentOutDialogOpen}
         onOpenChange={setPaymentOutDialogOpen}
-        paymentData={paymentOutData}
-        showStep1={true}
+        invoiceData={paymentOutData}
+        onSubmit={handlePaymentSubmit}
+        billStatus={loading ? "loading" : "idle"}
       />
     </div>
   );

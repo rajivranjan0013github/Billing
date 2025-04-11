@@ -3,7 +3,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import {  Save, Settings2, ArrowLeft } from "lucide-react";
+import { Save, Settings2, ArrowLeft } from "lucide-react";
 import PurchaseItemTable from "../components/custom/purchase/PurchaseItemTable";
 import { useToast } from "../hooks/use-toast";
 import SelectDistributorDlg from "../components/custom/distributor/SelectDistributorDlg";
@@ -13,9 +13,28 @@ import { useNavigate } from "react-router-dom";
 import PaymentDialog from "../components/custom/payment/PaymentDialog";
 import AmountSettingsDialog from "../components/custom/purchase/AmountSettingDialog";
 import { formatCurrency } from "../utils/Helper";
-const inputKeys = ['distributorName', 'invoiceNo', 'invoiceDate', 'dueDate', 'product', 'HSN', 'batchNumber', 'expiry', 'pack', 'quantity', 'free', 'mrp', 'purchaseRate', 'schemeInput1', 'schemeInput2', 'discount', 'gstPer', 'addButton' ];
+const inputKeys = [
+  "distributorName",
+  "invoiceNo",
+  "invoiceDate",
+  "dueDate",
+  "product",
+  "HSN",
+  "batchNumber",
+  "expiry",
+  "pack",
+  "quantity",
+  "free",
+  "mrp",
+  "purchaseRate",
+  "schemeInput1",
+  "schemeInput2",
+  "discount",
+  "gstPer",
+  "addButton",
+];
 
-const roundToTwo = (num) => {
+export const roundToTwo = (num) => {
   return Math.round((num + Number.EPSILON) * 100) / 100;
 };
 
@@ -79,15 +98,17 @@ export default function PurchaseForm() {
   const navigate = useNavigate();
   const inputRef = useRef([]);
   const dispatch = useDispatch();
-  
+
   const [invoiceDate, setInvoiceDate] = useState();
   const [dueDate, setDueDate] = useState();
   const [products, setProducts] = useState([]);
   const [distributorSelectDialog, setdistributorSelectDialog] = useState(false);
   const [distributorName, setdistributorName] = useState("");
   const { toast } = useToast();
-  const { createPurchaseBillStatus } = useSelector((state) => state.purchaseBill);
-  const {isCollapsed} = useSelector(state=>state.loader);
+  const { createPurchaseBillStatus } = useSelector(
+    (state) => state.purchaseBill
+  );
+  const { isCollapsed } = useSelector((state) => state.loader);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [invoiceForPayment, setInvoiceForPayment] = useState(null);
@@ -119,15 +140,22 @@ export default function PurchaseForm() {
   // Add keyboard shortcut for Alt+S
   useEffect(() => {
     const handleKeyPress = (e) => {
-      if (e.altKey && e.key.toLowerCase() === 's') {
+      if (e.altKey && e.key.toLowerCase() === "s") {
         e.preventDefault();
         handleSaveInvoice();
       }
     };
 
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [products, formData, formData?.invoiceNumber, invoiceDate, dueDate, distributorName]); // Add dependencies that handleSaveInvoice uses
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
+  }, [
+    products,
+    formData,
+    formData?.invoiceNumber,
+    invoiceDate,
+    dueDate,
+    distributorName,
+  ]); // Add dependencies that handleSaveInvoice uses
 
   const handleSaveInvoice = async () => {
     try {
@@ -143,12 +171,15 @@ export default function PurchaseForm() {
 
       // Instead of saving invoice here, open payment dialog
       setInvoiceForPayment({
+        invoiceType: "purchase",
         distributorName: formData.distributorName,
         distributorId: formData.distributorId,
         invoiceNumber: formData.invoiceNumber,
         invoiceDate: invoiceDate,
         grandTotal: amountData.grandTotal,
         dueDate: dueDate,
+        alreadyPaid: 0, // Add this for new invoices
+        isNewInvoice: true, // Add this to indicate it's a new invoice
       });
       setPaymentDialogOpen(true);
     } catch (error) {
@@ -204,27 +235,31 @@ export default function PurchaseForm() {
         amountCalculationType: formData.amountType,
         status: "active",
         grandTotal: roundToTwo(amountData.grandTotal),
-        amountPaid: paymentData.status === "due" ? 0 : Number(paymentData.amount || 0),
-        payment: paymentData.status === "paid" ? {
-          amount: Number(paymentData.amount || 0),
-          paymentType: paymentData.paymentType,
-          paymentMethod: paymentData.paymentMethod,
-          distributorId: formData.distributorId,
-          distributorName: formData.distributorName,
-          remarks: paymentData.notes,
-          ...(paymentData.paymentMethod !== "cheque" && {
-            accountId: paymentData.accountId,
-          }),
-          ...(paymentData.paymentMethod === "cheque" && {
-            chequeNumber: paymentData.chequeNumber,
-            chequeDate: paymentData.chequeDate,
-            micrCode: paymentData.micrCode,
-          }),
-        } : null,
+        amountPaid:
+          paymentData.status === "due" ? 0 : Number(paymentData.amount || 0),
+        payment:
+          paymentData.status === "paid"
+            ? {
+                amount: Number(paymentData.amount || 0),
+                paymentType: paymentData.paymentType,
+                paymentMethod: paymentData.paymentMethod,
+                distributorId: formData.distributorId,
+                distributorName: formData.distributorName,
+                remarks: paymentData.notes,
+                ...(paymentData.paymentMethod !== "cheque" && {
+                  accountId: paymentData.accountId,
+                }),
+                ...(paymentData.paymentMethod === "cheque" && {
+                  chequeNumber: paymentData.chequeNumber,
+                  chequeDate: paymentData.chequeDate,
+                  micrCode: paymentData.micrCode,
+                }),
+              }
+            : null,
       };
 
       await dispatch(createPurchaseBill(purchaseData)).unwrap();
-      
+
       toast({
         title: "Purchase invoice saved successfully",
         variant: "success",
@@ -234,7 +269,7 @@ export default function PurchaseForm() {
       resetFormState();
 
       // Navigate back
-      navigate('/purchase');
+      navigate("/purchase");
     } catch (error) {
       toast({
         title: "Error",
@@ -266,12 +301,12 @@ export default function PurchaseForm() {
 
   // Add this new function to handle key press events
   const handleKeyDown = (e, nextInputId) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       if (e.shiftKey) {
         const nextInputIndex = inputKeys.indexOf(nextInputId);
-        if(nextInputIndex > 1) {
-          const newInputId = inputKeys[nextInputIndex-2];
+        if (nextInputIndex > 1) {
+          const newInputId = inputKeys[nextInputIndex - 2];
           if (newInputId && inputRef.current[newInputId]) {
             inputRef.current[newInputId].focus();
           }
@@ -286,19 +321,19 @@ export default function PurchaseForm() {
 
   // shortcut for saving invoice
   const handleShortcutKeyPressed = (e) => {
-    if(e.altKey && e.key === "s") {
-      e.preventDefault()
+    if (e.altKey && e.key === "s") {
+      e.preventDefault();
       handleSaveInvoice();
     }
-  }
+  };
 
   useEffect(() => {
-    document.addEventListener('keydown', handleShortcutKeyPressed);
+    document.addEventListener("keydown", handleShortcutKeyPressed);
 
     return () => {
       document.removeEventListener("keydown", handleShortcutKeyPressed);
     };
-  }, [])
+  }, []);
 
   // Update the distributor name input section
   const handleDistributorNameChange = (e) => {
@@ -325,18 +360,17 @@ export default function PurchaseForm() {
     });
     setdistributorSelectDialog(false);
     setTimeout(() => {
-      if(inputRef.current['invoiceNo']) {
-        inputRef.current['invoiceNo'].focus();
+      if (inputRef.current["invoiceNo"]) {
+        inputRef.current["invoiceNo"].focus();
       }
-    }, 0)
-    
+    }, 0);
   };
 
   useEffect(() => {
     // Add a small delay to ensure the component is fully rendered
     const timer = setTimeout(() => {
-      if (inputRef.current['distributorName']) {
-        inputRef.current['distributorName'].focus();
+      if (inputRef.current["distributorName"]) {
+        inputRef.current["distributorName"].focus();
       }
     }, 100);
 
@@ -353,10 +387,7 @@ export default function PurchaseForm() {
           <h1 className="text-xl font-bold">Add Purchase</h1>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={() => setSettingsOpen(true)}
-          >
+          <Button variant="outline" onClick={() => setSettingsOpen(true)}>
             <Settings2 className="w-4 h-4" />
             Column Settings
           </Button>
@@ -426,10 +457,10 @@ export default function PurchaseForm() {
               DISTRIBUTOR NAME<span className="text-rose-500">*REQUIRED</span>
             </Label>
             <Input
-              ref={el => inputRef.current['distributorName'] = el}
+              ref={(el) => (inputRef.current["distributorName"] = el)}
               value={distributorName || ""}
               onChange={handleDistributorNameChange}
-              onKeyDown={(e) => handleKeyDown(e, 'invoiceNo')}
+              onKeyDown={(e) => handleKeyDown(e, "invoiceNo")}
               placeholder="Type or Press space"
               className="appearance-none h-8 w-full border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
             />
@@ -439,12 +470,12 @@ export default function PurchaseForm() {
               INVOICE NO<span className="text-rose-500">*REQUIRED</span>
             </Label>
             <Input
-              ref={el => inputRef.current['invoiceNo'] = el}
+              ref={(el) => (inputRef.current["invoiceNo"] = el)}
               value={formData?.invoiceNumber}
               onChange={(e) =>
                 handleInputChange("invoiceNumber", e.target.value)
               }
-              onKeyDown={(e) => handleKeyDown(e, 'invoiceDate')}
+              onKeyDown={(e) => handleKeyDown(e, "invoiceDate")}
               placeholder="Invoice No"
               className="appearance-none h-8 w-full border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
             />
@@ -454,23 +485,23 @@ export default function PurchaseForm() {
               INVOICE DATE<span className="text-rose-500">*REQUIRED</span>
             </Label>
             <Input
-              ref={el => inputRef.current['invoiceDate'] = el}
+              ref={(el) => (inputRef.current["invoiceDate"] = el)}
               type="date"
-              value={invoiceDate || ''}
+              value={invoiceDate || ""}
               onChange={(e) => {
                 setInvoiceDate(e.target.value);
               }}
-              onKeyDown={(e) => handleKeyDown(e, 'dueDate')}
+              onKeyDown={(e) => handleKeyDown(e, "dueDate")}
               className="appearance-none h-8 w-full border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
             />
           </div>
           <div>
             <Label className="text-sm font-medium">PAYMENT DUE DATE</Label>
             <Input
-              ref={el => inputRef.current['dueDate'] = el}
-              onKeyDown={(e)=> handleKeyDown(e, 'product')}
+              ref={(el) => (inputRef.current["dueDate"] = el)}
+              onKeyDown={(e) => handleKeyDown(e, "product")}
               type="date"
-              value={dueDate || ''}
+              value={dueDate || ""}
               onChange={(e) => {
                 setDueDate(e.target.value);
               }}
@@ -543,44 +574,48 @@ export default function PurchaseForm() {
       </div>
 
       {/* footer of purchase */}
-      <div className={`fixed bottom-0 ${isCollapsed ? 'w-[calc(100%-95px)]' : 'w-[calc(100%-225px)]'} text-sm grid grid-cols-8 gap-4 text-white bg-gray-900 rounded-lg transition-all duration-300 text-center`}>
+      <div
+        className={`fixed bottom-0 ${
+          isCollapsed ? "w-[calc(100%-95px)]" : "w-[calc(100%-225px)]"
+        } text-sm grid grid-cols-8 gap-4 text-white bg-gray-900 rounded-lg transition-all duration-300 text-center`}
+      >
         <div className="py-2">
-          <div>
-            Total Products: {amountData?.productCount}
-          </div>  
-          <div>
-            Total Quantity: {amountData?.totalQuantity}
-          </div>
+          <div>Total Products: {amountData?.productCount}</div>
+          <div>Total Quantity: {amountData?.totalQuantity}</div>
         </div>
         <div className="py-2">
-          <div >Subtotal</div>
+          <div>Subtotal</div>
           <div className="text-lg">{formatCurrency(amountData?.subtotal)}</div>
         </div>
         <div className="py-2">
           <div className="">(-) Discount</div>
-          <div className='text-lg'>{formatCurrency(amountData?.discountAmount)}</div>
+          <div className="text-lg">
+            {formatCurrency(amountData?.discountAmount)}
+          </div>
         </div>
         <div className="py-2">
           <div className="">Taxable</div>
-          <div className='text-lg'>{formatCurrency(amountData?.taxable)}</div>
+          <div className="text-lg">{formatCurrency(amountData?.taxable)}</div>
         </div>
         <div className="py-2">
           <div className="">(+) GST Amount</div>
-          <div className='text-lg'>{formatCurrency(amountData?.gstAmount)}</div>
+          <div className="text-lg">{formatCurrency(amountData?.gstAmount)}</div>
         </div>
         <div className="py-2">
           <div className="">(-) Adjustment</div>
-          <div className='text-lg'>{formatCurrency(0)}</div>
+          <div className="text-lg">{formatCurrency(0)}</div>
         </div>
         <div className="py-2">
           <div className="">(+) Delivery Charge</div>
-          <div className='text-lg'>{formatCurrency(0.00)}</div>
+          <div className="text-lg">{formatCurrency(0.0)}</div>
         </div>
         <div className="bg-rose-500 py-2">
           <div className="">Total Amount</div>
-          <div className='text-lg'>{formatCurrency(amountData?.grandTotal)}</div>
+          <div className="text-lg">
+            {formatCurrency(amountData?.grandTotal)}
+          </div>
         </div>
-      </div> 
+      </div>
       <SelectDistributorDlg
         open={distributorSelectDialog}
         setOpen={setdistributorSelectDialog}

@@ -5,7 +5,14 @@ import { createBill, fetchBills } from "../redux/slices/SellBillSlice";
 import { Label } from "../components/ui/label";
 import { Checkbox } from "../components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import { Save, Settings, FileText, ClipboardList, ScrollText, ArrowLeft } from "lucide-react";
+import {
+  Save,
+  Settings,
+  FileText,
+  ClipboardList,
+  ScrollText,
+  ArrowLeft,
+} from "lucide-react";
 import SaleItemTable from "../components/custom/sales/SaleItemTable";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
@@ -24,22 +31,25 @@ export const calculateTotals = (products) => {
       const pack = Number(product?.pack || 1);
       const free = Number(product?.free || 0);
       const purchaseRate = Number(product?.saleRate || 0);
-      const discountPercent = Number(product?.discount || 0) + Number(product?.schemePercent || 0);
+      const discountPercent =
+        Number(product?.discount || 0) + Number(product?.schemePercent || 0);
       const gstPer = Number(product?.gstPer || 0);
       const amount = Number(product?.amount || 0);
 
-      if(product.types === 'return') {
+      if (product.types === "return") {
         total.returnAmount += roundToTwo(amount);
         total.grandTotal += roundToTwo(amount);
         return total;
       }
 
       const subtotal = roundToTwo((quantity * product?.mrp) / pack);
-      const discount = roundToTwo(
+      const discount = Math.round(roundToTwo(
         (((product?.quantity * product?.mrp) / pack) * discountPercent) / 100
-      );
-      const taxable = roundToTwo(((subtotal - discount) * 100) / (100 + gstPer));
-      const gstAmount = roundToTwo((taxable * gstPer) / 100);
+      ));
+      const taxable = Math.round(roundToTwo(
+        ((subtotal - discount) * 100) / (100 + gstPer)
+      ));
+      const gstAmount = Math.round(roundToTwo((taxable * gstPer) / 100));
 
       total.grandTotal = roundToTwo(total.grandTotal + taxable + gstAmount);
       total.productCount += 1;
@@ -59,7 +69,7 @@ export const calculateTotals = (products) => {
       productCount: 0,
       totalQuantity: 0,
       grandTotal: 0,
-      returnAmount : 0
+      returnAmount: 0,
     }
   );
 };
@@ -68,15 +78,40 @@ const roundToTwo = (num) => {
   return Math.round((num + Number.EPSILON) * 100) / 100;
 };
 
-const inputKeys = ['customerName', 'doctorName', 'product',  'batchNumber', 'hsn', 'pack', 'expiry', 'mrp', 'packs', 'loose', 'saleRate', 'discount', 'gstPer', 'add' ];
+const inputKeys = [
+  "customerName",
+  "doctorName",
+  "product",
+  "batchNumber",
+  "hsn",
+  "pack",
+  "expiry",
+  "mrp",
+  "packs",
+  "loose",
+  "saleRate",
+  "discount",
+  "gstPer",
+  "add",
+];
 
 export default function CreateSellInvoice() {
   const navigate = useNavigate();
   const inputRef = useRef({});
   const dispatch = useDispatch();
-  const {createBillStatus} = useSelector(state=>state.bill)
-  const {isCollapsed} = useSelector(state=>state.loader);
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric",}).split("/").reverse().join("-"));
+  const { createBillStatus } = useSelector((state) => state.bill);
+  const { isCollapsed } = useSelector((state) => state.loader);
+  const [invoiceDate, setInvoiceDate] = useState(
+    new Date()
+      .toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+      .split("/")
+      .reverse()
+      .join("-")
+  );
   const [products, setProducts] = useState([]);
   const [customerName, setCustomerName] = useState("");
   const { toast } = useToast();
@@ -118,14 +153,14 @@ export default function CreateSellInvoice() {
   // Add keyboard shortcut for Alt+S
   useEffect(() => {
     const handleKeyPress = (e) => {
-      if (e.altKey && e.key.toLowerCase() === 's') {
+      if (e.altKey && e.key.toLowerCase() === "s") {
         e.preventDefault();
         handleSaveInvoice();
       }
     };
 
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
   }, [products, formData, invoiceDate, isCashCounter, customerName]); // Add dependencies that handleSaveInvoice uses
 
   useEffect(() => {
@@ -160,13 +195,15 @@ export default function CreateSellInvoice() {
 
       // Instead of saving invoice here, open payment dialog
       setInvoiceForPayment({
-        invoiceType : 'sales',
+        invoiceType: "sales",
         isCashCounter,
         distributorName: isCashCounter ? "Cash/Counter" : formData.customerName,
         customerId: isCashCounter ? null : formData.customerId,
         invoiceNumber: formData.invoiceNumber,
         invoiceDate: invoiceDate,
         grandTotal: amountData.grandTotal,
+        alreadyPaid: 0, // Add this for new invoices
+        isNewInvoice: true, // Add this to indicate it's a new invoice
       });
       setPaymentDialogOpen(true);
     } catch (error) {
@@ -185,7 +222,7 @@ export default function CreateSellInvoice() {
       setLoading(true);
       // Format products data to match schema
       const formattedProducts = products.map((product) => ({
-        types : product.types,
+        types: product.types,
         inventoryId: product.inventoryId,
         productName: product.productName,
         batchNumber: product.batchNumber,
@@ -212,7 +249,7 @@ export default function CreateSellInvoice() {
         totalQuantity: amountData.totalQuantity,
         productCount: amountData.productCount,
         grandTotal: roundToTwo(amountData.grandTotal),
-        returnAmount : roundToTwo(amountData.returnAmount),
+        returnAmount: roundToTwo(amountData.returnAmount),
         gstSummary: {
           0: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
           5: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
@@ -224,7 +261,7 @@ export default function CreateSellInvoice() {
 
       // Calculate GST summary
       products.forEach((product) => {
-        if(product.types ==='return') return;
+        if (product.types === "return") return;
         const quantity = Number(product.quantity || 0);
         const pack = Number(product.pack || 1);
         const mrp = roundToTwo(Number(product.mrp || 0));
@@ -233,20 +270,31 @@ export default function CreateSellInvoice() {
 
         const subtotal = roundToTwo((quantity * mrp) / pack);
         const discount = roundToTwo((subtotal * discountPercent) / 100);
-        const taxable = roundToTwo(((subtotal - discount) * 100) / (100 + gstPer));
+        const taxable = roundToTwo(
+          ((subtotal - discount) * 100) / (100 + gstPer)
+        );
         const gstAmount = roundToTwo((taxable * gstPer) / 100);
 
         if (billSummary.gstSummary.hasOwnProperty(gstPer)) {
-          billSummary.gstSummary[gstPer].taxable = roundToTwo(billSummary.gstSummary[gstPer].taxable + taxable);
-          billSummary.gstSummary[gstPer].cgst = roundToTwo(billSummary.gstSummary[gstPer].cgst + gstAmount / 2);
-          billSummary.gstSummary[gstPer].sgst = roundToTwo(billSummary.gstSummary[gstPer].sgst + gstAmount / 2);
-          billSummary.gstSummary[gstPer].total = roundToTwo(billSummary.gstSummary[gstPer].total + gstAmount);
+          billSummary.gstSummary[gstPer].taxable = roundToTwo(
+            billSummary.gstSummary[gstPer].taxable + taxable
+          );
+          billSummary.gstSummary[gstPer].cgst = roundToTwo(
+            billSummary.gstSummary[gstPer].cgst + gstAmount / 2
+          );
+          billSummary.gstSummary[gstPer].sgst = roundToTwo(
+            billSummary.gstSummary[gstPer].sgst + gstAmount / 2
+          );
+          billSummary.gstSummary[gstPer].total = roundToTwo(
+            billSummary.gstSummary[gstPer].total + gstAmount
+          );
         }
       });
 
       // Determine payment status based on amount paid
       const amountPaid = roundToTwo(Number(paymentData.amount || 0));
-      const paymentStatus = amountPaid >= roundToTwo(amountData.grandTotal) ? "paid" : "due";
+      const paymentStatus =
+        amountPaid >= roundToTwo(amountData.grandTotal) ? "paid" : "due";
 
       const finalData = {
         saleType: formData.saleType,
@@ -258,25 +306,31 @@ export default function CreateSellInvoice() {
         products: formattedProducts,
         grandTotal: roundToTwo(amountData.grandTotal),
         is_cash_customer: isCashCounter,
-        doctorName : formData?.doctorName,
+        doctorName: formData?.doctorName,
         billSummary,
         // Payment details
         paymentStatus: paymentStatus,
         amountPaid: amountPaid,
         // Payment info
-        payment: amountPaid !== 0 ? {
-          amount: amountPaid,
-          paymentType: amountPaid > 0 ? "Payment In" : 'Payment Out',
-          paymentMethod: paymentData.paymentMethod,
-          paymentDate: paymentData.chequeDate || new Date(),
-          accountId: paymentData.accountId,
-          transactionNumber: paymentData.transactionNumber,
-          chequeNumber: paymentData.chequeNumber,
-          chequeDate: paymentData.chequeDate,
-          micrCode: paymentData.micrCode,
-          status: paymentData.paymentMethod === "CHEQUE" ? "PENDING" : "COMPLETED",
-          remarks: paymentData.notes,
-        } : null,
+        payment:
+          amountPaid !== 0
+            ? {
+                amount: amountPaid,
+                paymentType: amountPaid > 0 ? "Payment In" : "Payment Out",
+                paymentMethod: paymentData.paymentMethod,
+                paymentDate: paymentData.chequeDate || new Date(),
+                accountId: paymentData.accountId,
+                transactionNumber: paymentData.transactionNumber,
+                chequeNumber: paymentData.chequeNumber,
+                chequeDate: paymentData.chequeDate,
+                micrCode: paymentData.micrCode,
+                status:
+                  paymentData.paymentMethod === "CHEQUE"
+                    ? "PENDING"
+                    : "COMPLETED",
+                remarks: paymentData.notes,
+              }
+            : null,
       };
 
       dispatch(createBill(finalData))
@@ -317,7 +371,6 @@ export default function CreateSellInvoice() {
           });
         });
       // console.log(finalData);
-      
     } catch (error) {
       toast({
         title: "Error",
@@ -338,25 +391,25 @@ export default function CreateSellInvoice() {
       customerName: customer.name,
     });
     setIsCashCounter(false); // Uncheck cash/counter when customer is selected
-    if(inputRef && inputRef.current['product']) {
-      inputRef.current['product'].focus();
+    if (inputRef && inputRef.current["product"]) {
+      inputRef.current["product"].focus();
     }
   };
 
   // Add this new function to handle key press events
   const handleKeyDown = (e, currentInputId) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       const currentInputIndex = inputKeys.indexOf(currentInputId);
       if (e.shiftKey) {
-        if(currentInputIndex > 0) {
-          const newInputId = inputKeys[currentInputIndex-1];
+        if (currentInputIndex > 0) {
+          const newInputId = inputKeys[currentInputIndex - 1];
           if (newInputId && inputRef.current[newInputId]) {
             inputRef.current[newInputId].focus();
           }
         }
       } else {
-        if(currentInputIndex < inputKeys.length - 1) {
+        if (currentInputIndex < inputKeys.length - 1) {
           const newInputId = inputKeys[currentInputIndex + 1];
           if (newInputId && inputRef.current[newInputId]) {
             inputRef.current[newInputId].focus();
@@ -383,7 +436,7 @@ export default function CreateSellInvoice() {
           <Button
             onClick={handleSaveInvoice}
             disabled={loading}
-            className='gap-1'
+            className="gap-1"
           >
             {loading ? (
               <>
@@ -440,9 +493,11 @@ export default function CreateSellInvoice() {
                   htmlFor="return"
                   className="flex items-center gap-3 rounded-md border-2 border-muted bg-popover p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                 >
-                   <ClipboardList className="h-5 w-5 text-orange-500 shrink-0" />
+                  <ClipboardList className="h-5 w-5 text-orange-500 shrink-0" />
                   <div className="space-y-0.5">
-                    <p className="text-sm font-medium leading-none">Sales Return</p>
+                    <p className="text-sm font-medium leading-none">
+                      Sales Return
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       Sales return invoice
                     </p>
@@ -474,7 +529,7 @@ export default function CreateSellInvoice() {
             </RadioGroup>
           </div>
           <div className="col-span-4 grid-cols-4 grid gap-4">
-            <div >
+            <div>
               <Label className="text-sm font-medium">
                 CUSTOMER NAME<span className="text-rose-500">*REQUIRED</span>
               </Label>
@@ -483,7 +538,7 @@ export default function CreateSellInvoice() {
                 value={customerName}
                 setValue={setCustomerName}
                 onSuggestionSelect={handleCustomerSelect}
-                onKeyDown={(e) => handleKeyDown(e, 'customerName')}
+                onKeyDown={(e) => handleKeyDown(e, "customerName")}
                 ref={(el) => (inputRef.current["customerName"] = el)}
               />
               <div className="flex items-center gap-2 mt-1 text-sm font-semibold">
@@ -511,7 +566,7 @@ export default function CreateSellInvoice() {
                 Cash/Counter Sale
               </div>
             </div>
-            
+
             <div>
               <Label className="text-sm font-medium">
                 INVOICE NO<span className="text-rose-500">*REQUIRED</span>
@@ -541,26 +596,33 @@ export default function CreateSellInvoice() {
                 type="text"
                 ref={(el) => (inputRef.current["doctorName"] = el)}
                 value={formData.doctorName}
-                onChange={(e) => handleInputChange("doctorName", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("doctorName", e.target.value)
+                }
                 className="w-full"
                 placeholder="Enter doctor name"
-                onKeyDown={(e)=>handleKeyDown(e,'doctorName')}
+                onKeyDown={(e) => handleKeyDown(e, "doctorName")}
               />
             </div>
-            {formData?.saleType === 'return' && <div>
-              <Label className="text-sm font-medium">OLD INVOICE NUMBER</Label>
-              <Input
-                type="text"
-                ref={(el) => (inputRef.current["doctorName"] = el)}
-                value={formData.doctorName}
-                onChange={(e) => handleInputChange("doctorName", e.target.value)}
-                className="w-full"
-                placeholder="Enter doctor name"
-                onKeyDown={(e)=>handleKeyDown(e,'doctorName')}
-              />
-            </div>}
+            {formData?.saleType === "return" && (
+              <div>
+                <Label className="text-sm font-medium">
+                  OLD INVOICE NUMBER
+                </Label>
+                <Input
+                  type="text"
+                  ref={(el) => (inputRef.current["doctorName"] = el)}
+                  value={formData.doctorName}
+                  onChange={(e) =>
+                    handleInputChange("doctorName", e.target.value)
+                  }
+                  className="w-full"
+                  placeholder="Enter doctor name"
+                  onKeyDown={(e) => handleKeyDown(e, "doctorName")}
+                />
+              </div>
+            )}
           </div>
-
         </div>
       </div>
 
@@ -607,44 +669,54 @@ export default function CreateSellInvoice() {
       </div>
 
       {/* footer of purchase */}
-      <div className={`fixed bottom-0 ${isCollapsed ? 'w-[calc(100%-95px)]' : 'w-[calc(100%-225px)]'} text-sm grid grid-cols-8 gap-4 text-white bg-gray-900 rounded-lg transition-all duration-300 text-center`}>
+      <div
+        className={`fixed bottom-0 ${
+          isCollapsed ? "w-[calc(100%-95px)]" : "w-[calc(100%-225px)]"
+        } text-sm grid grid-cols-8 gap-4 text-white bg-gray-900 rounded-lg transition-all duration-300 text-center`}
+      >
         <div className="py-2">
-          <div>
-            Total Products: {amountData?.productCount}
-          </div>
-          <div>
-            Total Quantity: {amountData?.totalQuantity}
-          </div>
+          <div>Total Products: {amountData?.productCount}</div>
+          <div>Total Quantity: {amountData?.totalQuantity}</div>
         </div>
         <div className="py-2">
-          <div >Subtotal</div>
+          <div>Subtotal</div>
           <div className="text-lg">{formatCurrency(amountData?.subtotal)}</div>
         </div>
         <div className="py-2">
           <div className="">(-) Discount</div>
-          <div className='text-lg'>{formatCurrency(amountData?.discountAmount)}</div>
+          <div className="text-lg">
+            {formatCurrency(amountData?.discountAmount)}
+          </div>
         </div>
         <div className="py-2">
           <div className="">Taxable</div>
-          <div className='text-lg'>{formatCurrency(amountData?.taxable)}</div>
+          <div className="text-lg">{formatCurrency(amountData?.taxable)}</div>
         </div>
         <div className="py-2">
           <div className="">(+) GST Amount</div>
-          <div className='text-lg'>{formatCurrency(amountData?.gstAmount)}</div>
+          <div className="text-lg">{formatCurrency(amountData?.gstAmount)}</div>
         </div>
         <div className="py-2">
-          <div className="">{formData.saleType === 'return' ? 'Return Amount' : '(+) Custom Charge'}</div>
-          <div className='text-lg'>{formatCurrency(amountData?.returnAmount)}</div>
+          <div className="">
+            {formData.saleType === "return"
+              ? "Return Amount"
+              : "(+) Custom Charge"}
+          </div>
+          <div className="text-lg">
+            {formatCurrency(amountData?.returnAmount)}
+          </div>
         </div>
         <div className="py-2">
           <div className="">(-) Adjustment</div>
-          <div className='text-lg'>{formatCurrency(0)}</div>
+          <div className="text-lg">{formatCurrency(0)}</div>
         </div>
         <div className="bg-rose-500 py-2">
           <div className="">Total Amount</div>
-          <div className='text-lg'>{formatCurrency(amountData?.grandTotal)}</div>
+          <div className="text-lg">
+            {formatCurrency(amountData?.grandTotal)}
+          </div>
         </div>
-      </div> 
+      </div>
       <PaymentDialog
         open={paymentDialogOpen}
         onOpenChange={setPaymentDialogOpen}

@@ -1,14 +1,41 @@
 import React, { useState, useEffect } from "react";
 import { Search, Users, X, ArrowLeft } from "lucide-react";
 import { Button } from "../components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { Input } from "../components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
 import { cn } from "../lib/utils";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchBills, searchBills, setDateRange, setSelectedPreset, setSaleTypeFilter, resetFilters } from "../redux/slices/SellBillSlice";
-import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import {
+  fetchBills,
+  searchBills,
+  setDateRange,
+  setSelectedPreset,
+  setSaleTypeFilter,
+  resetFilters,
+} from "../redux/slices/SellBillSlice";
+import {
+  format,
+  subDays,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+} from "date-fns";
 import { DateRangePicker } from "../components/ui/date-range-picker";
 import { formatCurrency } from "../utils/Helper";
 
@@ -16,7 +43,12 @@ export default function SalesTransactions() {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
-  const { bills: initialBills, dateRange: reduxDateRange, selectedPreset, saleTypeFilter } = useSelector((state) => state.bill);
+  const {
+    bills: initialBills,
+    dateRange: reduxDateRange,
+    selectedPreset,
+    saleTypeFilter,
+  } = useSelector((state) => state.bill);
   const [bills, setBills] = useState(initialBills);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState("invoice");
@@ -26,7 +58,7 @@ export default function SalesTransactions() {
   useEffect(() => {
     return () => {
       // Only reset if navigating away from sales routes
-      if (!location.pathname.startsWith('/sales')) {
+      if (!location.pathname.startsWith("/sales")) {
         dispatch(resetFilters());
       }
     };
@@ -35,7 +67,7 @@ export default function SalesTransactions() {
   // Convert ISO strings to Date objects for the component
   const dateRange = {
     from: reduxDateRange.from ? new Date(reduxDateRange.from) : null,
-    to: reduxDateRange.to ? new Date(reduxDateRange.to) : null
+    to: reduxDateRange.to ? new Date(reduxDateRange.to) : null,
   };
 
   const handleDateSelect = (range) => {
@@ -43,7 +75,7 @@ export default function SalesTransactions() {
       // Serialize dates before dispatching
       const serializedRange = {
         from: range.from.toISOString(),
-        to: range.to.toISOString()
+        to: range.to.toISOString(),
       };
       dispatch(setDateRange(serializedRange));
       dispatch(setSelectedPreset("custom"));
@@ -52,7 +84,7 @@ export default function SalesTransactions() {
 
   const handleDatePresetChange = (value) => {
     dispatch(setSelectedPreset(value));
-    
+
     if (value === "custom") {
       return;
     }
@@ -86,25 +118,18 @@ export default function SalesTransactions() {
     // Serialize dates before dispatching
     const serializedRange = {
       from: newRange.from.toISOString(),
-      to: newRange.to.toISOString()
+      to: newRange.to.toISOString(),
     };
     dispatch(setDateRange(serializedRange));
-    fetchBillsData(newRange);
   };
 
   const handleDateSearch = () => {
-    if(!dateRange.to) {
-      const updatedRange = { 
+    if (!dateRange.to) {
+      const updatedRange = {
         from: dateRange.from.toISOString(),
-        to: dateRange.from.toISOString()
+        to: dateRange.from.toISOString(),
       };
       dispatch(setDateRange(updatedRange));
-      fetchBillsData({
-        from: new Date(updatedRange.from),
-        to: new Date(updatedRange.to)
-      });
-    } else {
-      fetchBillsData(dateRange);
     }
   };
 
@@ -116,37 +141,72 @@ export default function SalesTransactions() {
     // Serialize dates before dispatching
     const serializedRange = {
       from: newRange.from.toISOString(),
-      to: newRange.to.toISOString()
+      to: newRange.to.toISOString(),
     };
     dispatch(setDateRange(serializedRange));
     dispatch(setSelectedPreset("thisWeek"));
-    fetchBillsData(newRange);
   };
 
-  const fetchBillsData = (range = dateRange) => {
-    const fromDate = range.from instanceof Date ? range.from : new Date(range.from);
-    const toDate = range.to instanceof Date ? range.to : new Date(range.to);
-
-    dispatch(
-      fetchBills({
-        startDate: fromDate.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
-        endDate: toDate.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
-      })
-    ).then((res) => {
-      setBills(res.payload);
-      setLastFetchedRange(range);
-    });
+  // Debounce function to prevent multiple rapid calls
+  const debounce = (func, wait) => {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
   };
 
+  // Debounced version of fetchBillsData
+  const debouncedFetchBills = React.useCallback(
+    debounce((range) => {
+      const fromDate =
+        range.from instanceof Date ? range.from : new Date(range.from);
+      const toDate = range.to instanceof Date ? range.to : new Date(range.to);
+
+      dispatch(
+        fetchBills({
+          startDate: fromDate
+            .toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })
+            .split("/")
+            .reverse()
+            .join("-"),
+          endDate: toDate
+            .toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })
+            .split("/")
+            .reverse()
+            .join("-"),
+        })
+      ).then((res) => {
+        setBills(res.payload);
+        setLastFetchedRange(range);
+      });
+    }, 300),
+    []
+  );
+
+  // Update the useEffect to use the debounced function
   useEffect(() => {
-    const shouldFetch = !lastFetchedRange || 
-      (lastFetchedRange.from?.getTime() !== dateRange.from?.getTime() || 
-      lastFetchedRange.to?.getTime() !== dateRange.to?.getTime());
+    const shouldFetch =
+      !lastFetchedRange ||
+      lastFetchedRange.from?.getTime() !== dateRange.from?.getTime() ||
+      lastFetchedRange.to?.getTime() !== dateRange.to?.getTime();
 
     if (shouldFetch && dateRange.from && dateRange.to) {
-      fetchBillsData();
+      debouncedFetchBills(dateRange);
     }
-  }, [dateRange.from, dateRange.to]);
+  }, [dateRange.from, dateRange.to, debouncedFetchBills, lastFetchedRange]);
 
   useEffect(() => {
     setBills(initialBills);
@@ -155,7 +215,7 @@ export default function SalesTransactions() {
   const summary = (bills || []).reduce(
     (acc, bill) => {
       if (!bill) return acc;
-      
+
       acc.count++;
       acc.salesAmount += bill.billSummary?.grandTotal || 0;
       acc.amountPaid += bill.amountPaid || 0;
@@ -169,7 +229,7 @@ export default function SalesTransactions() {
 
     // Apply sale type filter
     if (saleTypeFilter !== "all") {
-      filteredBills = filteredBills.filter(bill => {
+      filteredBills = filteredBills.filter((bill) => {
         if (saleTypeFilter === "sales") return bill.saleType !== "return";
         if (saleTypeFilter === "returns") return bill.saleType === "return";
         return true;
@@ -202,8 +262,24 @@ export default function SalesTransactions() {
       dispatch(
         searchBills({
           query: value,
-          startDate: dateRange.from.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
-          endDate: dateRange.to.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
+          startDate: dateRange.from
+            .toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })
+            .split("/")
+            .reverse()
+            .join("-"),
+          endDate: dateRange.to
+            .toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })
+            .split("/")
+            .reverse()
+            .join("-"),
         })
       ).then((res) => {
         setBills(res.payload);
@@ -226,15 +302,11 @@ export default function SalesTransactions() {
             <div className="text-sm text-muted-foreground">Sales Count</div>
           </div>
           <div>
-            <div className="">
-              {formatCurrency(summary.salesAmount)}
-            </div>
+            <div className="">{formatCurrency(summary.salesAmount)}</div>
             <div className="text-sm text-muted-foreground">Sales Amount</div>
           </div>
           <div>
-            <div className="">
-              {formatCurrency(summary.amountPaid)}
-            </div>
+            <div className="">{formatCurrency(summary.amountPaid)}</div>
             <div className="text-sm text-muted-foreground">Amount Paid</div>
           </div>
           <div>
@@ -332,7 +404,10 @@ export default function SalesTransactions() {
           </div>
         )}
 
-        <Select value={saleTypeFilter} onValueChange={(value) => dispatch(setSaleTypeFilter(value))}>
+        <Select
+          value={saleTypeFilter}
+          onValueChange={(value) => dispatch(setSaleTypeFilter(value))}
+        >
           <SelectTrigger className="w-[120px]">
             <SelectValue placeholder="Filter by type" />
           </SelectTrigger>
@@ -345,7 +420,7 @@ export default function SalesTransactions() {
 
         <div className="flex-1 flex justify-end gap-2">
           <Button
-            variant='outline'
+            variant="outline"
             onClick={() => navigate(`/sales/create-sell-invoice`)}
           >
             Create Sales Invoice
@@ -358,15 +433,13 @@ export default function SalesTransactions() {
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <Users className="h-12 w-12 mb-4" />
             <p className="text-lg">No sales bills found</p>
-            <p className="text-sm">
-              Create a new sales invoice to get started
-            </p>
+            <p className="text-sm">Create a new sales invoice to get started</p>
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className='pl-5'>S.NO</TableHead>
+                <TableHead className="pl-5">S.NO</TableHead>
                 <TableHead>INVOICE NO</TableHead>
                 <TableHead>CUSTOMER Name</TableHead>
                 <TableHead>INVOICE DATE</TableHead>
@@ -377,7 +450,7 @@ export default function SalesTransactions() {
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody className='border'>
+            <TableBody className="border">
               {getFilteredBills().map((bill, index) => (
                 <TableRow
                   key={bill._id}
@@ -385,7 +458,10 @@ export default function SalesTransactions() {
                   onClick={() => navigate(`/sales/${bill._id}`)}
                 >
                   <TableCell className="font-medium pl-5">
-                    {index+1} {bill?.saleType === 'return' && <span className="text-red-500">R</span>}
+                    {index + 1}{" "}
+                    {bill?.saleType === "return" && (
+                      <span className="text-red-500">R</span>
+                    )}
                   </TableCell>
                   <TableCell className="font-medium">
                     {bill.invoiceNumber}
@@ -397,8 +473,16 @@ export default function SalesTransactions() {
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">
-                    <p>{new Date(bill.invoiceDate).toLocaleDateString("en-IN", {day: "2-digit",month: "short",year: "2-digit",})}</p>
-                    <p className="text-xs text-gray-500">By : {bill.createdByName}</p>
+                    <p>
+                      {new Date(bill.invoiceDate).toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "2-digit",
+                      })}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      By : {bill.createdByName}
+                    </p>
                   </TableCell>
                   <TableCell>
                     {bill.withGst ? "With GST" : "Without GST"}
@@ -413,11 +497,14 @@ export default function SalesTransactions() {
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">
-                    {formatCurrency(bill.billSummary?.grandTotal||0)}
+                    {formatCurrency(bill.billSummary?.grandTotal || 0)}
                   </TableCell>
                   <TableCell>
                     <div className="font-medium">
-                      {formatCurrency((bill.billSummary?.grandTotal || 0) - (bill.amountPaid || 0))}
+                      {formatCurrency(
+                        (bill.billSummary?.grandTotal || 0) -
+                          (bill.amountPaid || 0)
+                      )}
                     </div>
                     {bill.paymentDueDate && (
                       <div className="text-sm text-muted-foreground">

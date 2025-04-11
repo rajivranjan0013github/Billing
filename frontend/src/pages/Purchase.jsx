@@ -1,34 +1,76 @@
 import React, { useState, useEffect } from "react";
-import { Search, Users, X, ArrowLeft,} from "lucide-react";
+import { Search, Users, X, ArrowLeft } from "lucide-react";
 import { Button } from "../components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "../components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { Input } from "../components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "../components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
 import { cn } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchPurchaseBills, searchPurchaseBills, setDateRange, setSelectedPreset } from "../redux/slices/PurchaseBillSlice";
-import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import {
+  fetchPurchaseBills,
+  searchPurchaseBills,
+  setDateRange,
+  setSelectedPreset,
+} from "../redux/slices/PurchaseBillSlice";
+import {
+  format,
+  subDays,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+} from "date-fns";
 import { DateRangePicker } from "../components/ui/date-range-picker";
 import { formatCurrency } from "../utils/Helper";
 
 export default function PurchasesTransactions() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { purchaseBills: initialPurchaseBills, dateRange, selectedPreset } = useSelector((state) => state.purchaseBill);
+  const {
+    purchaseBills: initialPurchaseBills,
+    dateRange: reduxDateRange,
+    selectedPreset,
+  } = useSelector((state) => state.purchaseBill);
   const [purchaseBills, setPurchaseBills] = useState(initialPurchaseBills);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState("invoice");
   const [lastFetchedRange, setLastFetchedRange] = useState(null);
 
+  // Convert ISO strings to Date objects for the component
+  const dateRange = {
+    from: reduxDateRange.from ? new Date(reduxDateRange.from) : null,
+    to: reduxDateRange.to ? new Date(reduxDateRange.to) : null,
+  };
+
   const handleDateSelect = (range) => {
-    dispatch(setDateRange(range));
-    dispatch(setSelectedPreset("custom"));
+    if (range?.from && range?.to) {
+      // Serialize dates before dispatching
+      const serializedRange = {
+        from: range.from.toISOString(),
+        to: range.to.toISOString(),
+      };
+      dispatch(setDateRange(serializedRange));
+      dispatch(setSelectedPreset("custom"));
+    }
   };
 
   const handleDatePresetChange = (value) => {
     dispatch(setSelectedPreset(value));
-    
+
     if (value === "custom") {
       return;
     }
@@ -59,15 +101,23 @@ export default function PurchasesTransactions() {
         break;
     }
 
-    dispatch(setDateRange(newRange));
+    // Serialize dates before dispatching
+    const serializedRange = {
+      from: newRange.from.toISOString(),
+      to: newRange.to.toISOString(),
+    };
+    dispatch(setDateRange(serializedRange));
     fetchBills(newRange);
   };
 
   const handleDateSearch = () => {
-    if(!dateRange.to) {
-      const updatedRange = { ...dateRange, to: dateRange.from };
+    if (!dateRange.to) {
+      const updatedRange = {
+        from: dateRange.from.toISOString(),
+        to: dateRange.from.toISOString(),
+      };
       dispatch(setDateRange(updatedRange));
-      fetchBills(updatedRange);
+      fetchBills(dateRange);
     } else {
       fetchBills(dateRange);
     }
@@ -78,16 +128,41 @@ export default function PurchasesTransactions() {
       from: subDays(new Date(), 7),
       to: new Date(),
     };
-    dispatch(setDateRange(newRange));
+    // Serialize dates before dispatching
+    const serializedRange = {
+      from: newRange.from.toISOString(),
+      to: newRange.to.toISOString(),
+    };
+    dispatch(setDateRange(serializedRange));
     dispatch(setSelectedPreset("thisWeek"));
     fetchBills(newRange);
   };
 
   const fetchBills = (range = dateRange) => {
+    const fromDate =
+      range.from instanceof Date ? range.from : new Date(range.from);
+    const toDate = range.to instanceof Date ? range.to : new Date(range.to);
+
     dispatch(
       fetchPurchaseBills({
-        startDate: range.from.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
-        endDate: range.to.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
+        startDate: fromDate
+          .toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })
+          .split("/")
+          .reverse()
+          .join("-"),
+        endDate: toDate
+          .toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })
+          .split("/")
+          .reverse()
+          .join("-"),
       })
     ).then((res) => {
       setPurchaseBills(res.payload);
@@ -97,9 +172,12 @@ export default function PurchasesTransactions() {
 
   useEffect(() => {
     // Only fetch if we have no data or if the date range has changed
-    const shouldFetch = !lastFetchedRange || 
-      lastFetchedRange.from?.getTime() !== dateRange.from?.getTime() || 
-      lastFetchedRange.to?.getTime() !== dateRange.to?.getTime();
+    const shouldFetch =
+      !lastFetchedRange ||
+      new Date(lastFetchedRange.from).getTime() !==
+        new Date(dateRange.from).getTime() ||
+      new Date(lastFetchedRange.to).getTime() !==
+        new Date(dateRange.to).getTime();
 
     if (shouldFetch && dateRange.from && dateRange.to) {
       fetchBills();
@@ -113,7 +191,7 @@ export default function PurchasesTransactions() {
   const summary = (purchaseBills || []).reduce(
     (acc, bill) => {
       if (!bill) return acc; // Skip null/undefined bills
-      
+
       acc.count++;
       acc.purchaseAmount += bill.billSummary?.grandTotal || 0;
       acc.amountPaid += bill.amountPaid || 0;
@@ -146,8 +224,24 @@ export default function PurchasesTransactions() {
       dispatch(
         searchPurchaseBills({
           query: value,
-          startDate: dateRange.from.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
-          endDate: dateRange.to.toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric" }).split("/").reverse().join("-"),
+          startDate: dateRange.from
+            .toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })
+            .split("/")
+            .reverse()
+            .join("-"),
+          endDate: dateRange.to
+            .toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })
+            .split("/")
+            .reverse()
+            .join("-"),
         })
       ).then((res) => {
         setPurchaseBills(res.payload);
@@ -278,7 +372,7 @@ export default function PurchasesTransactions() {
 
         <div className="flex-1 flex justify-end gap-2">
           <Button
-          variant='outline'
+            variant="outline"
             onClick={() => navigate(`/purchase/create-purchase-invoice`)}
           >
             Create Purchase Invoice
@@ -299,7 +393,7 @@ export default function PurchasesTransactions() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className='pl-5'>S.NO</TableHead>
+                <TableHead className="pl-5">S.NO</TableHead>
                 <TableHead>INVOICE NO</TableHead>
                 <TableHead>DISTRIBUTOR / GSTIN</TableHead>
                 <TableHead>INVOICE DATE</TableHead>
@@ -310,7 +404,7 @@ export default function PurchasesTransactions() {
                 <TableHead>PAID / DUE</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody className='border'>
+            <TableBody className="border">
               {getFilteredBills().map((bill, index) => (
                 <TableRow
                   key={bill._id}
@@ -318,7 +412,7 @@ export default function PurchasesTransactions() {
                   onClick={() => navigate(`/purchase/${bill._id}`)}
                 >
                   <TableCell className="font-medium pl-5">
-                    {index+1}
+                    {index + 1}
                   </TableCell>
                   <TableCell className="font-medium">
                     {bill.invoiceNumber}
@@ -330,8 +424,16 @@ export default function PurchasesTransactions() {
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">
-                    <p>{new Date(bill.invoiceDate).toLocaleDateString("en-IN", {day: "2-digit",month: "short",year: "2-digit",})}</p>
-                    <p className="text-xs text-gray-500">By : {bill.createdByName}</p>
+                    <p>
+                      {new Date(bill.invoiceDate).toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "2-digit",
+                      })}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      By : {bill.createdByName}
+                    </p>
                   </TableCell>
                   <TableCell>
                     {bill.withGst ? "With GST" : "Without GST"}
@@ -346,15 +448,18 @@ export default function PurchasesTransactions() {
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">
-                    {formatCurrency(bill.billSummary?.grandTotal||0)}
+                    {formatCurrency(bill.billSummary?.grandTotal || 0)}
                   </TableCell>
-                 
+
                   {/* <TableCell className="font-medium">
                     {formatCurrency(bill.payableAmount || bill.grandTotal)}
                   </TableCell> */}
                   <TableCell>
                     <div className="font-medium">
-                      {formatCurrency((bill.billSummary?.grandTotal || 0) - (bill.amountPaid || 0))}
+                      {formatCurrency(
+                        (bill.billSummary?.grandTotal || 0) -
+                          (bill.amountPaid || 0)
+                      )}
                     </div>
                     {bill.paymentDueDate && (
                       <div className="text-sm text-muted-foreground">

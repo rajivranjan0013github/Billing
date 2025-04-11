@@ -91,8 +91,8 @@ const purchaseBillSlice = createSlice({
   initialState: {
     purchaseBills: [],
     dateRange: {
-      from: new Date(),
-      to: new Date()
+      from: new Date().toISOString(),
+      to: new Date().toISOString(),
     },
     selectedPreset: "today",
     fetchStatus: "idle",
@@ -107,11 +107,20 @@ const purchaseBillSlice = createSlice({
       state.error = null;
     },
     setDateRange: (state, action) => {
-      state.dateRange = action.payload;
+      state.dateRange = {
+        from:
+          action.payload.from instanceof Date
+            ? action.payload.from.toISOString()
+            : action.payload.from,
+        to:
+          action.payload.to instanceof Date
+            ? action.payload.to.toISOString()
+            : action.payload.to,
+      };
     },
     setSelectedPreset: (state, action) => {
       state.selectedPreset = action.payload;
-    }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -167,5 +176,6 @@ const purchaseBillSlice = createSlice({
   },
 });
 
-export const { resetStatus, setDateRange, setSelectedPreset } = purchaseBillSlice.actions;
+export const { resetStatus, setDateRange, setSelectedPreset } =
+  purchaseBillSlice.actions;
 export default purchaseBillSlice.reducer;
