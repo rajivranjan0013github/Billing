@@ -5,8 +5,32 @@ import { Customer } from "../models/Customer.js";
 // Get all customers
 router.get("/", async (req, res) => {
   try {
-    const customers = await Customer.find();
-    res.json(customers);
+    const page = parseInt(req.query.page) || 1;
+    const limit = 20;
+    const skip = (page - 1) * limit;
+    const searchQuery = req.query.search || "";
+    const searchType = req.query.searchType || "name";
+
+    let query = {};
+    if (searchQuery) {
+      if (searchType === "name") {
+        query.name = { $regex: searchQuery, $options: "i" };
+      } else if (searchType === "mobile") {
+        query.mob = { $regex: searchQuery, $options: "i" };
+      }
+    }
+
+    const [customers, totalCount] = await Promise.all([
+      Customer.find(query).skip(skip).limit(limit),
+      Customer.countDocuments(query)
+    ]);
+
+    res.json({
+      customers,
+      totalPages: Math.ceil(totalCount / limit),
+      currentPage: page,
+      totalCount
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -15,7 +39,7 @@ router.get("/", async (req, res) => {
 // Get single customer
 router.get("/:id", async (req, res) => {
   try {
-    const customer = await Customer.findById(req.params.id).populate("invoices").populate("payments").populate("returns");
+    const customer = await Customer.findById(req.params.id).populate("invoices").populate("payments");
     if (!customer) {
       return res.status(404).json({ message: "Customer not found" });
     }
@@ -27,11 +51,8 @@ router.get("/:id", async (req, res) => {
 
 // Create customer
 router.post("/", async (req, res) => {
-  const customer = new Customer({
-    name: req.body.name,
-    mobileNumber: req.body.mobileNumber,
-    address: req.body.address,
-  });
+  const customer = new Customer(req.body);
+  customer.currentBalance = customer.openBalance;
 
   try {
     const newCustomer = await customer.save();
@@ -49,10 +70,7 @@ router.patch("/:id", async (req, res) => {
       return res.status(404).json({ message: "Customer not found" });
     }
 
-    if (req.body.name) customer.name = req.body.name;
-    if (req.body.mobileNumber) customer.mobileNumber = req.body.mobileNumber;
-    if (req.body.address) customer.address = req.body.address;
-
+    Object.assign(customer, req.body);
     const updatedCustomer = await customer.save();
     res.json(updatedCustomer);
   } catch (error) {

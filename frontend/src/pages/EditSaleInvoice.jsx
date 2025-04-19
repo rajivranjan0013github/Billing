@@ -20,8 +20,9 @@ import { calculateTotals } from "./CreateSellInvoice";
 import { useParams, useNavigate } from "react-router-dom";
 import SaleItemTable from "../components/custom/sales/SaleItemTable";
 import PaymentDialog from "../components/custom/payment/PaymentDialog";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { formatCurrency } from "../utils/Helper";
+import { fetchSettings } from '../redux/slices/settingsSlice'
 
 // Helper function to round to 2 decimal places
 const roundToTwo = (num) => {
@@ -49,6 +50,8 @@ export default function EditSaleInvoice() {
   const inputRef = useRef([]);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const {settings, status } = useSelector(state => state.settings)
   const { isCollapsed } = useSelector((state) => state.loader);
   const { invoiceId } = useParams();
   const [loading, setLoading] = useState(false);
@@ -87,6 +90,13 @@ export default function EditSaleInvoice() {
     withGst: "yes",
     overallDiscount: "",
   });
+
+  // fetching setting config
+  useEffect(()=> {
+    if(status === 'idle') {
+      dispatch(fetchSettings());
+    }
+  }, [status, settings])
 
   // Fetch invoice data from server
   useEffect(() => {
@@ -153,7 +163,7 @@ export default function EditSaleInvoice() {
   }, [invoiceId]);
 
   // Calculate totals
-  const amountData = useMemo(() => calculateTotals(products), [products]);
+  const amountData = useMemo(() => calculateTotals(products, completeData?.billSummary?.adjustment), [products]);
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -162,7 +172,6 @@ export default function EditSaleInvoice() {
   const handleSaveInvoice = async () => {
     try {
       setLoading(true);
-      console.log(formData);
       if (!formData.customerName || !formData.invoiceNumber || !invoiceDate) {
         throw new Error("Please fill all required fields");
       }
@@ -365,21 +374,18 @@ export default function EditSaleInvoice() {
     }
   };
 
-  console.log(formData);
-  console.log("complete", completeData);
-
   const handleAddNewPayment = () => {
     setPaymentOutData({
       paymentType: "Payment In",
       distributorId: formData.customerId,
       distributorName: formData.customerName,
-      amount: Math.round(roundToTwo(amountData?.grandTotal - amountPaid)),
+      amount:roundToTwo(amountData?.grandTotal - amountPaid),
       bills: [
         {
           billId: invoiceId,
           billNumber: formData.invoiceNumber,
-          grandTotal: Math.round(roundToTwo(amountData?.grandTotal)),
-          amountPaid: Math.round(roundToTwo(amountPaid)),
+          grandTotal: roundToTwo(amountData?.grandTotal),
+          amountPaid: roundToTwo(amountPaid),
         },
       ],
     });
@@ -771,12 +777,12 @@ export default function EditSaleInvoice() {
         </div>
         <div className="py-2">
           <div className="">(-) Adjustment</div>
-          <div className="text-lg">{formatCurrency(0)}</div>
+          <div className="text-lg">{formatCurrency(amountData?.adjustment || 0)}</div>
         </div>
         <div className="bg-rose-500 py-2">
           <div className="">Total Amount</div>
           <div className="text-lg">
-            {formatCurrency(Math.round(amountData?.grandTotal))}
+            {formatCurrency(amountData?.grandTotal)}
           </div>
         </div>
         <div className="py-2">

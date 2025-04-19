@@ -36,19 +36,19 @@ const BatchSuggestion = forwardRef(({ value, setValue, onSuggestionSelect, inven
   const filtered = useMemo(() => {
     return suggestions
       .filter((suggestion) =>
-        suggestion.batchNumber
-          .toLowerCase()
-          .includes((value || "").toLowerCase())
+        suggestion?.batchNumber
+          ?.toLowerCase()
+          ?.includes((value || "").toLowerCase())
       )
       .sort((a, b) => {
         // First sort by quantity (out of stock at bottom)  
-        if ((a.quantity <= 0) !== (b.quantity <= 0)) {
-          return a.quantity <= 0 ? 1 : -1;
+        if ((a?.quantity <= 0) !== (b?.quantity <= 0)) {
+          return a?.quantity <= 0 ? 1 : -1;
         }
         
         // Then sort by expiry date
-        const [aMonth, aYear] = a.expiry.split('/').map(Number);
-        const [bMonth, bYear] = b.expiry.split('/').map(Number);
+        const [aMonth, aYear] = a?.expiry?.split('/').map(Number) || [0, 0];
+        const [bMonth, bYear] = b?.expiry?.split('/').map(Number) || [0, 0];
         
         if (aYear !== bYear) {
           return aYear - bYear;
@@ -90,22 +90,22 @@ const BatchSuggestion = forwardRef(({ value, setValue, onSuggestionSelect, inven
     } else if (e.key === "Enter") {
       if(e.shiftKey) {
         e.preventDefault();
-        if(inputRef.current['HSN']) {
+        if(inputRef?.current?.["HSN"]) {
           inputRef.current["HSN"].focus();
         }
         return;
       }
       if(selectedIndex >= 0) {
-        setValue(filteredSuggestions[selectedIndex].batchNumber);
+        setValue(filteredSuggestions[selectedIndex]?.batchNumber);
         setShowSuggestions(false);
         if (onSuggestionSelect) {
           onSuggestionSelect(filteredSuggestions[selectedIndex]);
         }
-        if (inputRef.current["quantity"]) {
+        if (inputRef?.current?.["quantity"]) {
           inputRef.current["quantity"].focus();
         }
       } else {
-        if(inputRef.current['expiry']) {
+        if(inputRef?.current?.["expiry"]) {
           inputRef.current["expiry"].focus();
         }
       }

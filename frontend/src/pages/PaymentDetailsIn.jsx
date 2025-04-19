@@ -192,7 +192,7 @@ export default function PaymentDetailsIn() {
               </TableHeader>
               <TableBody>
                 {paymentDetails.salesBills.map((bill) => (
-                  <TableRow key={bill._id} onClick={() => navigate(`/sale/${bill._id}`)} className="cursor-pointer">
+                  <TableRow key={bill._id} onClick={() => navigate(`/sales/${bill._id}`)} className="cursor-pointer">
                     <TableCell>{new Date(bill.invoiceDate).toLocaleDateString()}</TableCell>
                     <TableCell>{bill.invoiceNumber}</TableCell>
                     <TableCell>₹{bill?.grandTotal?.toLocaleString("en-IN")}</TableCell>

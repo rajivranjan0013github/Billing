@@ -262,6 +262,7 @@ export default function CreateSellInvoice() {
         productCount: amountData.productCount,
         grandTotal: roundToTwo(amountData.grandTotal),
         returnAmount: roundToTwo(amountData.returnAmount),
+        adjustment : roundToTwo(amountData?.adjustment),
         gstSummary: {
           0: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
           5: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },

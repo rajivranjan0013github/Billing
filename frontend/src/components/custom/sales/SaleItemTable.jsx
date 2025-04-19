@@ -23,9 +23,14 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
   const handleInputChange = (field, value) => {
     const updatedProduct = { ...newProduct, [field]: value };
 
-    // If MRP exists, set initial sale rate to MRP
+    // If MRP changes, recalculate sale rate based on existing discount
     if (field === "mrp") {
-      updatedProduct.saleRate = value;
+      const existingDiscount = Number(newProduct.discount || 0);
+      if (existingDiscount > 0) {
+        updatedProduct.saleRate = (value * (1 - existingDiscount / 100)).toFixed(2);
+      } else {
+        updatedProduct.saleRate = value;
+      }
     }
 
     // Handle sale rate changes - calculate discount based on new sale rate

@@ -12,9 +12,17 @@ import { useState, useEffect, useRef } from "react";
 import { addCustomer, updateCustomer } from "../../../redux/slices/CustomerSlice";
 import { useToast } from "../../../hooks/use-toast";
 import { Separator } from "../../ui/separator";
+import { Textarea } from "../../ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../ui/select";
 
 // Input keys in order of navigation
-const inputKeys = ['name', 'mobileNumber', 'address', 'submitButton'];
+const inputKeys = ['name', 'openBalance', 'balance_type', 'mob', 'address', 'submitButton'];
 
 export default function CreateCustomerDialog({
   open,
@@ -29,28 +37,35 @@ export default function CreateCustomerDialog({
   const inputRef = useRef({});
   const [formData, setFormData] = useState({
     name: "",
-    mobileNumber: "",
+    mob: "",
     address: "",
+    openBalance: "",
+    balance_type: "collect",
   });
 
   useEffect(() => {
     if (editingCustomer) {
       setFormData({
         name: editingCustomer.name,
-        mobileNumber: editingCustomer.mobileNumber,
+        mob: editingCustomer.mob,
         address: editingCustomer.address,
+        openBalance: Math.abs(editingCustomer.openBalance) || "",
+        balance_type: editingCustomer.openBalance < 0 ? 'pay' : 'collect',
       });
     } else if (initialData) {
       setFormData({
         name: initialData.name || "",
-        mobileNumber: initialData.mobileNumber || "",
+        mob: initialData.mob || "",
         address: initialData.address || "",
+        openBalance: initialData.openBalance || "",
       });
     } else {
       setFormData({
         name: "",
-        mobileNumber: "",
+        mob: "",
         address: "",
+        openBalance: "",
+        balance_type: "collect",
       });
     }
   }, [editingCustomer, initialData]);
@@ -81,11 +96,21 @@ export default function CreateCustomerDialog({
       setLoading(true);
       let result;
       
+      // Prepare the data with balance handling
+      const customerData = { ...formData };
+      let openBalance = Number(customerData.openBalance);
+      if (customerData.balance_type === "pay" && openBalance > 0) {
+        openBalance = -openBalance;
+      } else if (customerData.balance_type === "collect" && openBalance < 0) {
+        openBalance = Math.abs(openBalance);
+      }
+      customerData.openBalance = openBalance;
+      
       if (editingCustomer) {
         result = await dispatch(
           updateCustomer({ 
             id: editingCustomer._id, 
-            customerData: formData 
+            customerData 
           })
         ).unwrap();
         toast({
@@ -94,7 +119,7 @@ export default function CreateCustomerDialog({
           variant: "success",
         });
       } else {
-        result = await dispatch(addCustomer(formData)).unwrap();
+        result = await dispatch(addCustomer(customerData)).unwrap();
         toast({
           title: "Success",
           description: "Customer created successfully",
@@ -149,27 +174,64 @@ export default function CreateCustomerDialog({
                 />
               </div>
 
+              <div className="flex gap-2">
+                <div className="space-y-2 flex-1">
+                  <Label htmlFor="openBalance" className="text-sm font-medium text-gray-700">
+                    Balance
+                  </Label>
+                  <Input
+                    id="openBalance"
+                    type="number"
+                    value={formData.openBalance}
+                    onChange={(e) => handleInputChange("openBalance", e.target.value)}
+                    placeholder="₹ 0"
+                    className="h-9"
+                    onKeyDown={(e) => handleKeyDown(e, 'openBalance')}
+                    ref={el => inputRef.current['openBalance'] = el}
+                  />
+                </div>
+                <div className="space-y-2 w-[120px]">
+                  <Label className="text-sm font-medium text-gray-700">Type</Label>
+                  <Select
+                    value={formData.balance_type}
+                    onValueChange={(value) => handleInputChange("balance_type", value)}
+                  >
+                    <SelectTrigger 
+                      className="h-9"
+                      ref={el => inputRef.current['balance_type'] = el}
+                      onKeyDown={(e) => handleKeyDown(e, 'balance_type')}
+                    >
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="collect">To Collect</SelectItem>
+                      <SelectItem value="pay">To Pay</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="mobile" className="text-sm font-medium text-gray-700">
                   Mobile Number<span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="mobile"
-                  value={formData.mobileNumber}
-                  onChange={(e) => handleInputChange("mobileNumber", e.target.value)}
+                  value={formData.mob}
+                  onChange={(e) => handleInputChange("mob", e.target.value)}
                   placeholder="Enter mobile number"
                   required
                   className="h-9"
-                  onKeyDown={(e) => handleKeyDown(e, 'mobileNumber')}
-                  ref={el => inputRef.current['mobileNumber'] = el}
+                  onKeyDown={(e) => handleKeyDown(e, 'mob')}
+                  ref={el => inputRef.current['mob'] = el}
                 />
               </div>
 
-              <div className="space-y-2 col-span-2">
+              <div className="space-y-2">
                 <Label htmlFor="address" className="text-sm font-medium text-gray-700">
                   Address
                 </Label>
-                <Input
+                <Textarea
                   id="address"
                   value={formData.address}
                   onChange={(e) => handleInputChange("address", e.target.value)}

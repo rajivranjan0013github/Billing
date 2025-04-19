@@ -36,9 +36,7 @@ router.post("/", verifyToken, async (req, res) => {
       if (!mongoose.isValidObjectId(details.customerId)) {
         throw Error("distributor Id is not valid");
       }
-      distributorDetails = await Customer.findById(
-        details.customerId
-      ).session(session);
+      distributorDetails = await Customer.findById(details.customerId).session(session);
       if (!distributorDetails) {
         throw Error("distributor not found");
       }
@@ -53,7 +51,7 @@ router.post("/", verifyToken, async (req, res) => {
       invoiceNumber,
       createdBy: req?.user._id,
       createdByName : req?.user?.name,
-      mob: distributorDetails?.mobileNumber || "",
+      mob: distributorDetails?.mob || "",
       address  : distributorDetails?.address
     });
 

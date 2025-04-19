@@ -107,7 +107,7 @@ export default function PaymentDialog({
         (invoiceData?.grandTotal || 0) - (invoiceData?.alreadyPaid || 0);
 
       setPaymentData({
-        amount: Math.round(roundToTwo(remainingDue)),
+        amount: roundToTwo(remainingDue),
         paymentMethod: "",
         accountId: "",
         chequeNumber: "",
@@ -396,7 +396,7 @@ export default function PaymentDialog({
                   ...paymentData,
                   transactionNumber: e.target.value,
                 })
-              }
+              } 
               onKeyDown={(e) => handleKeyDown(e, "amount")}
               ref={(el) => (inputRef.current["transactionNumber"] = el)}
             />
@@ -405,7 +405,6 @@ export default function PaymentDialog({
       );
     }
   };
-  console.log(invoiceData);
 
   // Update the handleKeyDown function to handle RadioGroup
   const handleKeyDown = (e, nextInputId, isRadioGroup = false) => {
@@ -775,7 +774,7 @@ export default function PaymentDialog({
           <div>
             <p className="text-sm text-gray-500">TOTAL AMOUNT</p>
             <p className="font-bold">
-              {formatCurrency(Math.round(invoiceData?.grandTotal))}
+              {formatCurrency(invoiceData?.grandTotal)}
             </p>
           </div>
           <div>
@@ -793,10 +792,10 @@ export default function PaymentDialog({
             <p className="text-sm text-gray-500">BALANCE DUE</p>
             <p className="font-bold">
               {dueAmount > 0
-                ? formatCurrency(Math.round(dueAmount))
+                ? formatCurrency(dueAmount)
                 : dueAmount === 0
                 ? "-"
-                : `-${formatCurrency(Math.round(Math.abs(dueAmount)))}`}
+                : `-${formatCurrency(Math.abs(dueAmount))}`}
             </p>
           </div>
         </div>

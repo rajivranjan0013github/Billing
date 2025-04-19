@@ -89,8 +89,8 @@ const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
             filteredItems.map((item) => (
               <Card
                 key={item?._id}
-                className={`p-3 cursor-pointer hover:bg-accent transition-colors rounded-none ${
-                  selectedItemId === item?._id ? "bg-accent" : ""
+                className={`p-3 cursor-pointer hover:bg-blue-50 transition-colors rounded-none ${
+                  selectedItemId === item?._id ? "bg-accent hover:bg-accent" : ""
                 }`}
                 onClick={() => onItemSelect(item?._id)}
               >
