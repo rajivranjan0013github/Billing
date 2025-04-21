@@ -119,12 +119,6 @@ const Reports = () => {
         filters: ["dateRange"],
       },
       {
-        id: "distributor-wise",
-        name: "Customer Wise",
-        icon: Users,
-        filters: ["dateRange", "customer"],
-      },
-      {
         id: "product-wise",
         name: "Product Wise",
         icon: Package,
@@ -213,6 +207,15 @@ const Reports = () => {
       ...selectedReportType,
       [activeTab]: newType,
     });
+    // Reset filters to initial state to avoid carrying over irrelevant filters
+    setFilters({
+      manufacturer: "",
+      distributor: "all",
+      customer: "all",
+      product: "",
+    });
+    // Reset selected product state as well
+    setSelectedProduct(null);
     // Clear the report data
     dispatch(clearReport());
     // Clear any local errors
@@ -380,81 +383,36 @@ const Reports = () => {
         <div className="flex flex-wrap gap-x-2 gap-y-2">
           {/* Date range picker */}
           {needsDateRange && (
-            <div
-              className="flex items-center"
-              style={{
-                boxSizing: "border-box",
-                columnGap: "4px",
-                display: "flex",
-                flexDirection: "row",
-                flexWrap: "wrap",
-                fontFamily: "__Poppins_059fbd, __Poppins_Fallback_059fbd",
-                fontStyle: "normal",
-                height: "30px",
-                maxWidth: "calc(100% - 100px)",
-                rowGap: "8px",
-                unicodeBidi: "isolate",
-                width: "auto",
-              }}
-            >
-              <div className="flex items-center space-x-1">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-sm py-0 px-2"
-                    >
-                      <CalendarIcon className="mr-1 h-3.5 w-3.5 opacity-70" />
-                      {dateRange.from ? format(dateRange.from, "PP") : "From"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateRange.from}
-                      onSelect={(date) => {
-                        if (date) {
-                          handleDateRangeChange("from", date);
-                        }
-                      }}
-                      disabled={(date) =>
-                        dateRange.to ? date > dateRange.to : false
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-
-                <span className="text-gray-500">-</span>
-
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-sm py-0 px-2"
-                    >
-                      <CalendarIcon className="mr-1 h-3.5 w-3.5 opacity-70" />
-                      {dateRange.to ? format(dateRange.to, "PP") : "To"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateRange.to}
-                      onSelect={(date) => {
-                        if (date) {
-                          handleDateRangeChange("to", date);
-                        }
-                      }}
-                      disabled={(date) =>
-                        dateRange.from ? date < dateRange.from : false
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+            <div className="flex items-center space-x-1">
+              <div className="relative">
+                <Input
+                  type="date"
+                  value={
+                    dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : ""
+                  }
+                  onChange={(e) =>
+                    handleDateRangeChange("from", e.target.value)
+                  }
+                  className="h-8 text-sm py-0 px-2 pr-8" // Added pr-8 for potential icon space
+                  placeholder="From Date"
+                  aria-label="From Date"
+                />
+              </div>
+              <span className="text-gray-500">-</span>
+              <div className="relative">
+                <Input
+                  type="date"
+                  value={dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : ""}
+                  onChange={(e) => handleDateRangeChange("to", e.target.value)}
+                  min={
+                    dateRange.from
+                      ? format(dateRange.from, "yyyy-MM-dd")
+                      : undefined
+                  } // Prevent selecting 'to' date before 'from' date
+                  className="h-8 text-sm py-0 px-2 pr-8" // Added pr-8 for potential icon space
+                  placeholder="To Date"
+                  aria-label="To Date"
+                />
               </div>
             </div>
           )}
@@ -773,9 +731,49 @@ const Reports = () => {
       return null;
     }
 
+    // Function to check if the fetched data is empty
+    const isDataEmpty = (data, tab, type) => {
+      if (!data) return true; // Should be caught by !reportData check, but safe regardless
+
+      const reportId = type[tab];
+      switch (tab) {
+        case "sales":
+          switch (reportId) {
+            case "all-sales":
+              return !data.sales || data.sales.length === 0;
+            case "customer-wise":
+              return !data.customerSummary || data.customerSummary.length === 0;
+            case "manufacturer-wise":
+              return (
+                !data.manufacturerSummary ||
+                data.manufacturerSummary.length === 0
+              );
+            case "product-wise":
+              return !data.productSummary || data.productSummary.length === 0;
+            case "daily-sales":
+              return !data.hourlyData || data.hourlyData.length === 0; // Assuming daily sales data is checked this way
+            case "monthly-sales":
+              return !data.dailyData || data.dailyData.length === 0; // Assuming monthly sales data is checked this way
+            default:
+              return Object.keys(data).length === 0; // Fallback check for sales tab
+          }
+        // Add cases for 'purchase' and 'inventory' tabs when implemented
+        // case 'purchase':
+        //   // Add specific checks for purchase report types
+        //   return Object.keys(data).length === 0;
+        // case 'inventory':
+        //   // Add specific checks for inventory report types
+        //   return Object.keys(data).length === 0;
+        default:
+          // General fallback check if tab is unknown or not handled yet
+          return !data || Object.keys(data).length === 0;
+      }
+    };
+
     return (
       <div className="bg-white p-4 rounded-lg border border-gray-200">
         <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
+          {/* Header Section (Icon, Title, Date Range, Export Button) */}
           <div className="flex items-center">
             <div className="p-1.5 rounded-md bg-gray-100 mr-3">
               <selectedReport.icon className="h-5 w-5 text-gray-800" />
@@ -807,7 +805,11 @@ const Reports = () => {
           <Button
             variant="outline"
             size="sm"
-            disabled={reportStatus === "loading"}
+            disabled={
+              reportStatus === "loading" ||
+              !reportData ||
+              isDataEmpty(reportData, activeTab, selectedReportType)
+            } // Disable export if no data
             className="h-8 text-sm"
           >
             <DownloadIcon className="mr-1 h-3.5 w-3.5" />
@@ -815,6 +817,7 @@ const Reports = () => {
           </Button>
         </div>
 
+        {/* Content Section (Error, Loading, No Data Yet, No Data Found, Results) */}
         {localError || reportError ? (
           <div className="flex flex-col items-center justify-center py-12 text-red-600">
             <p className="text-base font-medium">{localError || reportError}</p>
@@ -827,13 +830,8 @@ const Reports = () => {
             </p>
             <p className="text-sm text-gray-600 mt-1">This may take a moment</p>
           </div>
-        ) : reportData ? (
-          <div className="space-y-4">
-            <div className="overflow-x-auto">
-              {activeTab === "sales" && renderSalesTable()}
-            </div>
-          </div>
-        ) : (
+        ) : !reportData ? (
+          // Initial state: No report generated yet
           <div className="flex flex-col items-center justify-center py-12">
             <div className="p-3 rounded-full bg-gray-100 mb-3">
               <selectedReport.icon className="h-6 w-6 text-gray-800" />
@@ -854,6 +852,29 @@ const Reports = () => {
               <FilterIcon className="mr-1 h-3.5 w-3.5" />
               Generate Report
             </Button>
+          </div>
+        ) : isDataEmpty(reportData, activeTab, selectedReportType) ? (
+          // Report generated, but no data found for the criteria
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="p-3 rounded-full bg-gray-100 mb-3">
+              <selectedReport.icon className="h-6 w-6 text-gray-600" />
+            </div>
+            <p className="text-base font-medium text-gray-700 mb-1">
+              No data found for the selected criteria.
+            </p>
+            <p className="text-sm text-gray-500 text-center max-w-sm">
+              Try adjusting the filters or changing the date range.
+            </p>
+          </div>
+        ) : (
+          // Report generated and data exists
+          <div className="space-y-4">
+            <div className="overflow-x-auto">
+              {activeTab === "sales" && renderSalesTable()}
+              {/* TODO: Add rendering for purchase and inventory tabs */}
+              {/* {activeTab === "purchase" && renderPurchaseTable()} */}
+              {/* {activeTab === "inventory" && renderInventoryTable()} */}
+            </div>
           </div>
         )}
       </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Search, Users, X, ArrowLeft } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
@@ -50,11 +50,16 @@ export default function PurchasesTransactions() {
   const [searchType, setSearchType] = useState("invoice");
   const [lastFetchedRange, setLastFetchedRange] = useState(null);
 
-  // Convert ISO strings to Date objects for the component
-  const dateRange = {
-    from: reduxDateRange.from ? new Date(reduxDateRange.from) : null,
-    to: reduxDateRange.to ? new Date(reduxDateRange.to) : null,
-  };
+  // Memoize the dateRange object creation
+  const dateRange = useMemo(() => {
+    const fromDate = reduxDateRange.from ? new Date(reduxDateRange.from) : null;
+    const toDate = reduxDateRange.to ? new Date(reduxDateRange.to) : null;
+    // Ensure both dates are valid Date objects before returning
+    if (fromDate && toDate && !isNaN(fromDate) && !isNaN(toDate)) {
+      return { from: fromDate, to: toDate };
+    }
+    return { from: null, to: null }; // Return null dates if invalid
+  }, [reduxDateRange.from, reduxDateRange.to]); // Depend only on the ISO strings
 
   const handleDateSelect = (range) => {
     if (range?.from && range?.to) {
@@ -107,19 +112,20 @@ export default function PurchasesTransactions() {
       to: newRange.to.toISOString(),
     };
     dispatch(setDateRange(serializedRange));
-    fetchBills(newRange);
   };
 
   const handleDateSearch = () => {
     if (!dateRange.to) {
+      // If 'to' date is missing, we only update the Redux state.
+      // The useEffect will handle fetching if needed based on the updated state.
       const updatedRange = {
         from: dateRange.from.toISOString(),
-        to: dateRange.from.toISOString(),
+        to: dateRange.from.toISOString(), // Set 'to' date same as 'from'
       };
       dispatch(setDateRange(updatedRange));
-      fetchBills(dateRange);
     } else {
-      fetchBills(dateRange);
+      // If both dates exist, we also just update the Redux state.
+      // The useEffect will handle fetching.
     }
   };
 
@@ -135,54 +141,56 @@ export default function PurchasesTransactions() {
     };
     dispatch(setDateRange(serializedRange));
     dispatch(setSelectedPreset("thisWeek"));
-    fetchBills(newRange);
   };
 
-  const fetchBills = (range = dateRange) => {
-    const fromDate =
-      range.from instanceof Date ? range.from : new Date(range.from);
-    const toDate = range.to instanceof Date ? range.to : new Date(range.to);
+  // Wrap fetchBills in useCallback to stabilize its reference for useEffect dependency array
+  const fetchBills = useCallback(
+    (rangeToFetch) => {
+      if (!rangeToFetch?.from || !rangeToFetch?.to) {
+        console.error("fetchBills called with invalid range:", rangeToFetch);
+        return; // Don't fetch if range is invalid
+      }
 
-    dispatch(
-      fetchPurchaseBills({
-        startDate: fromDate
-          .toLocaleDateString("en-IN", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })
-          .split("/")
-          .reverse()
-          .join("-"),
-        endDate: toDate
-          .toLocaleDateString("en-IN", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })
-          .split("/")
-          .reverse()
-          .join("-"),
-      })
-    ).then((res) => {
-      setPurchaseBills(res.payload);
-      setLastFetchedRange(range);
-    });
-  };
+      const fromDate = rangeToFetch.from;
+      const toDate = rangeToFetch.to;
+
+      dispatch(
+        fetchPurchaseBills({
+          startDate: format(fromDate, "yyyy-MM-dd"), // Use date-fns format
+          endDate: format(toDate, "yyyy-MM-dd"), // Use date-fns format
+        })
+      )
+        .unwrap() // Use unwrap to handle promise resolution/rejection more easily
+        .then((payload) => {
+          setPurchaseBills(payload);
+          // IMPORTANT: Set lastFetchedRange with the exact range object used for this fetch
+          setLastFetchedRange(rangeToFetch);
+        })
+        .catch((error) => {
+          console.error("Failed to fetch purchase bills:", error);
+          // Optionally: Display an error message to the user
+        });
+    },
+    [dispatch]
+  ); // Depend on dispatch
 
   useEffect(() => {
-    // Only fetch if we have no data or if the date range has changed
-    const shouldFetch =
-      !lastFetchedRange ||
-      new Date(lastFetchedRange.from).getTime() !==
-        new Date(dateRange.from).getTime() ||
-      new Date(lastFetchedRange.to).getTime() !==
-        new Date(dateRange.to).getTime();
-
-    if (shouldFetch && dateRange.from && dateRange.to) {
-      fetchBills();
+    // Ensure we have valid, stable date objects from useMemo
+    if (!dateRange.from || !dateRange.to) {
+      return; // Don't proceed if dates are not valid
     }
-  }, [dateRange.from, dateRange.to]);
+
+    // Compare based on time. Use optional chaining for safety.
+    const rangeChanged =
+      !lastFetchedRange ||
+      lastFetchedRange.from?.getTime() !== dateRange.from.getTime() ||
+      lastFetchedRange.to?.getTime() !== dateRange.to.getTime();
+
+    if (rangeChanged) {
+      fetchBills(dateRange); // Pass the stable dateRange object
+    }
+    // Depend on the stable dateRange object and lastFetchedRange
+  }, [dateRange, lastFetchedRange, fetchBills]); // Add fetchBills to dependency array
 
   useEffect(() => {
     setPurchaseBills(initialPurchaseBills);
@@ -201,11 +209,28 @@ export default function PurchasesTransactions() {
   );
 
   const getFilteredBills = () => {
-    if (!searchQuery) return purchaseBills;
+    if (!searchQuery.trim()) {
+      return purchaseBills || []; // Return empty array if purchaseBills is null/undefined
+    }
 
-    return purchaseBills.filter((bill) =>
-      bill.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const query = searchQuery.toLowerCase();
+
+    return (purchaseBills || []).filter((bill) => {
+      if (!bill) return false; // Skip null/undefined bills
+
+      switch (searchType) {
+        case "invoice":
+          return bill.invoiceNumber?.toLowerCase().includes(query);
+        case "distributor":
+          // Assuming distributor name is in bill.distributorName
+          return bill.distributorName?.toLowerCase().includes(query);
+        case "grn":
+          // Assuming GRN number is in bill.grnNumber (adjust if needed)
+          return bill.grnNumber?.toLowerCase().includes(query);
+        default:
+          return false;
+      }
+    });
   };
 
   const handleSearch = async (value) => {
@@ -220,32 +245,29 @@ export default function PurchasesTransactions() {
       bill.invoiceNumber.toLowerCase().includes(value.toLowerCase())
     );
 
-    if (localResults.length === 0) {
+    if (localResults.length === 0 && value.trim()) {
+      // Only search backend if local search empty and query exists
+      // Ensure dateRange is valid before dispatching search
+      if (!dateRange.from || !dateRange.to) {
+        console.warn("Search attempted with invalid date range.");
+        return;
+      }
+
       dispatch(
         searchPurchaseBills({
           query: value,
-          startDate: dateRange.from
-            .toLocaleDateString("en-IN", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            })
-            .split("/")
-            .reverse()
-            .join("-"),
-          endDate: dateRange.to
-            .toLocaleDateString("en-IN", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            })
-            .split("/")
-            .reverse()
-            .join("-"),
+          startDate: format(dateRange.from, "yyyy-MM-dd"), // Use date-fns format
+          endDate: format(dateRange.to, "yyyy-MM-dd"), // Use date-fns format
         })
-      ).then((res) => {
-        setPurchaseBills(res.payload);
-      });
+      )
+        .unwrap() // Use unwrap for easier promise handling
+        .then((payload) => {
+          setPurchaseBills(payload); // Update local state with search results
+        })
+        .catch((error) => {
+          console.error("Failed to search purchase bills:", error);
+          // Optionally: display error to user
+        });
     }
   };
 

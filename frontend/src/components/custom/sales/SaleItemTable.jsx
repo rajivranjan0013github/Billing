@@ -71,6 +71,7 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
 
   // handle add product to list
   const handleAdd = () => {
+    console.log(newProduct);
     if (!newProduct.productName) {
       toast({ variant: "destructive", title: "Please select item" });
       return;
@@ -117,9 +118,11 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
   };
 
   const handleProductSelect = (product) => {
+    console.log(product);
     setNewProduct(pre=>({
       ...pre,
       productName: product.name,
+      mfcName: product.mfcName,
       inventoryId: product._id,
     }));
     if (inputRef?.current["batchNumber"]) {

@@ -240,6 +240,7 @@ export default function CreateSellInvoice() {
         batchNumber: product.batchNumber,
         batchId: product.batchId,
         expiry: product.expiry,
+        mfcName: product.mfcName,
         HSN: product.HSN,
         mrp: roundToTwo(Number(product.mrp)),
         quantity: Number(product.quantity),

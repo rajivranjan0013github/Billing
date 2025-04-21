@@ -42,7 +42,7 @@ export default function PaymentDialog({
   const [dueDate, setDueDate] = useState();
   const [showDetails, setShowDetails] = useState(false);
   const [selectedMethodIndex, setSelectedMethodIndex] = useState(1);
-
+  console.log(invoiceData);
   const inputRef = useRef({});
 
   const [paymentData, setPaymentData] = useState({
@@ -107,7 +107,7 @@ export default function PaymentDialog({
         (invoiceData?.grandTotal || 0) - (invoiceData?.alreadyPaid || 0);
 
       setPaymentData({
-        amount: Math.round(roundToTwo(remainingDue)),
+        amount: roundToTwo(remainingDue),
         paymentMethod: "",
         accountId: "",
         chequeNumber: "",
@@ -775,7 +775,7 @@ export default function PaymentDialog({
           <div>
             <p className="text-sm text-gray-500">TOTAL AMOUNT</p>
             <p className="font-bold">
-              {formatCurrency(Math.round(invoiceData?.grandTotal))}
+              {formatCurrency((invoiceData?.grandTotal))}
             </p>
           </div>
           <div>
@@ -793,10 +793,10 @@ export default function PaymentDialog({
             <p className="text-sm text-gray-500">BALANCE DUE</p>
             <p className="font-bold">
               {dueAmount > 0
-                ? formatCurrency(Math.round(dueAmount))
+                ? formatCurrency((dueAmount))
                 : dueAmount === 0
                 ? "-"
-                : `-${formatCurrency(Math.round(Math.abs(dueAmount)))}`}
+                : `-${formatCurrency((Math.abs(dueAmount)))}`}
             </p>
           </div>
         </div>

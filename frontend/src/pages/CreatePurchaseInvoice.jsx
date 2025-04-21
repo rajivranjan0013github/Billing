@@ -39,7 +39,7 @@ export const roundToTwo = (num) => {
 };
 
 export const calculateTotals = (products, amountType) => {
-  return products.reduce(
+  const total =  products.reduce(
     (total, product) => {
       const quantity = Number(product?.quantity || 0);
       const free = Number(product?.free || 0);
@@ -55,7 +55,7 @@ export const calculateTotals = (products, amountType) => {
         purchaseRate - (purchaseRate * discountPercent) / 100
       );
 
-      // Calculate taxable amount based on mode
+      
       let taxable;
       switch (amountType) {
         case "exclusive":
@@ -92,6 +92,11 @@ export const calculateTotals = (products, amountType) => {
       grandTotal: 0,
     }
   );
+
+  const grandTotal = total?.grandTotal;
+  total.grandTotal = Math.round(grandTotal);
+  total.adjustment = total.grandTotal - grandTotal
+  return total;
 };
 
 export default function PurchaseForm() {
@@ -231,6 +236,7 @@ export default function PurchaseForm() {
           totalQuantity: amountData.totalQuantity,
           productCount: amountData.productCount,
           grandTotal: roundToTwo(amountData.grandTotal),
+          adjustment: roundToTwo(amountData.adjustment),
         },
         amountCalculationType: formData.amountType,
         status: "active",
@@ -603,7 +609,7 @@ export default function PurchaseForm() {
         </div>
         <div className="py-2">
           <div className="">(-) Adjustment</div>
-          <div className="text-lg">{formatCurrency(0)}</div>
+          <div className="text-lg">{formatCurrency(amountData?.adjustment)}</div>
         </div>
         <div className="py-2">
           <div className="">(+) Delivery Charge</div>

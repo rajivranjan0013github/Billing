@@ -50,6 +50,7 @@ const invoiceShema = new mongoose.Schema(
       discountAmount: { type: Number, required: true },
       taxableAmount: { type: Number, required: true },
       gstAmount: { type: Number, required: true },
+      adjustment: { type: Number, default: 0 },
       gstSummary: {
         0: { taxable: Number, cgst: Number, sgst: Number, igst: Number, total: Number },
         5: { taxable: Number, cgst: Number, sgst: Number, igst: Number, total: Number },
