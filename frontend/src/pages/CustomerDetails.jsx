@@ -14,14 +14,7 @@ export default function CustomerDetails() {
   const navigate = useNavigate();
   const { customerId } = useParams();
   const dispatch = useDispatch();
-  const { 
-    details: customerDetails, 
-    status,
-    tabName,
-    invoices,
-    payments,
-    returns
-  } = useSelector((state) => state.customers.currentCustomer);
+  const {  details: customerDetails,  status, tabName, invoices, payments} = useSelector((state) => state.customers.currentCustomer);
 
   useEffect(() => {
     if (customerId) {
@@ -141,7 +134,7 @@ export default function CustomerDetails() {
                       <div className="text-sm text-muted-foreground">
                         Mobile Number
                       </div>
-                      <div>{customerDetails.mobileNumber || "-"}</div>
+                      <div>{customerDetails.mob || "-"}</div>
                     </div>
                   </div>
                   <div>
@@ -153,27 +146,21 @@ export default function CustomerDetails() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <div className="text-sm text-muted-foreground">
-                        Total Amount
+                        Opening Balance
                       </div>
-                      <div className="text-green-600">
-                        ₹ {customerDetails.totalAmount?.toLocaleString() || "0"}
+                      <div className={customerDetails.currentBalance > 0 ? "text-green-600" : customerDetails.currentBalance < 0 ? "text-red-600" : ""}>
+                        {customerDetails.currentBalance > 0 ? "↓ " : customerDetails.currentBalance < 0 ? "↑ " : ""}
+                        ₹ {Math.abs(customerDetails.openBalance || 0).toLocaleString()}
                       </div>
                     </div>
                     <div>
                       <div className="text-sm text-muted-foreground">
-                        Amount Paid
+                        Current Balance
                       </div>
-                      <div className="text-blue-600">
-                        ₹ {customerDetails.amountPaid?.toLocaleString() || "0"}
+                      <div className={customerDetails.currentBalance > 0 ? "text-green-600" : customerDetails.currentBalance < 0 ? "text-red-600" : ""}>
+                        {customerDetails.currentBalance > 0 ? "↓ " : customerDetails.currentBalance < 0 ? "↑ " : ""}
+                        ₹ {Math.abs(customerDetails.currentBalance || 0).toLocaleString()}
                       </div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">
-                      Balance Due
-                    </div>
-                    <div className="text-red-600">
-                      ₹ {Math.max(0, (customerDetails.totalAmount || 0) - (customerDetails.amountPaid || 0)).toLocaleString()}
                     </div>
                   </div>
                 </CardContent>

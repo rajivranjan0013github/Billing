@@ -28,11 +28,14 @@ const INITIAL_FORM_DATA = {
   openBalance: "",
   balance_type: "collect",
   gstin: "",
-  panNumber: "",
   DLNumber: "",
   address: "",
   credit_period: 30,
   credit_limit: 0,
+  bankDetails: {
+    accountNumber: "",
+    ifsc: ""
+  }
 }
 
 export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) {
@@ -48,9 +51,10 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
     'mob',
     'email',
     'gstin',
-    'panNumber',
     'DLNumber',
     'address',
+    'accountNumber',
+    'ifsc',
     'credit_period',
     'credit_limit',
     'save_button'
@@ -81,7 +85,17 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    if (name === 'accountNumber' || name === 'ifsc') {
+      setFormData({
+        ...formData,
+        bankDetails: {
+          ...formData.bankDetails,
+          [name]: value
+        }
+      });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const handleSelectChange = (name, value) => {
@@ -230,7 +244,7 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
               </div>
             </div>
 
-            <div>
+            <div className="space-y-4">
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <Label htmlFor="gstin" className="text-xs font-medium ">
@@ -248,55 +262,74 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
                   />
                 </div>
                 <div>
-                  <Label htmlFor="panNumber" className="text-xs font-medium ">
-                    PAN Number
+                  <Label htmlFor="DLNumber" className="text-xs font-medium ">
+                    Drug License Number
                   </Label>
                   <Input
-                    id="panNumber"
-                    name="panNumber"
-                    value={formData.panNumber}
+                    id="DLNumber"
+                    name="DLNumber"
+                    value={formData.DLNumber}
                     onChange={handleInputChange}
-                    onKeyDown={(e) => handleKeyDown(e, 'panNumber')}
-                    ref={el => inputRef.current['panNumber'] = el}
-                    placeholder="Enter PAN"
+                    onKeyDown={(e) => handleKeyDown(e, 'DLNumber')}
+                    ref={el => inputRef.current['DLNumber'] = el}
+                    placeholder="Enter DL Number"
                     className="h-8 mt-1 text-sm"
                   />
                 </div>
               </div>
-              <div className="mt-3">
-                <Label htmlFor="DLNumber" className="text-xs font-medium ">
-                  Drug License Number
+
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="accountNumber" className="text-xs font-medium">
+                    Bank Account Number
+                  </Label>
+                  <Input
+                    id="accountNumber"
+                    name="accountNumber"
+                    value={formData.bankDetails.accountNumber}
+                    onChange={handleInputChange}
+                    onKeyDown={(e) => handleKeyDown(e, 'accountNumber')}
+                    ref={el => inputRef.current['accountNumber'] = el}
+                    placeholder="Enter account number"
+                    className="h-8 mt-1 text-sm"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="ifsc" className="text-xs font-medium">
+                    IFSC Code
+                  </Label>
+                  <Input
+                    id="ifsc"
+                    name="ifsc"
+                    value={formData.bankDetails.ifsc}
+                    onChange={handleInputChange}
+                    onKeyDown={(e) => handleKeyDown(e, 'ifsc')}
+                    ref={el => inputRef.current['ifsc'] = el}
+                    placeholder="Enter IFSC code"
+                    className="h-8 mt-1 text-sm uppercase"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="address" className="text-xs font-medium ">
+                  Address Details
                 </Label>
-                <Input
-                  id="DLNumber"
-                  name="DLNumber"
-                  value={formData.DLNumber}
+                <Textarea
+                  id="address"
+                  name="address"
+                  className="w-full h-[60px] p-2 mt-1 rounded-md border border-input text-sm resize-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter complete address"
+                  value={formData.address}
                   onChange={handleInputChange}
-                  onKeyDown={(e) => handleKeyDown(e, 'DLNumber')}
-                  ref={el => inputRef.current['DLNumber'] = el}
-                  placeholder="Enter DL Number"
-                  className="h-8 mt-1 text-sm"
+                  onKeyDown={(e) => handleKeyDown(e, 'address')}
+                  ref={el => inputRef.current['address'] = el}
                 />
               </div>
             </div>
 
             <div>
               <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="address" className="text-xs font-medium ">
-                    Address Details
-                  </Label>
-                  <Textarea
-                    id="address"
-                    name="address"
-                    className="w-full h-[60px] p-2 mt-1 rounded-md border border-input text-sm resize-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter complete address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    onKeyDown={(e) => handleKeyDown(e, 'address')}
-                    ref={el => inputRef.current['address'] = el}
-                  />
-                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="creditPeriod" className="text-xs font-medium ">

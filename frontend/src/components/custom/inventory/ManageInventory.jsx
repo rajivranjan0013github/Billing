@@ -69,9 +69,9 @@ export default function ManageInventory({
   useEffect(() => {
     if (inventoryDetails && open) {
       setFormData({ ...formData, inventoryId: inventoryDetails?._id });
-      setProductSearch(inventoryDetails.name);
+      setProductSearch(inventoryDetails?.name);
       setTimeout(() => {
-        if (inputRef.current['batchNumber']) {
+        if (inputRef?.current?.['batchNumber']) {
           inputRef.current['batchNumber'].focus();
         }
       }, 100);
@@ -82,26 +82,26 @@ export default function ManageInventory({
   useEffect(() => {
     if (batchDetails && open) {
       setFormData({
-        inventoryId: batchDetails.inventoryId,
-        batchNumber: batchDetails.batchNumber,
-        expiryMonth: batchDetails.expiry.split("/")[0],
-        expiryYear: batchDetails.expiry.split("/")[1],
-        mrp: batchDetails.mrp,
-        HSN: batchDetails.HSN,
-        gstPer: batchDetails.gstPer,
-        purchaseRate: batchDetails.purchaseRate,
+        inventoryId: batchDetails?.inventoryId,
+        batchNumber: batchDetails?.batchNumber,
+        expiryMonth: batchDetails?.expiry?.split("/")?.[0],
+        expiryYear: batchDetails?.expiry?.split("/")?.[1],
+        mrp: batchDetails?.mrp,
+        HSN: batchDetails?.HSN,
+        gstPer: batchDetails?.gstPer,
+        purchaseRate: batchDetails?.purchaseRate,
         purchaseGstType: "Excl gst",
-        saleRate: batchDetails.saleRate,
+        saleRate: batchDetails?.saleRate,
         saleGstType: "Incl gst",
-        pack: batchDetails.pack,
+        pack: batchDetails?.pack,
         packs: Math.floor(
-          Number(batchDetails.quantity) / Number(batchDetails.pack || 1)
+          Number(batchDetails?.quantity) / Number(batchDetails?.pack || 1)
         ),
-        loose: Number(batchDetails.quantity) % Number(batchDetails.pack || 1),
+        loose: Number(batchDetails?.quantity) % Number(batchDetails?.pack || 1),
       });
       // Set product name if inventoryDetails is available
       if (inventoryDetails) {
-        setProductSearch(inventoryDetails.name);
+        setProductSearch(inventoryDetails?.name);
       }
     }
   }, [batchDetails, open]);
@@ -229,8 +229,8 @@ export default function ManageInventory({
       ...prev,
       inventoryId: product?._id,
     }));
-    setProductSearch(product.name);
-    if (inputRef.current['batchNumber']) {
+    setProductSearch(product?.name);
+    if (inputRef?.current?.['batchNumber']) {
       inputRef.current['batchNumber'].focus();
     }
   };

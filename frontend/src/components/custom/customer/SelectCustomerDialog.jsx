@@ -159,7 +159,7 @@ export default function SelectCustomerDialog({
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="w-[20%] py-3">{customer.mobileNumber}</TableCell>
+                    <TableCell className="w-[20%] py-3">{customer.mob}</TableCell>
                     <TableCell className="w-[25%] py-3">
                       <div>
                         <div>₹0.00</div>

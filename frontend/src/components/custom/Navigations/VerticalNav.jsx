@@ -193,7 +193,7 @@ export default function VerticalNav() {
         {!isCollapsed && (
           <div className="flex items-center">
             <ColorfulLogo className="h-6 w-6" />
-            <span className="ml-1 text-lg font-bold text-gray-800">
+            <span className="ml-1 text-lg text-gray-800 font-medium">
               The Billing
             </span>
           </div>

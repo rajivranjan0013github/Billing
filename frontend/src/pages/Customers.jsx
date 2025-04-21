@@ -1,68 +1,34 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchCustomers,
-  deleteCustomer,
-} from "../redux/slices/CustomerSlice";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../components/ui/table";
+import {fetchCustomers,deleteCustomer,setCustomerStatusIdle,setSearch} from "../redux/slices/CustomerSlice";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "../components/ui/table";
 import { Button } from "../components/ui/button";
 import CreateCustomerDialog from "../components/custom/customer/CreateCustomerDialog";
 import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { 
-  Pencil, 
-  Trash2, 
-  UserPlus, 
-  Phone, 
-  MapPin, 
-  Search, 
-  Users, 
-  X, 
-  ArrowLeft 
-} from "lucide-react";
+import { Pencil, Trash2, UserPlus, Phone, MapPin, Search, Users, X, ArrowLeft,ChevronLeft,ChevronRight} from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "../components/ui/select";
+import { formatCurrency } from "../utils/Helper";
 
 const Customers = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const customers = useSelector((state) => state.customers.customers);
   const status = useSelector((state) => state.customers.status);
+  const { currentPage, totalPages } = useSelector((state) => state.customers.pagination);
+  const { query: searchQuery, type: searchType } = useSelector((state) => state.customers.search);
   const { toast } = useToast();
 
   const [isOpen, setIsOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchType, setSearchType] = useState("name");
+  const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
 
   useEffect(() => {
     if (status === "idle") {
-      dispatch(fetchCustomers());
+      dispatch(fetchCustomers({ page: currentPage, searchQuery, searchType }));
     }
-  }, [status, dispatch]);
-
-  // Calculate summary statistics
-  const summary = {
-    count: customers.length,
-    totalInvoices: customers.reduce((sum, customer) => sum + (customer.invoices?.length || 0), 0),
-    averageInvoices: customers.length 
-      ? (customers.reduce((sum, customer) => sum + (customer.invoices?.length || 0), 0) / customers.length).toFixed(1)
-      : 0,
-  };
+  }, [status, dispatch, currentPage, searchQuery, searchType]);
 
   const handleEdit = (customer) => {
     setEditingCustomer(customer);
@@ -93,18 +59,32 @@ const Customers = () => {
     setEditingCustomer(null);
   };
 
-  // Filter customers based on search
-  const getFilteredCustomers = () => {
-    if (!searchQuery) return customers;
+  const handleSearch = (value) => {
+    dispatch(setSearch({ query: value, type: searchType }));
+    dispatch(setCustomerStatusIdle());
+  };
 
-    return customers.filter((customer) => {
-      if (searchType === "name") {
-        return customer.name.toLowerCase().includes(searchQuery.toLowerCase());
-      } else if (searchType === "mobile") {
-        return customer.mobileNumber.toLowerCase().includes(searchQuery.toLowerCase());
-      }
-      return true;
-    });
+  const handleSearchSubmit = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch(localSearchQuery);
+    }
+  };
+
+  const clearSearch = () => {
+    setLocalSearchQuery("");
+    handleSearch("");
+  };
+
+  const handleSearchTypeChange = (value) => {
+    dispatch(setSearch({ query: searchQuery, type: value }));
+    dispatch(setCustomerStatusIdle());
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      dispatch(setCustomerStatusIdle());
+      dispatch(fetchCustomers({ page: newPage, searchQuery, searchType }));
+    }
   };
 
   if (status === "loading") {
@@ -116,7 +96,7 @@ const Customers = () => {
   }
 
   return (
-    <div className="relative p-4 space-y-4">
+    <div className="relative p-2 space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
@@ -124,73 +104,51 @@ const Customers = () => {
           </Button>
           <h1 className="text-2xl font-semibold">Customers</h1>
         </div>
-        <div className="grid grid-cols-3 gap-4 text-right">
-          <div>
-            <div className="font-semibold">{summary.count}</div>
-            <div className="text-sm text-muted-foreground">Total Customers</div>
-          </div>
-          <div>
-            <div className="font-semibold">{summary.totalInvoices}</div>
-            <div className="text-sm text-muted-foreground">Total Invoices</div>
-          </div>
-          <div>
-            <div className="font-semibold">{summary.averageInvoices}</div>
-            <div className="text-sm text-muted-foreground">Avg. Invoices/Customer</div>
-          </div>
-        </div>
       </div>
 
-      <div className="flex gap-4">
-        <div className="relative flex-1">
-          <div className="relative flex items-center bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
-            <div className="relative flex items-center px-3 border-r border-slate-200">
-              <Select
-                defaultValue="name"
-                onValueChange={(value) => setSearchType(value)}
-              >
-                <SelectTrigger className="h-9 w-[120px] border-0 bg-transparent hover:bg-slate-100 focus:ring-0 focus:ring-offset-0">
-                  <SelectValue placeholder="Search by" />
-                </SelectTrigger>
-                <SelectContent align="start" className="w-[120px]">
-                  <SelectItem value="name" className="text-sm">
-                    Name
-                  </SelectItem>
-                  <SelectItem value="mobile" className="text-sm">
-                    Mobile
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      <div className="flex gap-4 items-center">
+        <div className="flex gap-2">
+          <Select
+            value={searchType}
+            onValueChange={handleSearchTypeChange}
+          >
+            <SelectTrigger className="w-[100px] focus:ring-0">
+              <SelectValue placeholder="Search by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Name</SelectItem>
+              <SelectItem value="mobile">Mobile</SelectItem>
+            </SelectContent>
+          </Select>
 
-            <div className="flex-1 relative flex items-center">
-              <div className="absolute left-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-slate-400" />
-              </div>
-              <Input
-                className="w-full h-9 pl-10 pr-10 border-0 focus-visible:ring-0 placeholder:text-slate-400"
-                placeholder={`Search by ${searchType === "name" ? "customer name" : "mobile number"}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <div className="absolute right-3 flex items-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 hover:bg-slate-100 rounded-full"
-                    onClick={() => setSearchQuery("")}
-                  >
-                    <X className="h-3 w-3 text-slate-500" />
-                  </Button>
-                </div>
-              )}
-            </div>
+          <div className="relative">
+            <Input
+              className="w-[250px] pl-8"
+              placeholder={`Search ${searchType === "name" ? "customer name" : "mobile number"}...`}
+              value={localSearchQuery}
+              onChange={(e) => setLocalSearchQuery(e.target.value)}
+              onKeyDown={handleSearchSubmit}
+            />
+            <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            {localSearchQuery && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-full aspect-square absolute right-0 top-0 hover:bg-transparent"
+                onClick={clearSearch}
+              >
+                <X className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            )}
           </div>
         </div>
-        <Button className="w-[200px]" onClick={() => setIsOpen(true)}>
-          <UserPlus className="h-4 w-4 mr-2" />
-          Add Customer
-        </Button>
+
+        <div className="ml-auto">
+          <Button onClick={() => setIsOpen(true)}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Add Customer
+          </Button>
+        </div>
       </div>
 
       <CreateCustomerDialog
@@ -204,7 +162,7 @@ const Customers = () => {
       />
 
       <div className="relative overflow-x-auto">
-        {getFilteredCustomers().length === 0 ? (
+        {customers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <Users className="h-12 w-12 mb-4" />
             <p className="text-lg">No customers found</p>
@@ -221,65 +179,106 @@ const Customers = () => {
             </Button>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>CUSTOMER NAME</TableHead>
-                <TableHead>MOBILE NUMBER</TableHead>
-                <TableHead>ADDRESS</TableHead>
-                <TableHead>TOTAL INVOICES</TableHead>
-                <TableHead className="text-right">ACTIONS</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {getFilteredCustomers().map((customer) => (
-                <TableRow 
-                  key={customer._id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => navigate(`/customers/${customer._id}`)}
-                >
-                  <TableCell className="font-medium">{customer.name}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4" />
-                      {customer.mobileNumber}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      {customer.address}
-                    </div>
-                  </TableCell>
-                  <TableCell>{customer.invoices?.length || 0}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEdit(customer);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(customer._id);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>CUSTOMER NAME</TableHead>
+                  <TableHead>MOBILE NUMBER</TableHead>
+                  <TableHead>ADDRESS</TableHead>
+                  <TableHead>BALANCE</TableHead>
+                  <TableHead className="text-right">ACTIONS</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody className='border'>
+                {customers.map((customer) => (
+                  <TableRow 
+                    key={customer._id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate(`/customers/${customer._id}`)}
+                  >
+                    <TableCell className="font-medium">{customer.name}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4" />
+                        {customer.mob}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        {customer.address}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={
+                          customer.currentBalance > 0
+                            ? "text-green-600"
+                            : customer.currentBalance < 0
+                            ? "text-red-600"
+                            : ""
+                        }
+                      >
+                        {customer.currentBalance > 0 ? "↓ " : customer.currentBalance < 0 ? "↑ " : ""}
+                        {formatCurrency(Math.abs(customer.currentBalance || 0))}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(customer);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(customer._id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

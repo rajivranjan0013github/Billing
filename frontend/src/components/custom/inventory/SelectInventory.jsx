@@ -133,7 +133,7 @@ export default function ProductSelector({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="max-w-5xl p-0 gap-0"
+          className="max-w-3xl p-0 gap-0"
           onKeyDown={handleKeyDown}
         >
           <DialogHeader className="px-4 py-2.5 flex flex-row items-center justify-between bg-gray-100 border-b">
@@ -142,67 +142,59 @@ export default function ProductSelector({
                 Select a Product
               </DialogTitle>
             </div>
-            <div className="flex items-center gap-2 mr-6">
+            
+          </DialogHeader>
+          <Separator />
+
+          <div className=" py-2 px-4 flex justify-between">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2 h-4 w-4 text-gray-400" />
+              <Input
+                autoFocus
+                placeholder="Search products..."
+                className="pl-8 h-8 text-sm border rounded-md focus:ring-2 focus:ring-blue-500"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                ref={searchRef}
+              />
+            </div>
+            <div className="flex items-center gap-2">
               <Button
                 size="sm"
-                className="bg-blue-600 text-white h-7 px-3 text-xs rounded-md hover:bg-blue-700"
+                variant='outline'
+                className='px-2'
                 onClick={() => setNewItemDialogOpen(true)}
               >
                 <Plus className="h-3 w-3" />
                 Add Product (F2)
               </Button>
             </div>
-          </DialogHeader>
-          <Separator />
-
-          <div className="p-4 border-b bg-white">
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <div className="text-xs font-medium text-gray-700 mb-1.5">
-                  Enter Product Name
-                </div>
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2 h-4 w-4 text-gray-400" />
-                  <Input
-                    autoFocus
-                    placeholder="Search products..."
-                    className="pl-8 h-8 text-sm border rounded-md focus:ring-2 focus:ring-blue-500"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    ref={searchRef}
-                  />
-                </div>
-              </div>
-            </div>
           </div>
 
-          <div className="relative mx-4 mt-3">
+          <div className="relative mx-4">
             <Table>
-              <TableHeader className="sticky top-0 bg-gray-50 z-10">
+              <TableHeader className="sticky top-0  z-10">
                 <TableRow>
-                  <TableHead className="w-[30%] text-left text-sm font-semibold text-gray-600">
-                    PRODUCT NAME/COMPANY
+                  <TableHead className="w-[30%] text-left text-sm font-semibold">
+                    PRODUCT NAME
                   </TableHead>
-                  <TableHead className="w-[10%] text-left text-sm font-semibold text-gray-600">
+                  <TableHead className="w-[30%] text-left text-sm font-semibold">
+                    COMPANY
+                  </TableHead>
+                  <TableHead className="w-[10%] text-sm font-semibold text-center">
                     PACK
                   </TableHead>
-                  <TableHead className="w-[15%] text-left text-sm font-semibold text-gray-600">
+                  <TableHead className="w-[20%] text-sm font-semibold text-center">
                     STATUS
                   </TableHead>
-                  <TableHead className="w-[15%] text-left text-sm font-semibold text-gray-600">
-                    MRP
-                  </TableHead>
-                  <TableHead className="w-[15%] text-left text-sm font-semibold text-gray-600">
-                    EXPIRY
-                  </TableHead>
-                  <TableHead className="w-[15%] text-left text-sm font-semibold text-gray-600">
+                  <TableHead className="w-[10%] text-sm font-semibold text-center">
                     LOCATION
                   </TableHead>
                 </TableRow>
               </TableHeader>
             </Table>
 
-            <ScrollArea className="h-[400px] pr-2">
+            <ScrollArea className="h-[400px] pr-2 py-1">
               <Table>
                 <TableBody>
                   {filteredProducts.map((product) => (
@@ -210,44 +202,30 @@ export default function ProductSelector({
                       key={product._id}
                       id={product._id}
                       className={cn(
-                        "cursor-pointer hover:bg-gray-100 transition-colors",
-                        selectedId === product._id && "bg-gray-100"
+                        "cursor-pointer hover:bg-blue-50 transition-colors",
+                        selectedId === product._id && "bg-blue-200"
                       )}
                       onClick={() => handleSelect(product)}
                     >
                       <TableCell className="w-[30%] py-3">
-                        <div>
-                          <div className="font-medium">{product.name}</div>
-                          <div className="text-xs text-gray-500">
-                            {product.mfcName}
-                          </div>
-                        </div>
+                        <div className="font-medium">{product.name}</div>
                       </TableCell>
-                      <TableCell className="w-[10%] py-3">
+                      <TableCell className="w-[30%] py-3">
+                        <div className="text-sm text-gray-600">{product.mfcName}</div>
+                      </TableCell>
+                      <TableCell className="w-[10%] py-3 text-center">
                         {product.pack}
                       </TableCell>
-                      <TableCell className="w-[15%] py-3">
-                        {product.quantity > 0 ? (
-                          <div className="space-y-1">
-                            <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-                              In Stock
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="space-y-1">
-                            <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20">
-                              Out of Stock
-                            </span>
-                          </div>
-                        )}
+                      <TableCell className="w-[20%] py-3 text-center">
+                        <span
+                          className={`${
+                            product.quantity > 0 ? "bg-green-500" : "bg-red-500"
+                          } text-white px-2 py-1 text-xs`}
+                        >
+                          {product.quantity > 0 ? "In Stock" : "Out of Stock"}
+                        </span>
                       </TableCell>
-                      <TableCell className="w-[15%] py-3">
-                        ₹{product?.mrp?.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="w-[15%] py-3">
-                        {product?.expiry}
-                      </TableCell>
-                      <TableCell className="w-[15%] py-3">
+                      <TableCell className="w-[10%] py-3 text-center">
                         {product?.location}
                       </TableCell>
                     </TableRow>

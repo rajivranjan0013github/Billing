@@ -245,17 +245,23 @@ export default function DistributorDetails() {
                     </div>
                     <div>
                       <div className="text-sm text-muted-foreground">
-                        PAN Number
-                      </div>
-                      <div>{distributorDetails.panNumber || "-"}</div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <div className="text-sm text-muted-foreground">
                         Drug License Number
                       </div>
                       <div>{distributorDetails.DLNumber || "-"}</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-sm text-muted-foreground">
+                        Bank Account Number
+                      </div>
+                      <div>{distributorDetails?.bankDetails?.accountNumber || "-"}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-muted-foreground">
+                        IFSC Code
+                      </div>
+                      <div className="uppercase">{distributorDetails?.bankDetails?.ifsc || "-"}</div>
                     </div>
                   </div>
                   <div>
@@ -516,3 +522,4 @@ export default function DistributorDetails() {
     </div>
   );
 }
+

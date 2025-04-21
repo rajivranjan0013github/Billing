@@ -6,7 +6,7 @@ const customerSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
-  mobileNumber: {
+  mob: {
     type: String,
   },
   address: {
@@ -24,20 +24,8 @@ const customerSchema = new mongoose.Schema({
       ref: "Payment",
     },
   ],
-  returns: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "SalesReturn",
-    },
-  ],
-  totalAmount: {
-    type: Number,
-    default: 0,
-  },
-  amountPaid: {
-    type: Number,
-    default: 0,
-  },
+  openBalance: { type: Number, default: 0 },
+  currentBalance: { type: Number, default: 0 },
   createdAt: {
     type: Date,
     default: Date.now,

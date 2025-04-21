@@ -36,9 +36,7 @@ router.post("/", verifyToken, async (req, res) => {
       if (!mongoose.isValidObjectId(details.customerId)) {
         throw Error("distributor Id is not valid");
       }
-      distributorDetails = await Customer.findById(
-        details.customerId
-      ).session(session);
+      distributorDetails = await Customer.findById(details.customerId).session(session);
       if (!distributorDetails) {
         throw Error("distributor not found");
       }
@@ -53,12 +51,12 @@ router.post("/", verifyToken, async (req, res) => {
       invoiceNumber,
       createdBy: req?.user._id,
       createdByName : req?.user?.name,
-      mob: distributorDetails?.mobileNumber || "",
+      mob: distributorDetails?.mob || "",
       address  : distributorDetails?.address
     });
 
     // Handle payment if provided
-    if (payment && payment.amount !== 0) {
+      if (payment && payment.amount !== 0) {
       // Create payment record
       const paymentNumber = await Payment.getNextPaymentNumber(session);
       const paymentDoc = new Payment({
@@ -115,6 +113,11 @@ router.post("/", verifyToken, async (req, res) => {
       await paymentDoc.save({ session });
       newSalesBill.payments.push(paymentDoc._id);
       // newSalesBill.payment = payment;
+    } else {
+      if(distributorDetails) {
+        distributorDetails.currentBalance = (distributorDetails.currentBalance || 0) + (details.grandTotal || 0);
+        await distributorDetails.save({ session });
+      }
     }
 
     // Process inventory updates

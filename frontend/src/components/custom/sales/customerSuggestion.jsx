@@ -123,7 +123,7 @@ const CustomerSuggestion = forwardRef(({ placeholder, value, setValue, onSuggest
                     className={`w-full grid grid-cols-6 border-b-[1px] border-muted px-4 py-2 hover:bg-blue-200 ${index === selectedIndex ? 'bg-blue-200' : ''}`}
                   >
                       <div className={`text-sm uppercase ${suggestion?.index === 'new' ? 'col-span-4 text-primary' : 'col-span-2'} `}>{suggestion?.index === 'new' ? `Create New Cusomter "${suggestion?.name}"` : suggestion?.name }</div>
-                      <div className='text-sm'>{suggestion?.mobileNumber}</div>
+                      <div className='text-sm'>{suggestion?.mob}</div>
                       <div className={`text-xs ${suggestion?.index === 'new' ? 'text-primary text-end' : ''}`}>{suggestion?.index === 'new' ? 'Press :  ALT+N' : suggestion?.address}</div>
                       <div className='text-sm text-center'>{suggestion?.balance}</div>
                       <div className='text-sm text-center'>{suggestion?.lastInvoice}</div>

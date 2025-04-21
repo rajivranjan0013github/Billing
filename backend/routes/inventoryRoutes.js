@@ -126,14 +126,30 @@ router.delete('/delete-batch/:batchId', async (req, res) => {
 
 router.get('/timeline/:inventoryId', async (req, res) => {
     const {inventoryId} = req.params;
-    const {type} = req.query;
+    const {type, page = 1} = req.query;
+    const limit = 20;
+    const skip = (page - 1) * limit;
     const queryValue = {inventoryId};
+    
     if(type === 'purchase' || type === 'sale') {
        queryValue.type = type.toUpperCase();
     }
+    
     try {
-        const timeline = await StockTimeline.find(queryValue).sort({createdAt: -1});
-        res.status(200).json(timeline);
+        const [timeline, total] = await Promise.all([
+            StockTimeline.find(queryValue)
+                .sort({createdAt: -1})
+                .skip(skip)
+                .limit(limit),
+            StockTimeline.countDocuments(queryValue)
+        ]);
+        
+        res.status(200).json({
+            timeline,
+            totalPages: Math.ceil(total / limit),
+            currentPage: parseInt(page),
+            totalItems: total
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

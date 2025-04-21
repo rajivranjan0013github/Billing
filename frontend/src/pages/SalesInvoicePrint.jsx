@@ -223,7 +223,7 @@ const SalesInvoicePrint = () => {
         </div>
 
         {/* Products Table */}
-        <div className="min-h-[160px] border-[1px] border-gray-800">
+        <div className="min-h-[156px] border-[1px] border-gray-800">
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-gray-200 border-b-[1px] border-gray-800">
@@ -393,6 +393,10 @@ const SalesInvoicePrint = () => {
                  {invoiceData?.billSummary?.discountAmount !== 0 && '-'} {formatCurrency(invoiceData?.billSummary?.discountAmount)}
                 </span>
               </div>
+              {invoiceData?.billSummary?.adjustment !== 0 && <div className="flex justify-between px-2">
+                <span className="">Adjustment:</span>
+                <span>{formatCurrency(invoiceData?.billSummary?.adjustment)}</span>
+              </div>}
               {invoiceData?.saleType === 'return' && <div className="flex justify-between px-2">
                 <span className="">Return Value:</span>
                 <span>{formatCurrency(invoiceData?.billSummary?.returnAmount)}</span>

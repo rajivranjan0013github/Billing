@@ -4,8 +4,13 @@ import { Backend_URL } from "../../assets/Data";
 // Async thunks
 export const fetchCustomers = createAsyncThunk(
   "customers/fetchCustomers",
-  async () => {
-    const response = await fetch(`${Backend_URL}/api/customers`, {
+  async ({ page = 1, searchQuery = "", searchType = "name" } = {}) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      ...(searchQuery && { search: searchQuery, searchType }),
+    });
+
+    const response = await fetch(`${Backend_URL}/api/customers?${params}`, {
       credentials: "include",
     });
     if (!response.ok) {
@@ -92,6 +97,15 @@ const customerSlice = createSlice({
       status: "idle",
       tabName: "profile",
     },
+    pagination: {
+      currentPage: 1,
+      totalPages: 1,
+      totalCount: 0,
+    },
+    search: {
+      query: "",
+      type: "name",
+    },
   },
   reducers: {
     setTabName: (state, action) => {
@@ -102,6 +116,10 @@ const customerSlice = createSlice({
       state.currentCustomer.status = "idle";
       state.error = null;
     },
+    setSearch: (state, action) => {
+      state.search = action.payload;
+      state.pagination.currentPage = 1; // Reset to first page on new search
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -110,7 +128,12 @@ const customerSlice = createSlice({
       })
       .addCase(fetchCustomers.fulfilled, (state, action) => {
         state.status = "succeeded";
-        state.customers = action.payload;
+        state.customers = action.payload.customers;
+        state.pagination = {
+          currentPage: action.payload.currentPage,
+          totalPages: action.payload.totalPages,
+          totalCount: action.payload.totalCount,
+        };
       })
       .addCase(fetchCustomers.rejected, (state, action) => {
         state.status = "failed";
@@ -149,5 +172,5 @@ const customerSlice = createSlice({
   },
 });
 
-export const { setTabName, setCustomerStatusIdle } = customerSlice.actions;
+export const { setTabName, setCustomerStatusIdle, setSearch } = customerSlice.actions;
 export default customerSlice.reducer;
