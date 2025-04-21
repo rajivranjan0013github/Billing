@@ -84,27 +84,26 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
       }
 
       const totalDiscountPercent = discount + schemePercent;
-      const effectiveRate =
-        purchaseRate - (purchaseRate * totalDiscountPercent) / 100;
-      const gstAmount =
-        (effectiveRate * Number(updatedProduct?.gstPer || 0)) / 100;
+      const effectiveRate = purchaseRate - (purchaseRate * totalDiscountPercent) / 100;
+      const gstAmount = (effectiveRate * Number(updatedProduct?.gstPer || 0)) / 100;
 
+      // Calculate amount based on mode
+      let amount;
       switch (gstMode) {
         case "exclusive":
           // Just Rate × Quantity
-          updatedProduct.amount = convertToFraction(purchaseRate * quantity);
+          amount = purchaseRate * quantity;
           break;
         case "inclusive_all":
           // (Rate - Rate×Discount%) × Quantity
-          updatedProduct.amount = convertToFraction(effectiveRate * quantity);
+          amount = effectiveRate * quantity;
           break;
         case "inclusive_gst":
           // (Rate - Rate×Discount% + (Rate - Rate×Discount%)×GST%) × Quantity
-          updatedProduct.amount = convertToFraction(
-            (effectiveRate + gstAmount) * quantity
-          );
+          amount = (effectiveRate + gstAmount) * quantity;
           break;
       }
+      updatedProduct.amount = convertToFraction(amount);
     } else {
       updatedProduct.amount = "";
     }
@@ -196,27 +195,26 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
         }
 
         const totalDiscountPercent = discount + schemePercent;
-        const effectiveRate =
-          purchaseRate - (purchaseRate * totalDiscountPercent) / 100;
-        const gstAmount =
-          (effectiveRate * Number(updatedProduct?.gstPer || 0)) / 100;
+        const effectiveRate = purchaseRate - (purchaseRate * totalDiscountPercent) / 100;
+        const gstAmount = (effectiveRate * Number(updatedProduct?.gstPer || 0)) / 100;
 
+        // Calculate amount based on mode
+        let amount;
         switch (gstMode) {
           case "exclusive":
             // Just Rate × Quantity
-            updatedProduct.amount = convertToFraction(purchaseRate * quantity);
+            amount = purchaseRate * quantity;
             break;
           case "inclusive_all":
             // (Rate - Rate×Discount%) × Quantity
-            updatedProduct.amount = convertToFraction(effectiveRate * quantity);
+            amount = effectiveRate * quantity;
             break;
           case "inclusive_gst":
             // (Rate - Rate×Discount% + (Rate - Rate×Discount%)×GST%) × Quantity
-            updatedProduct.amount = convertToFraction(
-              (effectiveRate + gstAmount) * quantity
-            );
+            amount = (effectiveRate + gstAmount) * quantity;
             break;
         }
+        updatedProduct.amount = convertToFraction(amount);
       }
 
       updatedProducts[index] = updatedProduct;
@@ -317,16 +315,16 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
   return (
     <div className="w-full border-[1px] border-inherit py-4 rounded-sm">
       {/* Header row */}
-      <div className="grid grid-cols-[30px_3fr_1fr_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_50px] gap-1 px-2">
+      <div className="grid grid-cols-[30px_3fr_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_50px] gap-1 px-2">
         <div className="flex justify-center">#</div>
         <div>
           <p className="text-xs font-semibold">PRODUCT</p>
         </div>
         <div>
-          <p className="text-xs font-semibold">HSN</p>
+          <p className="text-xs font-semibold">BATCH</p>
         </div>
         <div>
-          <p className="text-xs font-semibold">BATCH</p>
+          <p className="text-xs font-semibold">HSN</p>
         </div>
         <div>
           <p className="text-xs font-semibold">EXPIRY</p>
@@ -374,28 +372,17 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
 
       {/* Input row */}
       {!viewMode && (
-        <div className="grid grid-cols-[30px_3fr_1fr_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_50px] gap-1 px-2 mt-2">
+        <div className="grid grid-cols-[30px_3fr_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_50px] gap-1 px-2 mt-2">
           <div></div>
           <div>
             <Input
               ref={(el) => (inputRef.current["product"] = el)}
               onChange={handleProductNameChange}
-              onKeyDown={(e) => handleKeyDown(e, 'HSN')}
+              onKeyDown={(e) => handleKeyDown(e, 'batchNumber')}
               value={productSearch}
               type="text"
               placeholder="Type or Press Space"
               className="h-8 w-full border-[1px] border-gray-300 px-2 rounded-sm  "
-            />
-          </div>
-          <div>
-            <Input
-              id="HSN"
-              ref={(el) => (inputRef.current["HSN"] = el)}
-              onKeyDown={(e) => handleKeyDown(e, 'batchNumber')}
-              onChange={(e) => handleInputChange("HSN", e.target.value)}
-              value={newProduct.HSN || ""}
-              type="text"
-              className="h-8 w-full border-[1px] border-gray-300 px-1 rounded-sm"
             />
           </div>
           <div>
@@ -406,6 +393,18 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
               onSuggestionSelect={handleBatchSelect}
               inventoryId={newProduct?.inventoryId}
               ref={(el) => (inputRef.current["batchNumber"] = el)}
+              onKeyDown={(e) => handleKeyDown(e, 'HSN')}
+            />
+          </div>
+          <div>
+            <Input
+              id="HSN"
+              ref={(el) => (inputRef.current["HSN"] = el)}
+              onKeyDown={(e) => handleKeyDown(e, 'expiry')}
+              onChange={(e) => handleInputChange("HSN", e.target.value)}
+              value={newProduct.HSN || ""}
+              type="text"
+              className="h-8 w-full border-[1px] border-gray-300 px-1 rounded-sm"
             />
           </div>
           <div>
@@ -584,7 +583,7 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
         {products.length !== 0 &&
           products.map((product, index) => (
             <div
-              className="grid grid-cols-[30px_3fr_1fr_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_50px] gap-1 px-2 mt-1"
+              className="grid grid-cols-[30px_3fr_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_50px] gap-1 px-2 mt-1"
               key={product?.inventoryId}
             >
               <div className="flex justify-center items-center font-semibold">
@@ -596,17 +595,6 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
                   value={product?.productName}
                   type="text"
                   className="h-8 w-full border-[1px] border-gray-300 px-2 rounded-sm"
-                />
-              </div>
-              <div>
-                <Input
-                  disabled={!editAll && editingIndex !== index}
-                  onChange={(e) =>
-                    handleInputChangeEditMode(index, "HSN", e.target.value)
-                  }
-                  value={product?.HSN || ""}
-                  type="text"
-                  className="h-8 w-full border-[1px] border-gray-300 px-1 rounded-sm"
                 />
               </div>
               <div>
@@ -625,6 +613,17 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
                   }
                   inventoryId={product?.inventoryId}
                   disabled={!editAll && editingIndex !== index}
+                />
+              </div>
+              <div>
+                <Input
+                  disabled={!editAll && editingIndex !== index}
+                  onChange={(e) =>
+                    handleInputChangeEditMode(index, "HSN", e.target.value)
+                  }
+                  value={product?.HSN || ""}
+                  type="text"
+                  className="h-8 w-full border-[1px] border-gray-300 px-1 rounded-sm"
                 />
               </div>
               <div>

@@ -62,6 +62,7 @@ export default function PaymentDialog({
         .catch((err) => setError(err.message));
     }
   }, [dispatch, fetchStatus]);
+  
   const calculateDueAmount = () => {
     const totalDue = invoiceData?.grandTotal || 0;
     const alreadyPaid = invoiceData?.alreadyPaid || 0;
@@ -102,12 +103,11 @@ export default function PaymentDialog({
       setShowDetails(false);
       setSelectedMethodIndex(1);
 
-      // Calculate initial amount based on remaining due
-      const remainingDue =
-        (invoiceData?.grandTotal || 0) - (invoiceData?.alreadyPaid || 0);
+      // Calculate initial amount based on remaining due and payment status
+      const remainingDue = (invoiceData?.grandTotal || 0) - (invoiceData?.alreadyPaid || 0);
 
       setPaymentData({
-        amount: roundToTwo(remainingDue),
+        amount: initialStatus === "due" ? 0 : roundToTwo(remainingDue),
         paymentMethod: "",
         accountId: "",
         chequeNumber: "",
@@ -117,7 +117,7 @@ export default function PaymentDialog({
       });
 
       // If there are accounts, automatically select the first account
-      if (accounts && accounts.length > 0) {
+      if (accounts && accounts.length > 0 && initialStatus === "paid") {
         const firstAccount = accounts[0];
         setPaymentData((prev) => ({
           ...prev,
@@ -128,8 +128,18 @@ export default function PaymentDialog({
     }
   }, [open, dispatch, accounts, invoiceData]);
 
-  // Calculate due amount considering already paid amounts
+  // Add effect to update amount when payment status changes
+  useEffect(() => {
+    const remainingDue = (invoiceData?.grandTotal || 0) - (invoiceData?.alreadyPaid || 0);
+    setPaymentData(prev => ({
+      ...prev,
+      amount: paymentStatus === "due" ? 0 : roundToTwo(remainingDue),
+      paymentMethod: paymentStatus === "due" ? "" : prev.paymentMethod,
+      accountId: paymentStatus === "due" ? "" : prev.accountId,
+    }));
+  }, [paymentStatus, invoiceData]);
 
+  // Calculate due amount considering already paid amounts
   const dueAmount = calculateDueAmount();
 
   const handleBack = () => {
@@ -198,10 +208,11 @@ export default function PaymentDialog({
   };
 
   const canSubmitPayment = () => {
-    if (paymentStatus === "due") return true;
+    if (paymentStatus === "due") return dueDate != null;
 
     const amount = Number(paymentData.amount);
-    // if (!amount || amount <= 0) return false;
+    // Check if due date is required and present
+    if (amount < Number(invoiceData?.grandTotal) && !dueDate) return false;
 
     switch (paymentData.paymentMethod) {
       case "CHEQUE":
@@ -225,7 +236,7 @@ export default function PaymentDialog({
       ...paymentData,
       amount: paymentData.amount === "" ? 0 : Number(paymentData.amount),
       status: paymentStatus,
-      dueDate,
+      dueDate: paymentStatus === "due" || Number(paymentData.amount) < Number(invoiceData?.grandTotal) ? dueDate : null,
       paymentType: "Purchase Invoice",
       totalPaid:
         (invoiceData?.alreadyPaid || 0) + Number(paymentData.amount || 0), // Add this to track cumulative payment
@@ -678,6 +689,19 @@ export default function PaymentDialog({
                             ref={(el) => (inputRef.current["amount"] = el)}
                           />
                         </div>
+                        {Number(paymentData.amount) < Number(invoiceData?.grandTotal) && (
+                          <div>
+                            <Label>Payment Due Date</Label>
+                            <Input
+                              type="date"
+                              value={dueDate ? format(dueDate, "yyyy-MM-dd") : ""}
+                              onChange={(e) => setDueDate(new Date(e.target.value))}
+                              className="w-full"
+                              onKeyDown={(e) => handleKeyDown(e, "nextButton")}
+                              ref={(el) => (inputRef.current["dueDate2"] = el)}
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, Users, X, ArrowLeft } from "lucide-react";
+import { Search, Users, X, ArrowLeft, Plus } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
   Select,
@@ -375,6 +375,7 @@ export default function PurchasesTransactions() {
             variant="outline"
             onClick={() => navigate(`/purchase/create-purchase-invoice`)}
           >
+            <Plus className="h-4 w-4 mr-2" />
             Create Purchase Invoice
           </Button>
         </div>

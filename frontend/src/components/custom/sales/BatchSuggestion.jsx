@@ -90,8 +90,8 @@ const BatchSuggestion = forwardRef(({ value, setValue, onSuggestionSelect, inven
     } else if (e.key === "Enter") {
       if(e.shiftKey) {
         e.preventDefault();
-        if(inputRef?.current?.["HSN"]) {
-          inputRef.current["HSN"].focus();
+        if(inputRef?.current?.["product"]) {
+          inputRef.current["product"].focus();
         }
         return;
       }
@@ -105,8 +105,8 @@ const BatchSuggestion = forwardRef(({ value, setValue, onSuggestionSelect, inven
           inputRef.current["quantity"].focus();
         }
       } else {
-        if(inputRef?.current?.["expiry"]) {
-          inputRef.current["expiry"].focus();
+        if(inputRef?.current?.["HSN"]) {
+          inputRef.current["HSN"].focus();
         }
       }
     }
@@ -186,7 +186,7 @@ const BatchSuggestion = forwardRef(({ value, setValue, onSuggestionSelect, inven
                     <div className="text-sm uppercase font-medium">
                       {suggestion?.quantity <= 0 
                         ? <Badge variant="destructive">OUT OF STOCKS</Badge>
-                        : <Badge variant="success">
+                        : <Badge variant="success" className={'font-medium'}>
                             {convertQuantity(suggestion?.quantity, suggestion?.pack)}
                           </Badge>}
                     </div>

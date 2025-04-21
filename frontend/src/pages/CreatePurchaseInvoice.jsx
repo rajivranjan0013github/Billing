@@ -17,10 +17,9 @@ const inputKeys = [
   "distributorName",
   "invoiceNo",
   "invoiceDate",
-  "dueDate",
   "product",
-  "HSN",
   "batchNumber",
+  "HSN",
   "expiry",
   "pack",
   "quantity",
@@ -100,7 +99,6 @@ export default function PurchaseForm() {
   const dispatch = useDispatch();
 
   const [invoiceDate, setInvoiceDate] = useState();
-  const [dueDate, setDueDate] = useState();
   const [products, setProducts] = useState([]);
   const [distributorSelectDialog, setdistributorSelectDialog] = useState(false);
   const [distributorName, setdistributorName] = useState("");
@@ -112,6 +110,7 @@ export default function PurchaseForm() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [invoiceForPayment, setInvoiceForPayment] = useState(null);
+  const [additionalDiscount, setAdditionalDiscount] = useState({per : '', value : ''});
 
   const [formData, setFormData] = useState({
     purchaseType: "invoice",
@@ -119,7 +118,6 @@ export default function PurchaseForm() {
     distributorId: "",
     invoiceNumber: "",
     invoiceDate: "",
-    paymentDueDate: "",
     withGst: "yes",
     overallDiscount: "", // in percentage
     amountType: "exclusive", // 'exclusive', 'inclusive_gst', 'inclusive_all'
@@ -153,7 +151,6 @@ export default function PurchaseForm() {
     formData,
     formData?.invoiceNumber,
     invoiceDate,
-    dueDate,
     distributorName,
   ]); // Add dependencies that handleSaveInvoice uses
 
@@ -177,7 +174,6 @@ export default function PurchaseForm() {
         invoiceNumber: formData.invoiceNumber,
         invoiceDate: invoiceDate,
         grandTotal: amountData.grandTotal,
-        dueDate: dueDate,
         alreadyPaid: 0, // Add this for new invoices
         isNewInvoice: true, // Add this to indicate it's a new invoice
       });
@@ -204,7 +200,7 @@ export default function PurchaseForm() {
         HSN: product.HSN,
         mrp: roundToTwo(Number(product.mrp)),
         quantity: Number(product.quantity) * Number(product.pack || 1),
-        free: Number(product.free || 0),
+        free: Number(product.free || 0) * Number(product.pack || 1),
         pack: Number(product.pack),
         purchaseRate: roundToTwo(Number(product.purchaseRate)),
         schemeInput1: Number(product.schemeInput1 || 0),
@@ -286,13 +282,11 @@ export default function PurchaseForm() {
       distributorId: "",
       invoiceNumber: "",
       invoiceDate: "",
-      paymentDueDate: "",
       withGst: "yes",
       overallDiscount: "",
       amountType: "exclusive",
     });
     setInvoiceDate(null);
-    setDueDate(null);
     setProducts([]);
     setPaymentDialogOpen(false);
     setInvoiceForPayment(null);
@@ -333,7 +327,7 @@ export default function PurchaseForm() {
     return () => {
       document.removeEventListener("keydown", handleShortcutKeyPressed);
     };
-  }, []);
+  }, [formData, invoiceDate, distributorName, products]); 
 
   // Update the distributor name input section
   const handleDistributorNameChange = (e) => {
@@ -377,6 +371,79 @@ export default function PurchaseForm() {
     return () => clearTimeout(timer);
   }, []);
 
+  const onAdditionalDiscountChange = (key, num) => {
+    if(!amountData?.subtotal) {
+      toast({variant : 'destructive', message : 'Please add at least one product'}); 
+      return;
+    }
+    const tempNum = Number(num);
+    const tempSubtotal = amountData?.subtotal;
+    if(key === 'per') {
+      const value = roundToTwo(tempSubtotal*tempNum/100)
+      setAdditionalDiscount({per : tempNum, value})
+    } else {
+      const per = roundToTwo(tempNum/tempSubtotal*100);
+      setAdditionalDiscount({per, value : tempNum});
+    }
+  }
+
+  const handleAdditionalDiscountApply = () => {
+    const additionalDiscountTemp = Number(additionalDiscount?.per || 0);
+    if (additionalDiscountTemp <= 0) return;
+
+    setProducts(prevProducts => 
+      prevProducts.map(product => {
+        const newDiscount = Number(product.discount || 0) + additionalDiscountTemp;
+        return {
+          ...product,
+          discount: newDiscount,
+          amount: calculateProductAmount({
+            ...product,
+            discount: newDiscount,
+          }, formData.amountType)
+        };
+      })
+    );
+
+    // Reset additional discount after applying
+    setAdditionalDiscount({ per: '', value: '' });
+  }
+
+  // Helper function to calculate product amount with updated discount
+  const calculateProductAmount = (product, amountType) => {
+    const quantity = Number(product?.quantity || 0);
+    const purchaseRate = Number(product?.purchaseRate || 0);
+    const discountPercent = Number(product?.discount || 0) + Number(product?.schemePercent || 0);
+    const gstPer = Number(product?.gstPer || 0);
+
+    // Calculate base amount and effective rate
+    const baseAmount = roundToTwo(quantity * purchaseRate);
+    const discountAmount = roundToTwo((baseAmount * discountPercent) / 100);
+    const effectiveRate = roundToTwo(purchaseRate - (purchaseRate * discountPercent) / 100);
+
+    // Calculate amount based on mode
+    let amount;
+    switch (amountType) {
+      case "exclusive":
+        // Just Rate × Quantity
+        amount = roundToTwo(purchaseRate * quantity);
+        break;
+      case "inclusive_all":
+        // (Rate - Rate×Discount%) × Quantity
+        amount = roundToTwo(effectiveRate * quantity);
+        break;
+      case "inclusive_gst":
+        // (Rate - Rate×Discount% + (Rate - Rate×Discount%)×GST%) × Quantity
+        const gstAmount = roundToTwo((effectiveRate * gstPer) / 100);
+        amount = roundToTwo((effectiveRate + gstAmount) * quantity);
+        break;
+      default:
+        amount = roundToTwo(purchaseRate * quantity);
+    }
+
+    return amount;
+  }
+
   return (
     <div className="relative rounded-lg h-[100vh] pt-4 ">
       <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-300">
@@ -413,7 +480,7 @@ export default function PurchaseForm() {
 
       {/* extra information */}
       <div className="grid gap-2">
-        <div className="grid gap-4 grid-cols-5 w-full">
+        <div className="grid gap-4 grid-cols-4 w-full">
           <div className="flex gap-8">
             <div>
               <Label className="text-sm font-medium">PURCHASE TYPE</Label>
@@ -491,20 +558,7 @@ export default function PurchaseForm() {
               onChange={(e) => {
                 setInvoiceDate(e.target.value);
               }}
-              onKeyDown={(e) => handleKeyDown(e, "dueDate")}
-              className="appearance-none h-8 w-full border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
-            />
-          </div>
-          <div>
-            <Label className="text-sm font-medium">PAYMENT DUE DATE</Label>
-            <Input
-              ref={(el) => (inputRef.current["dueDate"] = el)}
               onKeyDown={(e) => handleKeyDown(e, "product")}
-              type="date"
-              value={dueDate || ""}
-              onChange={(e) => {
-                setDueDate(e.target.value);
-              }}
               className="appearance-none h-8 w-full border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
             />
           </div>
@@ -535,21 +589,30 @@ export default function PurchaseForm() {
 
       <div className="grid grid-cols-4 gap-4">
         <div className="p-4 border rounded-lg">
-          <h3 className="mb-4 text-sm font-medium">OVERALL BILL DISCOUNT</h3>
+          <div className="flex justify-between">
+            <h3 className="mb-4 text-sm font-medium">OVERALL BILL DISCOUNT</h3>
+            <Button size='sm' onClick={handleAdditionalDiscountApply} className='h-5'>Apply</Button>
+          </div>
           <div className="flex gap-4">
-            <Input
-              placeholder="Value"
-              className="appearance-none w-24 h-8 border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
-              value={formData?.overallDiscount}
-              onChange={(e) =>
-                handleInputChange("overallDiscount", e.target.value)
-              }
-            />
-            %<span className="px-2 py-1">OR</span>
-            <Input
-              placeholder="₹ Value"
-              className="appearance-none flex-1 h-8 border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
-            />
+            <div className="relative">
+              <Input
+                placeholder="Value"
+                className="w-24 pr-5"
+                value={additionalDiscount?.per}
+                onChange={(e)=>onAdditionalDiscountChange('per', e.target.value)}
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2">%</span>
+            </div>
+            <span className="px-2 py-1">OR</span>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-0">₹</span>
+              <Input 
+                placeholder="Value" 
+                className="flex-1 pl-5" 
+                value={additionalDiscount?.value}  
+                onChange={(e)=>onAdditionalDiscountChange('value', e.target.value)} 
+              />
+            </div>
           </div>
         </div>
         <div className="p-4 border rounded-lg">

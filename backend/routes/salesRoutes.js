@@ -56,7 +56,7 @@ router.post("/", verifyToken, async (req, res) => {
     });
 
     // Handle payment if provided
-    if (payment && payment.amount !== 0) {
+      if (payment && payment.amount !== 0) {
       // Create payment record
       const paymentNumber = await Payment.getNextPaymentNumber(session);
       const paymentDoc = new Payment({
@@ -113,6 +113,11 @@ router.post("/", verifyToken, async (req, res) => {
       await paymentDoc.save({ session });
       newSalesBill.payments.push(paymentDoc._id);
       // newSalesBill.payment = payment;
+    } else {
+      if(distributorDetails) {
+        distributorDetails.currentBalance = (distributorDetails.currentBalance || 0) + (details.grandTotal || 0);
+        await distributorDetails.save({ session });
+      }
     }
 
     // Process inventory updates

@@ -219,12 +219,12 @@ export default function InventoryDetails({ inventoryId }) {
                     <TableCell className='text-center'>{formatCurrency(batch?.mrp)}</TableCell>
                     <TableCell className='text-center'>{formatCurrency(batch?.purchaseRate)}</TableCell>
                     <TableCell className='text-center'>
-                      <p>{formatCurrency(batch?.purchaseRate * (1 + batch?.gstPer/100) )}</p>
-                      <p className="text-xs font-normal">including {batch?.gstPer}%</p>
+                      <p>{formatCurrency(batch?.purchaseRate * (1 + (batch?.gstPer||0)/100) * (1-(batch?.discount||0)/100) )}</p>
+                      <p className="text-xs font-normal">Dis: {batch?.discount || 0}% | GST:{batch?.gstPer}%</p>
                     </TableCell>
                     <TableCell className='text-center'>
                       <p>{batch.saleRate ? formatCurrency(batch?.saleRate) : formatCurrency(batch?.mrp)}</p>
-                      <p className="text-xs font-normal">including {batch?.gstPer}%</p>
+                      <p className="text-xs font-normal">inc {batch?.gstPer}% GST</p>
                     </TableCell>
                     {/* <TableCell className='text-center'>{batch.saleRate ? formatCurrency(batch?.saleRate) : formatCurrency(batch?.mrp)}</TableCell> */}
                     <TableCell className='text-center'>

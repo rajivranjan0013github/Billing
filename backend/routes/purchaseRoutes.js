@@ -110,6 +110,7 @@ router.post("/", verifyToken, async (req, res) => {
       Object.assign(newInvoice, {
         ...req.body,
         createdBy: req.user._id,
+        createdByName : req?.user?.name,
         mob: distributorDetails.mob,
         paymentStatus: dueAmount > 0 ? "due" : "paid",
         paymentDueDate: dueAmount > 0 ? details.paymentDueDate : null,
@@ -118,7 +119,7 @@ router.post("/", verifyToken, async (req, res) => {
       newInvoice = new InvoiceSchema({
         ...req.body,
         createdBy: req.user._id,
-        createByName : req.user.name,
+        createdByName : req.user.name,
         mob: distributorDetails.mob,
         paymentStatus: dueAmount > 0 ? "due" : "paid",
         paymentDueDate: dueAmount > 0 ? details.paymentDueDate : null,
@@ -182,7 +183,7 @@ router.post("/", verifyToken, async (req, res) => {
 
     // Process inventory updates
     for (const product of req.body.products) {
-      const { inventoryId, batchNumber, batchId, expiry, quantity, pack, purchaseRate, saleRate, gstPer, HSN, mrp} = product;
+      const { inventoryId, batchNumber, batchId, expiry, quantity, pack, purchaseRate, saleRate, gstPer, HSN, mrp, free} = product;
 
       const inventorySchema = await Inventory.findById(inventoryId).session(session);
 
@@ -194,14 +195,15 @@ router.post("/", verifyToken, async (req, res) => {
 
       if (batch) {
         Object.assign(batch, { expiry, pack, purchaseRate, gstPer, HSN });
-        batch.quantity += quantity;
+        batch.quantity += quantity+free;
         await batch.save({ session });
       } else {
         // creating new batch
         const newBatch = new InventoryBatch({
           inventoryId: inventoryId,
           ...product,
-          saleRate : product?.mrp
+          saleRate : mrp,
+          quantity : quantity + free
         });
         
         await newBatch.save({ session });
@@ -217,7 +219,7 @@ router.post("/", verifyToken, async (req, res) => {
         }
       }
 
-      inventorySchema.quantity += quantity;
+      inventorySchema.quantity += quantity + free;
 
       // recording timelines
       const timeline = new StockTimeline({
@@ -225,7 +227,7 @@ router.post("/", verifyToken, async (req, res) => {
         invoiceId: newInvoice._id,
         type: "PURCHASE",
         invoiceNumber: details.invoiceNumber,
-        credit: quantity,
+        credit: quantity+free,
         balance: inventorySchema.quantity,
         batchNumber,
         expiry: expiry,
@@ -235,7 +237,7 @@ router.post("/", verifyToken, async (req, res) => {
         saleRate,
         pack,
         createdBy: req.user._id,
-        createByName : req.user.name,
+        createdByName : req.user.name,
         distributorName: distributorDetails.name,
         distributorMob: distributorDetails.mob,
       });
@@ -465,18 +467,18 @@ router.get("/", verifyToken, async (req, res) => {
 
     // Add date range to query if provided
     if (startDate || endDate) {
-      query.invoiceDate = {};
+      query.createdAt = {};
       if (startDate) {
         // Convert start date to beginning of day
         const formattedStartDate = new Date(startDate);
         formattedStartDate.setHours(0, 0, 0, 0);
-        query.invoiceDate.$gte = formattedStartDate;
+        query.createdAt.$gte = formattedStartDate;
       }
       if (endDate) {
         // Convert end date to end of day
         const formattedEndDate = new Date(endDate);
         formattedEndDate.setHours(23, 59, 59, 999);
-        query.invoiceDate.$lte = formattedEndDate;
+        query.createdAt.$lte = formattedEndDate;
       }
     }
 

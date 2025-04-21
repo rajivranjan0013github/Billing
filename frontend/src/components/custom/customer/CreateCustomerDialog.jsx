@@ -49,7 +49,7 @@ export default function CreateCustomerDialog({
         name: editingCustomer.name,
         mob: editingCustomer.mob,
         address: editingCustomer.address,
-        openBalance: Math.abs(editingCustomer.openBalance) || "",
+        openBalance: Math.abs(editingCustomer.currentBalance) || "",
         balance_type: editingCustomer.openBalance < 0 ? 'pay' : 'collect',
       });
     } else if (initialData) {

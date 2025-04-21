@@ -14,14 +14,10 @@ import {
 } from "lucide-react";
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "../components/ui/alert-dialog";
 import PurchaseItemTable from "../components/custom/purchase/PurchaseItemTable";
 import { Backend_URL } from "../assets/Data";
@@ -438,6 +434,7 @@ export default function EditPurchaseInvoice() {
           <Button
             size="sm"
             variant="outline"
+            className='px-4'
             onClick={() => setSettingsOpen(true)}
           >
             <Settings2 className="w-4 h-4 mr-2" />
@@ -448,7 +445,7 @@ export default function EditPurchaseInvoice() {
               <Button
                 size="sm"
                 variant="destructive"
-                className="gap-2"
+                className="gap-2 px-4"
                 onClick={() => setDeleteDialogOpen(true)}
                 disabled={loading}
               >
@@ -457,10 +454,10 @@ export default function EditPurchaseInvoice() {
               </Button>
               <Button
                 size="sm"
-                className="gap-2"
+                className="gap-2 px-4"
                 onClick={() => setViewMode(false)}
               >
-                <Pencil className="w-4 h-4" /> Edit
+                <Pencil className="w-4 h-3" /> Edit
               </Button>
             </>
           ) : (
@@ -655,6 +652,7 @@ export default function EditPurchaseInvoice() {
               <Button
                 variant="outline"
                 size="sm"
+                className='px-4'
                 disabled={amountPaid >= amountData?.grandTotal}
                 onClick={() => {
                   setPaymentOutData({

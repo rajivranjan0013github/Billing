@@ -14,9 +14,9 @@ const InventoryBatchSchema = new mongoose.Schema({
     mrp: Number,
     gstPer: Number,
     purchaseRate: Number, // excl gst
-    netRate:Number,  // purchase rate + gst
+    discount : { type : Number, default : 0},
     saleRate:Number, // without gst
-    pack:Number
+    pack:{ type : Number, default : 1}
 }, {timestamps : true});
 
 InventoryBatchSchema.plugin(hospitalPlugin);
