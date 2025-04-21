@@ -138,14 +138,16 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
       inventoryId: product._id,
     }));
     setProductSearch(product.name);
-    if(product?.batch?.length) {
-      if(inputRef && inputRef.current['batchNumber']) {
-        inputRef.current['batchNumber'].focus();
-      } 
-    } else if(inputRef && inputRef.current['HSN']) {
-      inputRef.current['HSN'].focus();
-    }
-    
+    if(inputRef && inputRef.current['batchNumber']) {
+      inputRef.current['batchNumber'].focus();
+    } 
+    // if(product?.batch?.length) {
+    //   if(inputRef && inputRef.current['batchNumber']) {
+    //     inputRef.current['batchNumber'].focus();
+    //   } 
+    // } else if(inputRef && inputRef.current['HSN']) {
+    //   inputRef.current['HSN'].focus();
+    // }
   };
 
   // product seach Input handler
@@ -342,7 +344,7 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
           <p className="text-xs font-semibold">MRP</p>
         </div>
         <div>
-          <p className="text-xs font-semibold">P.RATE</p>
+          <p className="text-xs font-semibold">RATE</p>
         </div>
         <div>
           <p className="text-xs font-semibold">Scheme</p>

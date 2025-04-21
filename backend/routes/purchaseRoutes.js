@@ -183,7 +183,7 @@ router.post("/", verifyToken, async (req, res) => {
 
     // Process inventory updates
     for (const product of req.body.products) {
-      const { inventoryId, batchNumber, batchId, expiry, quantity, pack, purchaseRate, saleRate, gstPer, HSN, mrp, free} = product;
+      const { inventoryId, batchNumber, batchId, expiry, quantity, pack, purchaseRate, saleRate, gstPer, HSN, mrp, free, discount} = product;
 
       const inventorySchema = await Inventory.findById(inventoryId).session(session);
 
@@ -235,6 +235,7 @@ router.post("/", verifyToken, async (req, res) => {
         purchaseRate,
         gstPer,
         saleRate,
+        discount,
         pack,
         createdBy: req.user._id,
         createdByName : req.user.name,

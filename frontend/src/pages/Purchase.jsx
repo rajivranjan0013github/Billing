@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Search, Users, X, ArrowLeft } from "lucide-react";
+import { Search, Users, X, ArrowLeft, Plus } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
   Select,
