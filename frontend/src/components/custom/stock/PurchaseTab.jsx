@@ -14,6 +14,7 @@ export default function PurchaseTab({inventoryId}) {
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(false);
     const containerRef = useRef(null);
+    console.log(purchases);
 
     useEffect(() => {
         const fetchPuchases = async () => {
