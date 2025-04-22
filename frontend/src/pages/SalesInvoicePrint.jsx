@@ -5,7 +5,7 @@ import { Button } from "../components/ui/button";
 import { format } from "date-fns";
 import { ArrowLeft, Printer, Send, FileDown } from "lucide-react";
 import { useSelector } from "react-redux";
-import {formatCurrency} from '../utils/Helper'
+import { formatCurrency } from "../utils/Helper";
 
 const SalesInvoicePrint = () => {
   const location = useLocation();
@@ -18,14 +18,14 @@ const SalesInvoicePrint = () => {
   // Add useEffect for keyboard shortcut
   useEffect(() => {
     const handleKeyPress = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+      if ((e.ctrlKey || e.metaKey) && e.key === "p") {
         e.preventDefault(); // Prevent default browser print dialog
         handlePrint();
       }
     };
 
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
   }, [pageSize, invoiceData, hospitalInfo]);
 
   const handlePrint = useReactToPrint({
@@ -123,15 +123,20 @@ const SalesInvoicePrint = () => {
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" className="gap-2" onClick={handlePrint} size='sm'>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={handlePrint}
+              size="sm"
+            >
               <Printer className="w-4 h-4" />
               Print Now (Ctrl + P)
             </Button>
-            <Button variant="outline" className="gap-2" size='sm'>
+            <Button variant="outline" className="gap-2" size="sm">
               <Send className="w-4 h-4" />
               Send Invoice (F2)
             </Button>
-            <Button variant="outline" className="gap-2" size='sm'>
+            <Button variant="outline" className="gap-2" size="sm">
               <FileDown className="w-4 h-4" />
               Export as PDF (F4)
             </Button>
@@ -159,55 +164,63 @@ const SalesInvoicePrint = () => {
 
         {/* Invoice Info & Business Details */}
         <div className="border-x-[1px] border-t-[1px]  border-gray-800">
-
           <div className="grid grid-cols-7 gap-3">
             {/* logo */}
             <div className="border-r-[1px] border-gray-800">
-              <div className="w-full border-b-[1px] border-gray-800 p-1" style={{backgroundColor : '#e5e7eb'}}>TAX INVOICE</div>
+              <div
+                className="w-full border-b-[1px] border-gray-800 p-1"
+                style={{ backgroundColor: "#e5e7eb" }}
+              >
+                TAX INVOICE
+              </div>
               {hospitalInfo?.logoUsable && (
-                  <div className="w-auto h-[78px] p-1">
-                    <img
-                      src={hospitalInfo.logoUsable}
-                      alt="Logo"
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
+                <div className="w-auto h-[78px] p-1">
+                  <img
+                    src={hospitalInfo.logoUsable}
+                    alt="Logo"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
               )}
             </div>
             {/* Business Info - Left Side */}
             <div className="col-span-3  gap-2 py-1 ">
-                <h2 className="font-semibold uppercase text-xl">
-                  {hospitalInfo?.name || "Your Pharmacy Name"}
-                </h2>
-                <p className="text-sm  leading-snug">
-                  {hospitalInfo?.address || "Pharmacy Address"}
-                </p>
-                <div className="text-sm  space-x-6">
-                  <span>Mob No: {hospitalInfo?.contactNumber}</span>
-                  <span>DL: {hospitalInfo?.drugLicenceNumber}</span>
-                </div>
-                <div className="text-sm ">
-                  <span>GSTIN: {hospitalInfo?.gstNumber}</span>
-                </div>
+              <h2 className="font-semibold uppercase text-xl">
+                {hospitalInfo?.name || "Your Pharmacy Name"}
+              </h2>
+              <p className="text-sm  leading-snug">
+                {hospitalInfo?.address || "Pharmacy Address"}
+              </p>
+              <div className="text-sm  space-x-6">
+                <span>Mob No: {hospitalInfo?.contactNumber}</span>
+                <span>DL: {hospitalInfo?.drugLicenceNumber}</span>
+              </div>
+              <div className="text-sm ">
+                <span>GSTIN: {hospitalInfo?.gstNumber}</span>
+              </div>
             </div>
 
             {/* Customer Details - Right Side */}
             <div className="col-span-3  border-l-[1px] border-gray-800">
               {/* Invoice Number and Date */}
               <div className="bg-gray-200 px-3 py-1 border-b-[1px] border-gray-800 flex justify-between gap-8 text-sm">
-                  <span className="font-medium">{invoiceData.invoiceNumber}</span>
-                  <span className="font-medium">
-                    {format(new Date(invoiceData.invoiceDate), "dd-MM-yyyy")}
-                  </span>
+                <span className="font-medium">{invoiceData.invoiceNumber}</span>
+                <span className="font-medium">
+                  {format(new Date(invoiceData.invoiceDate), "dd-MM-yyyy")}
+                </span>
               </div>
               <div className="text-xs font-medium p-2 space-y-1">
                 <div className="grid grid-cols-5">
                   <span className="">Name:</span>
-                  <span className="col-span-4 capitalize">{invoiceData.customerName}</span>
+                  <span className="col-span-4 capitalize">
+                    {invoiceData.customerName}
+                  </span>
                 </div>
                 <div className="grid grid-cols-5">
                   <span className="">Mob No:</span>
-                  <span className="col-span-4">{invoiceData.customerMob||"---"}</span>
+                  <span className="col-span-4">
+                    {invoiceData.customerMob || invoiceData.mob || "---"}
+                  </span>
                 </div>
                 {/* <div className="grid grid-cols-3">
                   <span className="">Address:</span>
@@ -215,7 +228,9 @@ const SalesInvoicePrint = () => {
                 </div> */}
                 <div className="grid grid-cols-5">
                   <span className="">Doctor:</span>
-                  <span className="col-span-4">{invoiceData.doctorName||"---"}</span>
+                  <span className="col-span-4">
+                    {invoiceData.doctorName || "---"}
+                  </span>
                 </div>
               </div>
             </div>
@@ -227,8 +242,7 @@ const SalesInvoicePrint = () => {
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-gray-200 border-b-[1px] border-gray-800">
-                <th className="border-r-[1px] border-gray-800 font-medium p-1.5">
-                </th>
+                <th className="border-r-[1px] border-gray-800 font-medium p-1.5"></th>
                 <th className="border-r-[1px] border-gray-800 font-medium p-1.5">
                   Description
                 </th>
@@ -256,9 +270,7 @@ const SalesInvoicePrint = () => {
                 <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
                   GST%
                 </th>
-                <th className=" font-medium p-1.5 text-right">
-                  Amount
-                </th>
+                <th className=" font-medium p-1.5 text-right">Amount</th>
               </tr>
             </thead>
             <tbody className="min-h-[180px]">
@@ -280,7 +292,17 @@ const SalesInvoicePrint = () => {
                     {product.expiry}
                   </td>
                   <td className="border-r-[1px] border-gray-800 text-center px-1.5">
-                    {product.quantity / (product.pack || 1)}
+                    {(() => {
+                      const packSize = product.pack || 1;
+                      if (packSize <= 1) {
+                        return product.quantity;
+                      }
+                      const quotient = Math.floor(product.quantity / packSize);
+                      const remainder = product.quantity % packSize;
+                      return remainder === 0
+                        ? `${quotient}`
+                        : `${quotient} : ${remainder}`;
+                    })()}
                   </td>
                   <td className="border-r-[1px] border-gray-800 text-center px-1.5">
                     {product.mrp}
@@ -295,25 +317,29 @@ const SalesInvoicePrint = () => {
                     {product.gstPer}%
                   </td>
                   <td className=" text-right px-1.5">
-                    {product.amount} {product.types === 'return' && <span className="text-red-500">R</span>}
+                    {product.amount}{" "}
+                    {product.types === "return" && (
+                      <span className="text-red-500">R</span>
+                    )}
                   </td>
                 </tr>
               ))}
-              {[...Array(Math.max(0, 10 - invoiceData.products.length))].map((_, index) => (
-                <tr key={`empty-${index}`}>
-                  <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
-                  <td className="border-r-[1px] border-gray-800 pl-2 p-1.5"></td>
-                  <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
-                  <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
-                  <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
-                  <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
-                  <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
-                  <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
-                  <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
-                  <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
-                  <td className=" text-right p-1.5"></td>
-                </tr>
-              ))}
+              {[...Array(Math.max(0, 10 - invoiceData.products.length))].map(
+                (_, index) => (
+                  <tr key={`empty-${index}`}>
+                    <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
+                    <td className="border-r-[1px] border-gray-800 pl-2 p-1.5"></td>
+                    <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
+                    <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
+                    <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
+                    <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
+                    <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
+                    <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
+                    <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
+                    <td className=" text-right p-1.5"></td>
+                  </tr>
+                )
+              )}
             </tbody>
           </table>
         </div>
@@ -322,7 +348,9 @@ const SalesInvoicePrint = () => {
         <div className="grid grid-cols-7 border-b-[1px] border-l-[1px] border-r-[1px] border-gray-800">
           <div className=" flex items-end justify-center pb-3 col-span-2">
             <div className=" inline-block">
-              <p className="font-medium text-xs text-gray-700">Authorized Signatory</p>
+              <p className="font-medium text-xs text-gray-700">
+                Authorized Signatory
+              </p>
             </div>
           </div>
           {/* Tax Summary */}
@@ -330,18 +358,10 @@ const SalesInvoicePrint = () => {
             <table className="w-full text-xs ">
               <thead className="border-b-[1px] py-2">
                 <tr className="">
-                  <th className="text-left font-medium">
-                    GST
-                  </th>
-                  <th className="text-right font-medium">
-                    Taxable
-                  </th>
-                  <th className="text-right font-medium">
-                    CGST
-                  </th>
-                  <th className="text-right font-medium">
-                    SGST
-                  </th>
+                  <th className="text-left font-medium">GST</th>
+                  <th className="text-right font-medium">Taxable</th>
+                  <th className="text-right font-medium">CGST</th>
+                  <th className="text-right font-medium">SGST</th>
                 </tr>
               </thead>
               <tbody>
@@ -349,12 +369,8 @@ const SalesInvoicePrint = () => {
                   .filter(([rate, value]) => value.taxable > 0)
                   .map(([rate, value]) => (
                     <tr key={rate}>
-                      <td>
-                        {rate}%
-                      </td>
-                      <td className="text-right">
-                        {value.taxable.toFixed(2)}
-                      </td>
+                      <td>{rate}%</td>
+                      <td className="text-right">{value.taxable.toFixed(2)}</td>
                       <td className="text-right">
                         {value.cgst.toFixed(2)} ({Number(rate) / 2}%)
                       </td>
@@ -377,7 +393,9 @@ const SalesInvoicePrint = () => {
                 </tr>
               </tbody>
             </table>
-              <div className="text-right col-span-2 text-xs">GST : {formatCurrency(invoiceData.billSummary.gstAmount)}</div>
+            <div className="text-right col-span-2 text-xs">
+              GST : {formatCurrency(invoiceData.billSummary.gstAmount)}
+            </div>
           </div>
 
           {/* Bill Summary */}
@@ -385,33 +403,50 @@ const SalesInvoicePrint = () => {
             <div className="space-y-1 text-xs py-1">
               <div className="flex justify-between px-2">
                 <span className="">Subtotal:</span>
-                <span>{formatCurrency(invoiceData?.billSummary?.subtotal)}</span>
+                <span>
+                  {formatCurrency(invoiceData?.billSummary?.subtotal)}
+                </span>
               </div>
               <div className="flex justify-between px-2">
                 <span className="">Discount:</span>
                 <span>
-                 {invoiceData?.billSummary?.discountAmount !== 0 && '-'} {formatCurrency(invoiceData?.billSummary?.discountAmount)}
+                  {invoiceData?.billSummary?.discountAmount !== 0 && "-"}{" "}
+                  {formatCurrency(invoiceData?.billSummary?.discountAmount)}
                 </span>
               </div>
-              {invoiceData?.billSummary?.adjustment !== 0 && <div className="flex justify-between px-2">
-                <span className="">Adjustment:</span>
-                <span>{formatCurrency(invoiceData?.billSummary?.adjustment)}</span>
-              </div>}
-              {invoiceData?.saleType === 'return' && <div className="flex justify-between px-2">
-                <span className="">Return Value:</span>
-                <span>{formatCurrency(invoiceData?.billSummary?.returnAmount)}</span>
-              </div>}
+              {invoiceData?.billSummary?.adjustment !== 0 && (
+                <div className="flex justify-between px-2">
+                  <span className="">Adjustment:</span>
+                  <span>
+                    {formatCurrency(invoiceData?.billSummary?.adjustment)}
+                  </span>
+                </div>
+              )}
+              {invoiceData?.saleType === "return" && (
+                <div className="flex justify-between px-2">
+                  <span className="">Return Value:</span>
+                  <span>
+                    {formatCurrency(invoiceData?.billSummary?.returnAmount)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between border-t-[1px] border-b-[1px] border-gray-800 font-medium bg-gray-200 py-1 px-2 text-sm box-border">
                 <span>Total Amount:</span>
                 <span>{formatCurrency(invoiceData?.grandTotal)}</span>
               </div>
               <div className="flex justify-between px-2">
                 <span className="">Paid/Balance:</span>
-                <span>{formatCurrency(invoiceData?.amountPaid)}/{formatCurrency(Number(invoiceData.grandTotal)-Number(invoiceData.amountPaid))}</span>
+                <span>
+                  {formatCurrency(invoiceData?.amountPaid)}/
+                  {formatCurrency(
+                    Number(invoiceData.grandTotal) -
+                      Number(invoiceData.amountPaid)
+                  )}
+                </span>
               </div>
             </div>
           </div>
-      </div>
+        </div>
 
         {/* Terms and Signature */}
         {/* <div className="mt-4 grid grid-cols-2 gap-6">

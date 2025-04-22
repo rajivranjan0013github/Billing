@@ -28,8 +28,8 @@ const salesBillSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    returnInvoiceNumber : {
-      type : String,
+    returnInvoiceNumber: {
+      type: String,
     },
     customerId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -44,7 +44,7 @@ const salesBillSchema = new mongoose.Schema(
     },
     customerName: String,
     mob: String,
-    doctorName : String,
+    doctorName: String,
     invoiceDate: {
       type: Date,
       default: Date.now,
@@ -52,10 +52,10 @@ const salesBillSchema = new mongoose.Schema(
     paymentDueDate: Date,
     products: [
       {
-        types : {
-          type : String,
-          enum : ['sale', 'return'],
-          default : 'sale'
+        types: {
+          type: String,
+          enum: ["sale", "return"],
+          default: "sale",
         },
         inventoryId: {
           type: mongoose.Schema.Types.ObjectId,
@@ -76,7 +76,7 @@ const salesBillSchema = new mongoose.Schema(
         saleRate: Number,
         discount: Number,
         gstPer: Number,
-        mfcName:String,
+        mfcName: String,
         amount: Number,
       },
     ],
@@ -109,7 +109,7 @@ const salesBillSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Staff",
     },
-    createdByName : String,
+    createdByName: String,
     billSummary: {
       subtotal: { type: Number, required: true },
       discountAmount: { type: Number, required: true },
@@ -155,8 +155,8 @@ const salesBillSchema = new mongoose.Schema(
       totalQuantity: { type: Number, required: true },
       productCount: { type: Number, required: true },
       grandTotal: { type: Number, required: true },
-      returnAmount : {type : Number},
-      adjustment : {type : Number, default : 0}
+      returnAmount: { type: Number },
+      adjustment: { type: Number, default: 0 },
     },
   },
   {

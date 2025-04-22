@@ -30,9 +30,10 @@ const stockTimelineSchema = new mongoose.Schema(
     batchNumber: String,
     expiry: String,
     mrp: Number,
-    purchaseRate: Number,
+    purchaseRate: Number, // net purchase rate = 
     saleRate: Number, // sale rate also
     gstPer: Number,
+    discount : {type : Number, default : 0},
     createdBy: {type: mongoose.Schema.Types.ObjectId,ref: "User",},
     createdByName: String,
     distributorName: String,

@@ -5,6 +5,7 @@ import { Backend_URL, convertToFraction, convertQuantity } from "../../../assets
 import { useToast } from "../../../hooks/use-toast"
 import { useNavigate } from 'react-router-dom'
 import { Button } from "../../ui/button"
+import { formatCurrency } from '../../../utils/Helper'
 
 export default function PurchaseTab({inventoryId}) {
     const {toast} = useToast();
@@ -78,7 +79,7 @@ export default function PurchaseTab({inventoryId}) {
                                         <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">PURCHASED FROM</th>
                                         <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">BATCH NO</th>
                                         <th className="px-4 py-2 text-right text-sm font-medium text-gray-500">MRP</th>
-                                        <th className="px-4 py-2 text-right text-sm font-medium text-gray-500">NET RATE</th>
+                                        <th className="px-4 py-2 text-right text-sm font-medium text-gray-500">NET PURC RATE</th>
                                         <th className="px-4 py-2 text-right text-sm font-medium text-gray-500">MARGIN</th>
                                         <th className="px-4 py-2 text-right text-sm font-medium text-gray-500">PURC QTY</th>
                                         <th className="w-8"></th>
@@ -108,14 +109,14 @@ export default function PurchaseTab({inventoryId}) {
                                                 <div className="text-sm font-medium">{purchase.batchNumber}</div>
                                                 <div className="text-xs text-gray-500">Expiry: {purchase.expiry}</div>
                                             </td>
-                                            <td className="px-4 py-2 text-right">₹{purchase.mrp?.toFixed(2)}</td>
-                                            <td className="px-4 py-2 text-right">
-                                                <div className="text-sm font-medium">₹{convertToFraction(purchase.purchaseRate * (1 + purchase.gstPer/100))}</div>
-                                                <div className="text-xs text-gray-500">{purchase.gstPer}% GST</div>
+                                            <td className="px-4 py-2 text-center">₹{purchase.mrp?.toFixed(2)}</td>
+                                            <td className="px-4 py-2 text-center">
+                                                <p>{formatCurrency(purchase?.purchaseRate * (1 + (purchase?.gstPer||0)/100) * (1-(purchase?.discount||0)/100) )}</p>
+                                                <p className="text-xs font-normal">Dis: {purchase?.discount || 0}% | GST:{purchase?.gstPer}%</p>
                                             </td>
                                             <td className="px-4 py-2 text-right">
                                                 <span className="text-green-600 font-medium">
-                                                    {((purchase.mrp - (purchase.purchaseRate * (1+purchase.gstPer/100)) ) / purchase.mrp * 100).toFixed(2)}%
+                                                    {((purchase.mrp - (purchase.purchaseRate * (1 + (purchase?.gstPer||0)/100) * (1-(purchase?.discount||0)/100)) ) / purchase.mrp * 100).toFixed(2)}%
                                                 </span>
                                             </td>
                                             <td className="px-4 py-2 text-right">

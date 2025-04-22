@@ -6,7 +6,37 @@ import { useToast } from "../../../hooks/use-toast";
 import BatchSuggestion from "../sales/BatchSuggestion";
 import { Input } from "../../ui/input";
 
-export default function PurchaseTable({ inputRef, products, setProducts, viewMode, gstMode = "exclusive", handleKeyDown}) {
+// Helper function to format expiry date input
+const formatExpiryInput = (currentValue) => {
+  let value = currentValue.replace(/\D/g, ""); // Remove all non-digits first
+
+  if (value.length > 2) {
+    // If more than 2 digits, format as MM/YY (limit year to 2 digits)
+    value = value.substring(0, 2) + "/" + value.substring(2, 4);
+  } else if (value.length === 2 && currentValue.length === 2) {
+    // If exactly 2 digits were just typed (currentValue confirms no existing slash), add slash
+    value = value + "/";
+  } else if (
+    value.length === 2 &&
+    currentValue.length === 3 &&
+    currentValue.endsWith("/")
+  ) {
+    // Handles backspace from 'MM/Y' -> 'MM/'. We want the result to be 'MM'.
+    value = value;
+  }
+
+  // Limit final length if needed (though formatting above should handle it)
+  return value.slice(0, 5);
+};
+
+export default function PurchaseTable({
+  inputRef,
+  products,
+  setProducts,
+  viewMode,
+  gstMode = "exclusive",
+  handleKeyDown,
+}) {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(true);
   const [newProduct, setNewProduct] = useState({});
@@ -23,18 +53,25 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
       const quantity = Number(newProduct?.quantity || 0);
       const purchaseRate = Number(newProduct?.purchaseRate || 0);
       const discount = Number(newProduct?.discount || 0);
-      let schemePercent = 0;
+      const gstPer = Number(newProduct?.gstPer || 0);
+      let billableQuantity = quantity;
 
+      // Recalculate billable quantity based on scheme inputs in newProduct state
       if (newProduct.schemeInput1 && newProduct.schemeInput2) {
-        const temp1 = Number(newProduct.schemeInput1);
-        const temp2 = Number(newProduct.schemeInput2);
-        schemePercent = (temp2 / (temp1 + temp2)) * 100;
+        const s1 = Number(newProduct.schemeInput1);
+        const s2 = Number(newProduct.schemeInput2);
+        if (s1 > 0 && s1 + s2 > 0) {
+          // Ensure valid scheme
+          const schemeRatio = s1 / (s1 + s2);
+          billableQuantity = quantity * schemeRatio;
+        }
       }
 
-      const totalDiscountPercent = discount + schemePercent;
-      const effectiveRate =
-        purchaseRate - (purchaseRate * totalDiscountPercent) / 100;
-      const gstAmount = (effectiveRate * Number(newProduct?.gstPer || 0)) / 100;
+      // Calculate rate after discount
+      const discountedRate = purchaseRate * (1 - discount / 100);
+      const effectiveRate = purchaseRate - (purchaseRate * discount) / 100;
+      // Calculate GST amount per unit
+      const gstAmountPerUnit = discountedRate * (gstPer / 100);
 
       let amount;
       switch (gstMode) {
@@ -45,13 +82,14 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
           amount = effectiveRate * quantity;
           break;
         case "inclusive_gst":
-          amount = (effectiveRate + gstAmount) * quantity;
+          amount = (effectiveRate + gstAmountPerUnit) * quantity;
           break;
       }
 
       setNewProduct((prev) => ({
         ...prev,
         amount: convertToFraction(amount),
+        // schemePercent is already set by handleInputChange if needed
       }));
     }
   }, [
@@ -71,36 +109,49 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
       const quantity = Number(updatedProduct?.quantity || 0);
       const purchaseRate = Number(updatedProduct?.purchaseRate || 0);
       const discount = Number(updatedProduct?.discount || 0);
-      let schemePercent = 0;
+      const gstPer = Number(updatedProduct?.gstPer || 0);
+      let billableQuantity = quantity; // Default to actual quantity
 
-      // Calculate scheme percentage
+      // Calculate billable quantity based on scheme
       if (updatedProduct.schemeInput1 && updatedProduct.schemeInput2) {
-        const temp1 = Number(updatedProduct.schemeInput1);
-        const temp2 = Number(updatedProduct.schemeInput2);
-        schemePercent = (temp2 / (temp1 + temp2)) * 100;
-        updatedProduct.schemePercent = convertToFraction(schemePercent);
+        const s1 = Number(updatedProduct.schemeInput1);
+        const s2 = Number(updatedProduct.schemeInput2);
+        if (s1 > 0 && s1 + s2 > 0) {
+          // Avoid division by zero or invalid schemes
+          // Calculate the effective quantity ratio based on the scheme
+          const schemeRatio = s1 / (s1 + s2);
+          billableQuantity = quantity * schemeRatio;
+
+          // Also store the scheme percentage for display
+          const schemePercent = (s2 / (s1 + s2)) * 100;
+          updatedProduct.schemePercent = convertToFraction(schemePercent);
+        } else {
+          updatedProduct.schemePercent = ""; // Reset if scheme is invalid
+        }
       } else {
-        updatedProduct.schemePercent = "";
+        updatedProduct.schemePercent = ""; // Reset if no scheme
       }
 
-      const totalDiscountPercent = discount + schemePercent;
-      const effectiveRate = purchaseRate - (purchaseRate * totalDiscountPercent) / 100;
-      const gstAmount = (effectiveRate * Number(updatedProduct?.gstPer || 0)) / 100;
+      // Calculate rate after discount
+      const discountedRate = purchaseRate * (1 - discount / 100);
 
-      // Calculate amount based on mode
+      // Calculate GST amount per unit based on discounted rate
+      const gstAmountPerUnit = discountedRate * (gstPer / 100);
+
+      // Calculate amount based on mode using billableQuantity
       let amount;
       switch (gstMode) {
         case "exclusive":
-          // Just Rate × Quantity
-          amount = purchaseRate * quantity;
+          // Rate × Billable Quantity
+          amount = purchaseRate * billableQuantity;
           break;
         case "inclusive_all":
-          // (Rate - Rate×Discount%) × Quantity
-          amount = effectiveRate * quantity;
+          // (Rate - Discount) × Billable Quantity
+          amount = discountedRate * billableQuantity;
           break;
         case "inclusive_gst":
-          // (Rate - Rate×Discount% + (Rate - Rate×Discount%)×GST%) × Quantity
-          amount = (effectiveRate + gstAmount) * quantity;
+          // (Rate - Discount + GST) × Billable Quantity
+          amount = (discountedRate + gstAmountPerUnit) * quantity;
           break;
       }
       updatedProduct.amount = convertToFraction(amount);
@@ -116,11 +167,11 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
       toast({ variant: "destructive", title: "Please add product" });
       return;
     }
-    if(!newProduct?.quantity) {
+    if (!newProduct?.quantity) {
       toast({ variant: "destructive", title: "Please add quantity" });
       return;
     }
-    
+
     let tempData = { ...newProduct };
     if (!tempData.batchNumber) tempData.batchNumber = batchNumber;
     setProducts((pre) => [...pre, tempData]);
@@ -138,14 +189,16 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
       inventoryId: product._id,
     }));
     setProductSearch(product.name);
-    if(product?.batch?.length) {
-      if(inputRef && inputRef.current['batchNumber']) {
-        inputRef.current['batchNumber'].focus();
-      } 
-    } else if(inputRef && inputRef.current['HSN']) {
-      inputRef.current['HSN'].focus();
+    if (inputRef && inputRef.current["batchNumber"]) {
+      inputRef.current["batchNumber"].focus();
     }
-    
+    // if(product?.batch?.length) {
+    //   if(inputRef && inputRef.current['batchNumber']) {
+    //     inputRef.current['batchNumber'].focus();
+    //   }
+    // } else if(inputRef && inputRef.current['HSN']) {
+    //   inputRef.current['HSN'].focus();
+    // }
   };
 
   // product seach Input handler
@@ -172,7 +225,7 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
   const handleInputChangeEditMode = (index, field, value) => {
     setProducts((prevProducts) => {
       const updatedProducts = [...prevProducts];
-      const updatedProduct = { ...updatedProducts[index], [field]: value };
+      const productToUpdate = { ...updatedProducts[index], [field]: value };
 
       if (
         field === "quantity" ||
@@ -182,23 +235,41 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
         field === "schemeInput2" ||
         field === "gstPer"
       ) {
-        const quantity = Number(updatedProduct.quantity || 0);
-        const purchaseRate = Number(updatedProduct.purchaseRate || 0);
-        const discount = Number(updatedProduct.discount || 0);
-        let schemePercent = 0;
+        const quantity = Number(productToUpdate.quantity || 0);
+        const purchaseRate = Number(productToUpdate.purchaseRate || 0);
+        const discount = Number(productToUpdate.discount || 0);
+        const gstPer = Number(productToUpdate.gstPer || 0);
+        let billableQuantity = quantity;
 
-        if (updatedProduct.schemeInput1 && updatedProduct.schemeInput2) {
-          const temp1 = Number(updatedProduct.schemeInput1);
-          const temp2 = Number(updatedProduct.schemeInput2);
-          schemePercent = (temp2 / (temp1 + temp2)) * 100;
-          updatedProduct.schemePercent = convertToFraction(schemePercent);
+        // Calculate billable quantity and schemePercent based on current scheme inputs
+        if (productToUpdate.schemeInput1 && productToUpdate.schemeInput2) {
+          const s1 = Number(productToUpdate.schemeInput1);
+          const s2 = Number(productToUpdate.schemeInput2);
+          if (s1 > 0 && s1 + s2 > 0) {
+            // Check for valid scheme
+            const schemeRatio = s1 / (s1 + s2);
+            billableQuantity = quantity * schemeRatio;
+            const schemePercent = (s2 / (s1 + s2)) * 100;
+            productToUpdate.schemePercent = convertToFraction(schemePercent);
+          } else {
+            // Invalid scheme (e.g., 0+0, 0+5)
+            billableQuantity = quantity;
+            productToUpdate.schemePercent = "";
+          }
+        } else {
+          // No scheme inputs
+          billableQuantity = quantity;
+          productToUpdate.schemePercent = "";
         }
 
-        const totalDiscountPercent = discount + schemePercent;
-        const effectiveRate = purchaseRate - (purchaseRate * totalDiscountPercent) / 100;
-        const gstAmount = (effectiveRate * Number(updatedProduct?.gstPer || 0)) / 100;
+        // Calculate rate after discount
+        const discountedRate = purchaseRate * (1 - discount / 100);
+        const effectiveRate = purchaseRate - (purchaseRate * discount) / 100;
 
-        // Calculate amount based on mode
+        // Calculate GST amount per unit
+        const gstAmountPerUnit = discountedRate * (gstPer / 100);
+
+        // Calculate amount based on mode using billableQuantity
         let amount;
         switch (gstMode) {
           case "exclusive":
@@ -211,13 +282,13 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
             break;
           case "inclusive_gst":
             // (Rate - Rate×Discount% + (Rate - Rate×Discount%)×GST%) × Quantity
-            amount = (effectiveRate + gstAmount) * quantity;
+            amount = (effectiveRate + gstAmountPerUnit) * quantity;
             break;
         }
-        updatedProduct.amount = convertToFraction(amount);
+        productToUpdate.amount = convertToFraction(amount);
       }
 
-      updatedProducts[index] = updatedProduct;
+      updatedProducts[index] = productToUpdate;
       return updatedProducts;
     });
   };
@@ -255,54 +326,71 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
     setProducts((prevProducts) => {
       const updatedProducts = [...prevProducts];
       const existingProduct = updatedProducts[index];
-      updatedProducts[index] = {
+
+      // Create the base updated product with batch details
+      let productToUpdate = {
         ...existingProduct,
         batchId: batch._id,
         batchNumber: batch.batchNumber,
         expiry: batch.expiry,
         mrp: batch.mrp,
         pack: batch.pack,
-        purchaseRate: batch.purchaseRate,
-        // Keep existing quantity and other fields
-        quantity: existingProduct.quantity,
-        free: existingProduct.free,
-        discount: existingProduct.discount,
-        schemeInput1: existingProduct.schemeInput1,
-        schemeInput2: existingProduct.schemeInput2,
-        schemePercent: existingProduct.schemePercent,
-        gstPer: existingProduct.gstPer,
-        amount: existingProduct.amount,
+        purchaseRate: batch.purchaseRate, // Update purchase rate from batch
+        // Keep existing quantity, free, discount, scheme, gst, amount for now
       };
-      return updatedProducts;
-    });
 
-    // Recalculate amount after batch update
-    const updatedProduct = products[index];
-    if (updatedProduct?.quantity && batch?.purchaseRate) {
-      const quantity = Number(updatedProduct.quantity || 0);
-      const purchaseRate = Number(batch.purchaseRate || 0);
-      const discount = Number(updatedProduct.discount || 0);
-      const gstPer = Number(updatedProduct.gstPer || 0);
+      // Now, recalculate amount based on the updated product state
+      const quantity = Number(productToUpdate.quantity || 0);
+      const purchaseRate = Number(productToUpdate.purchaseRate || 0); // Use updated rate
+      const discount = Number(productToUpdate.discount || 0);
+      const gstPer = Number(productToUpdate.gstPer || 0);
+      let billableQuantity = quantity;
 
-      let schemePercent = 0;
-      if (updatedProduct.schemeInput1 && updatedProduct.schemeInput2) {
-        const temp1 = Number(updatedProduct.schemeInput1);
-        const temp2 = Number(updatedProduct.schemeInput2);
-        schemePercent = (temp2 / (temp1 + temp2)) * 100;
+      // Calculate billable quantity and schemePercent based on current scheme inputs
+      if (productToUpdate.schemeInput1 && productToUpdate.schemeInput2) {
+        const s1 = Number(productToUpdate.schemeInput1);
+        const s2 = Number(productToUpdate.schemeInput2);
+        if (s1 > 0 && s1 + s2 > 0) {
+          // Check for valid scheme
+          const schemeRatio = s1 / (s1 + s2);
+          billableQuantity = quantity * schemeRatio;
+          const schemePercent = (s2 / (s1 + s2)) * 100;
+          productToUpdate.schemePercent = convertToFraction(schemePercent); // Update scheme% display
+        } else {
+          // Invalid scheme
+          billableQuantity = quantity;
+          productToUpdate.schemePercent = "";
+        }
+      } else {
+        // No scheme inputs
+        billableQuantity = quantity;
+        productToUpdate.schemePercent = "";
       }
 
-      const subtotal = quantity * purchaseRate;
-      const total = subtotal * (1 - discount / 100) * (1 - schemePercent / 100);
+      // Calculate rate after discount
+      const discountedRate = purchaseRate * (1 - discount / 100);
 
-      setProducts((prevProducts) => {
-        const newProducts = [...prevProducts];
-        newProducts[index] = {
-          ...newProducts[index],
-          amount: convertToFraction(total * (1 + gstPer / 100)),
-        };
-        return newProducts;
-      });
-    }
+      // Calculate GST amount per unit
+      const gstAmountPerUnit = discountedRate * (gstPer / 100);
+
+      // Calculate amount based on mode using billableQuantity
+      let amount;
+      switch (gstMode) {
+        case "exclusive":
+          amount = purchaseRate * billableQuantity;
+          break;
+        case "inclusive_all":
+          amount = discountedRate * billableQuantity;
+          break;
+        case "inclusive_gst":
+          amount = (discountedRate + gstAmountPerUnit) * billableQuantity;
+          break;
+      }
+      productToUpdate.amount = convertToFraction(amount); // Update amount
+
+      updatedProducts[index] = productToUpdate; // Put the final updated product back
+      return updatedProducts;
+    });
   };
 
   const clearInputRow = () => {
@@ -342,7 +430,7 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
           <p className="text-xs font-semibold">MRP</p>
         </div>
         <div>
-          <p className="text-xs font-semibold">P.RATE</p>
+          <p className="text-xs font-semibold">RATE</p>
         </div>
         <div>
           <p className="text-xs font-semibold">Scheme</p>
@@ -378,7 +466,7 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
             <Input
               ref={(el) => (inputRef.current["product"] = el)}
               onChange={handleProductNameChange}
-              onKeyDown={(e) => handleKeyDown(e, 'batchNumber')}
+              onKeyDown={(e) => handleKeyDown(e, "batchNumber")}
               value={productSearch}
               type="text"
               placeholder="Type or Press Space"
@@ -393,14 +481,14 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
               onSuggestionSelect={handleBatchSelect}
               inventoryId={newProduct?.inventoryId}
               ref={(el) => (inputRef.current["batchNumber"] = el)}
-              onKeyDown={(e) => handleKeyDown(e, 'HSN')}
+              onKeyDown={(e) => handleKeyDown(e, "HSN")}
             />
           </div>
           <div>
             <Input
               id="HSN"
               ref={(el) => (inputRef.current["HSN"] = el)}
-              onKeyDown={(e) => handleKeyDown(e, 'expiry')}
+              onKeyDown={(e) => handleKeyDown(e, "expiry")}
               onChange={(e) => handleInputChange("HSN", e.target.value)}
               value={newProduct.HSN || ""}
               type="text"
@@ -410,8 +498,11 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
           <div>
             <Input
               ref={(el) => (inputRef.current["expiry"] = el)}
-              onChange={(e) => handleInputChange("expiry", e.target.value)}
-              onKeyDown={(e) => handleKeyDown(e, 'pack')}
+              onChange={(e) => {
+                const formattedValue = formatExpiryInput(e.target.value);
+                handleInputChange("expiry", formattedValue);
+              }}
+              onKeyDown={(e) => handleKeyDown(e, "pack")}
               value={newProduct.expiry || ""}
               type="text"
               placeholder="MM/YY"
@@ -425,7 +516,7 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
               </span>
               <Input
                 ref={(el) => (inputRef.current["pack"] = el)}
-                onKeyDown={(e) => handleKeyDown(e, 'quantity')}
+                onKeyDown={(e) => handleKeyDown(e, "quantity")}
                 onChange={(e) => handleInputChange("pack", e.target.value)}
                 value={newProduct.pack || ""}
                 type="text"
@@ -436,7 +527,7 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
           <div>
             <Input
               ref={(el) => (inputRef.current["quantity"] = el)}
-              onKeyDown={(e) => handleKeyDown(e, 'free')}
+              onKeyDown={(e) => handleKeyDown(e, "free")}
               onChange={(e) => handleInputChange("quantity", e.target.value)}
               value={newProduct.quantity || ""}
               type="text"
@@ -446,7 +537,7 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
           <div>
             <Input
               ref={(el) => (inputRef.current["free"] = el)}
-              onKeyDown={(e) => handleKeyDown(e, 'mrp')}
+              onKeyDown={(e) => handleKeyDown(e, "mrp")}
               onChange={(e) => handleInputChange("free", e.target.value)}
               value={newProduct.free || ""}
               type="text"
@@ -460,7 +551,7 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
               </span>
               <Input
                 ref={(el) => (inputRef.current["mrp"] = el)}
-                onKeyDown={(e) => handleKeyDown(e, 'purchaseRate')}
+                onKeyDown={(e) => handleKeyDown(e, "purchaseRate")}
                 onChange={(e) => handleInputChange("mrp", e.target.value)}
                 value={newProduct.mrp || ""}
                 type="text"
@@ -474,8 +565,8 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
                 ₹
               </span>
               <Input
-               ref={(el) => (inputRef.current["purchaseRate"] = el)}
-               onKeyDown={(e) => handleKeyDown(e, 'schemeInput1')}
+                ref={(el) => (inputRef.current["purchaseRate"] = el)}
+                onKeyDown={(e) => handleKeyDown(e, "schemeInput1")}
                 onChange={(e) =>
                   handleInputChange("purchaseRate", e.target.value)
                 }
@@ -489,7 +580,7 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
             <div className="flex gap-1">
               <Input
                 ref={(el) => (inputRef.current["schemeInput1"] = el)}
-                onKeyDown={(e) => handleKeyDown(e, 'schemeInput2')}
+                onKeyDown={(e) => handleKeyDown(e, "schemeInput2")}
                 value={newProduct.schemeInput1 || ""}
                 onChange={(e) =>
                   handleInputChange("schemeInput1", e.target.value)
@@ -499,8 +590,8 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
               />
               +
               <Input
-               ref={(el) => (inputRef.current["schemeInput2"] = el)}
-               onKeyDown={(e) => handleKeyDown(e, 'discount')}
+                ref={(el) => (inputRef.current["schemeInput2"] = el)}
+                onKeyDown={(e) => handleKeyDown(e, "discount")}
                 value={newProduct.schemeInput2 || ""}
                 onChange={(e) =>
                   handleInputChange("schemeInput2", e.target.value)
@@ -526,8 +617,8 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
           <div>
             <div className="relative">
               <Input
-               ref={(el) => (inputRef.current["discount"] = el)}
-               onKeyDown={(e) => handleKeyDown(e, 'gstPer')}
+                ref={(el) => (inputRef.current["discount"] = el)}
+                onKeyDown={(e) => handleKeyDown(e, "gstPer")}
                 onChange={(e) => handleInputChange("discount", e.target.value)}
                 value={newProduct.discount || ""}
                 type="text"
@@ -541,8 +632,8 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
           <div>
             <div className="relative">
               <Input
-              ref={(el) => (inputRef.current["gstPer"] = el)}
-              onKeyDown={(e) => handleKeyDown(e, 'addButton')}
+                ref={(el) => (inputRef.current["gstPer"] = el)}
+                onKeyDown={(e) => handleKeyDown(e, "addButton")}
                 onChange={(e) => handleInputChange("gstPer", e.target.value)}
                 value={newProduct.gstPer || ""}
                 type="text"
@@ -563,15 +654,15 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
             />
           </div>
           <div className="flex gap-1 items-center ml-2 justify-center">
-            <button 
-              onClick={handleAdd} 
-              ref={(el) => (inputRef.current["addButton"] = el)} 
+            <button
+              onClick={handleAdd}
+              ref={(el) => (inputRef.current["addButton"] = el)}
               className="bg-primary p-1 rounded-sm"
               title="Add Item"
             >
               <Plus className="h-5 w-5 text-white" />
             </button>
-            <button onClick={clearInputRow} title="Clear Field" >
+            <button onClick={clearInputRow} title="Clear Field">
               <X className="h-5 w-4" />
             </button>
           </div>
@@ -629,9 +720,10 @@ export default function PurchaseTable({ inputRef, products, setProducts, viewMod
               <div>
                 <Input
                   disabled={!editAll && editingIndex !== index}
-                  onChange={(e) =>
-                    handleInputChangeEditMode(index, "expiry", e.target.value)
-                  }
+                  onChange={(e) => {
+                    const formattedValue = formatExpiryInput(e.target.value);
+                    handleInputChangeEditMode(index, "expiry", formattedValue);
+                  }}
                   value={product?.expiry || ""}
                   type="text"
                   className="h-8 w-full border-[1px] border-gray-300 px-2 rounded-sm"

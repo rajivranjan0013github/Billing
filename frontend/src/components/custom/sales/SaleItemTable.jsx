@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "../../ui/button";
 import { convertToFraction, convertQuantity } from "../../../assets/Data";
 import { Pen, Trash2 } from "lucide-react";
@@ -12,12 +12,52 @@ const roundToTwo = (num) => {
   return Math.round((num + Number.EPSILON) * 100) / 100;
 };
 
-export default function SaleTable({ inputRef, products, setProducts, handleKeyDown, saleType, viewMode}) {
+export default function SaleTable({
+  inputRef,
+  products,
+  setProducts,
+  handleKeyDown,
+  saleType,
+  viewMode,
+}) {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(true);
-  const [newProduct, setNewProduct] = useState({types : 'sale'});
+  const [newProduct, setNewProduct] = useState({
+    types: saleType === "return" ? "return" : "sale",
+  });
   const [productSearch, setProductSearch] = useState(""); // for product Input-> which is passing in inventory suggestion
   const [batchNumber, setBatchNumber] = useState("");
+
+  // --- Effect to update product types when saleType changes --- START
+  useEffect(() => {
+    // Update the default type for new products
+    setNewProduct((prev) => ({
+      ...prev,
+      types: saleType === "return" ? "return" : "sale",
+    }));
+
+    // Update existing products
+    if (products.length > 0) {
+      setProducts((prevProducts) =>
+        prevProducts.map((product) => {
+          const updatedType = saleType === "return" ? "return" : "sale";
+          // Recalculate amount based on new type
+          const packs = Number(product?.packs || 0);
+          const loose = Number(product?.loose || 0);
+          const pack = Number(product?.pack || 1);
+          const saleRate = Number(product?.saleRate || 0);
+          const quantity = pack * packs + loose;
+          const subtotal = quantity * (saleRate / pack);
+          const total = subtotal;
+          const updatedAmount =
+            (updatedType === "return" ? -1 : 1) * convertToFraction(total);
+
+          return { ...product, types: updatedType, amount: updatedAmount };
+        })
+      );
+    }
+  }, [saleType, setProducts]); // Rerun when saleType or setProducts changes
+  // --- Effect to update product types when saleType changes --- END
 
   // Input changes handler
   const handleInputChange = (field, value) => {
@@ -27,7 +67,10 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
     if (field === "mrp") {
       const existingDiscount = Number(newProduct.discount || 0);
       if (existingDiscount > 0) {
-        updatedProduct.saleRate = (value * (1 - existingDiscount / 100)).toFixed(2);
+        updatedProduct.saleRate = (
+          value *
+          (1 - existingDiscount / 100)
+        ).toFixed(2);
       } else {
         updatedProduct.saleRate = value;
       }
@@ -66,7 +109,8 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
       const quantity = pack * packs + loose;
       const subtotal = quantity * (saleRate / pack);
       const total = subtotal;
-      updatedProduct.amount = (updatedProduct.types === 'return' ? -1 : 1) * convertToFraction(total);
+      updatedProduct.amount =
+        (updatedProduct.types === "return" ? -1 : 1) * convertToFraction(total);
       updatedProduct.quantity = quantity;
     } else {
       updatedProduct.amount = "";
@@ -82,15 +126,63 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
       return;
     }
 
-    if(!newProduct?.quantity && !newProduct?.loose) {
+    if (!newProduct?.quantity && !newProduct?.loose) {
       toast({ variant: "destructive", title: "Please add quantity" });
       return;
     }
 
-    const {pack, currentStocks, quantity} = newProduct;
-    
-    if(currentStocks < quantity && newProduct?.types === 'sale') {
-      toast({title : `${convertQuantity(currentStocks, pack)} are in stocks`, variant : 'destructive'})
+    // --- Expiry Date Check START ---
+    if (newProduct.types !== "return" && newProduct.expiry) {
+      const expiryString = newProduct.expiry;
+      const expiryParts = expiryString.split("/");
+      if (expiryParts.length === 2) {
+        const month = parseInt(expiryParts[0], 10);
+        const year = parseInt(expiryParts[1], 10);
+
+        if (
+          !isNaN(month) &&
+          !isNaN(year) &&
+          month >= 1 &&
+          month <= 12 &&
+          year >= 0 &&
+          year <= 99
+        ) {
+          const fullYear = 2000 + year;
+          // The product expires at the end of the expiry month.
+          // So, the first day it's invalid is the 1st of the *next* month.
+          const expiryLimitDate = new Date(fullYear, month, 1); // month is 1-based, Date constructor uses 0-based index directly
+
+          const currentDate = new Date();
+          currentDate.setHours(0, 0, 0, 0); // Compare dates only
+
+          if (currentDate >= expiryLimitDate) {
+            toast({ variant: "destructive", title: "Product has expired." });
+            return;
+          }
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Invalid expiry date format (MM/YY).",
+          });
+          return;
+        }
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Invalid expiry date format (MM/YY).",
+        });
+        return;
+      }
+    }
+    // --- Expiry Date Check END ---
+
+    const { pack, currentStocks, quantity } = newProduct;
+
+    if (currentStocks < quantity && newProduct?.types === "sale") {
+      toast({
+        title: `${convertQuantity(currentStocks, pack)} are in stocks`,
+        variant: "destructive",
+      });
       return;
     }
 
@@ -99,7 +191,8 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
     } else {
       setProducts((pre) => [...pre, { ...newProduct, batchNumber }]);
     }
-    setNewProduct({types : 'sale'});
+    // Reset newProduct state, ensuring type is 'sale' unless saleType is 'return'
+    setNewProduct({ types: saleType === "return" ? "return" : "sale" });
     setProductSearch("");
     setBatchNumber("");
     inputRef.current["product"].focus();
@@ -124,7 +217,7 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
 
   const handleProductSelect = (product) => {
     console.log(product);
-    setNewProduct(pre=>({
+    setNewProduct((pre) => ({
       ...pre,
       productName: product.name,
       mfcName: product.mfcName,
@@ -136,9 +229,10 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
   };
 
   const handleBatchSelect = (batch) => {
-    let tempDiscount = 0, tempSaleRate; 
-    if(batch?.saleRate) {
-      tempDiscount = (batch.mrp - batch.saleRate)/batch.mrp*100;
+    let tempDiscount = 0,
+      tempSaleRate;
+    if (batch?.saleRate) {
+      tempDiscount = ((batch.mrp - batch.saleRate) / batch.mrp) * 100;
       tempSaleRate = batch.saleRate;
     } else {
       tempSaleRate = batch.mrp;
@@ -154,8 +248,8 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
       gstPer: batch.gstPer,
       HSN: batch.HSN,
       pack: batch.pack,
-      currentStocks : batch.quantity,
-      discount : roundToTwo(tempDiscount)
+      currentStocks: batch.quantity,
+      discount: roundToTwo(tempDiscount),
     });
     if (inputRef?.current["packs"]) {
       inputRef?.current["packs"].focus();
@@ -211,16 +305,19 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
       {!viewMode && (
         <div className="grid grid-cols-16 w-full space-x-1">
           <div className="col-span-3 grid grid-cols-6">
-            <div className="flex items-center justify-center">{saleType === 'return' && <>
-              <span className="text-red-500 text-sm">R</span>
-              <Checkbox
-                checked={newProduct.types === 'return'}
-                onCheckedChange={(checked)=> {
-                    handleInputChange('types', checked ? 'return' : 'sale')
-                }}
-              />
-             
-            </>}</div>
+            <div className="flex items-center justify-center">
+              {saleType === "return" && (
+                <>
+                  <span className="text-red-500 text-sm">R</span>
+                  <Checkbox
+                    checked={newProduct.types === "return"}
+                    onCheckedChange={(checked) => {
+                      handleInputChange("types", checked ? "return" : "sale");
+                    }}
+                  />
+                </>
+              )}
+            </div>
             <div className="col-span-5">
               <InventorySuggestion
                 inputRef={inputRef}
@@ -386,7 +483,12 @@ export default function SaleTable({ inputRef, products, setProducts, handleKeyDo
               key={product?.inventoryId}
             >
               <div className="col-span-3 grid grid-cols-6">
-                <div className="items-center font-semibold justify-center flex">{index + 1}.<span className="text-sm text-red-500">{product.types === 'return' && 'R'}</span></div>
+                <div className="items-center font-semibold justify-center flex">
+                  {index + 1}.
+                  <span className="text-sm text-red-500">
+                    {product.types === "return" && "R"}
+                  </span>
+                </div>
                 <Input
                   disabled
                   value={product?.productName}

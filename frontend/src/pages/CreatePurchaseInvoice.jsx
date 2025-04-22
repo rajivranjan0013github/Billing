@@ -38,48 +38,60 @@ export const roundToTwo = (num) => {
 };
 
 export const calculateTotals = (products, amountType) => {
-  const total =  products.reduce(
-    (total, product) => {
+  // Calculate the sums using reduce
+  const totals = products.reduce(
+    (acc, product) => {
       const quantity = Number(product?.quantity || 0);
       const free = Number(product?.free || 0);
       const purchaseRate = Number(product?.purchaseRate || 0);
-      const discountPercent =
-        Number(product?.discount || 0) + Number(product?.schemePercent || 0);
+      const discountPercent = Number(product?.discount || 0);
       const gstPer = Number(product?.gstPer || 0);
+      const s1 = Number(product?.schemeInput1 || 0);
+      const s2 = Number(product?.schemeInput2 || 0);
 
-      // Calculate base amount and effective rate
-      const baseAmount = roundToTwo(quantity * purchaseRate);
-      const discountAmount = roundToTwo((baseAmount * discountPercent) / 100);
-      const effectiveRate = roundToTwo(
-        purchaseRate - (purchaseRate * discountPercent) / 100
+      let billableQuantity = quantity;
+      if (s1 > 0 && s1 + s2 > 0) {
+        const schemeRatio = s1 / (s1 + s2);
+        billableQuantity = quantity * schemeRatio;
+      }
+
+      const discountedRate = roundToTwo(
+        purchaseRate * (1 - discountPercent / 100)
       );
+      const baseAmountForSubtotal = roundToTwo(quantity * purchaseRate);
 
-      
       let taxable;
+      let gstAmount;
       switch (amountType) {
         case "exclusive":
-          taxable = roundToTwo(baseAmount - discountAmount);
+          taxable = roundToTwo(discountedRate * billableQuantity);
+          gstAmount = roundToTwo((taxable * gstPer) / 100);
           break;
         case "inclusive_all":
-          taxable = roundToTwo(effectiveRate * quantity);
+          taxable = roundToTwo(discountedRate * billableQuantity);
+          gstAmount = roundToTwo(taxable - taxable / (1 + gstPer / 100));
+          taxable = roundToTwo(taxable - gstAmount);
           break;
         case "inclusive_gst":
-          taxable = roundToTwo(effectiveRate * quantity);
+          const rateInclGst = roundToTwo(discountedRate * (1 + gstPer / 100));
+          const totalAmountInclGst = roundToTwo(rateInclGst * billableQuantity);
+          taxable = roundToTwo(totalAmountInclGst / (1 + gstPer / 100));
+          gstAmount = roundToTwo(totalAmountInclGst - taxable);
+          break;
+        default:
+          taxable = roundToTwo(discountedRate * billableQuantity);
+          gstAmount = roundToTwo((taxable * gstPer) / 100);
           break;
       }
 
-      const gstAmount = roundToTwo((taxable * gstPer) / 100);
+      acc.productCount += 1;
+      acc.totalQuantity += quantity + free;
+      acc.subtotal = roundToTwo(acc.subtotal + baseAmountForSubtotal);
+      acc.taxable = roundToTwo(acc.taxable + taxable);
+      acc.gstAmount = roundToTwo(acc.gstAmount + gstAmount);
+      acc.grandTotal = roundToTwo(acc.grandTotal + taxable + gstAmount);
 
-      // Add to running totals
-      total.productCount += 1;
-      total.totalQuantity += quantity + free;
-      total.subtotal = roundToTwo(total.subtotal + baseAmount);
-      total.discountAmount = roundToTwo(total.discountAmount + discountAmount);
-      total.taxable = roundToTwo(total.taxable + taxable);
-      total.gstAmount = roundToTwo(total.gstAmount + gstAmount);
-      total.grandTotal = roundToTwo(total.grandTotal + taxable + gstAmount);
-
-      return total;
+      return acc;
     },
     {
       subtotal: 0,
@@ -92,10 +104,15 @@ export const calculateTotals = (products, amountType) => {
     }
   );
 
-  const grandTotal = total?.grandTotal;
-  total.grandTotal = Math.round(grandTotal);
-  total.adjustment = total.grandTotal - grandTotal
-  return total;
+  // Calculate the total discount amount after summing subtotal and taxable
+  totals.discountAmount = roundToTwo(totals.subtotal - totals.taxable);
+
+  // Perform final rounding and adjustment on the calculated totals
+  const grandTotalBeforeRounding = totals.grandTotal;
+  totals.grandTotal = Math.round(grandTotalBeforeRounding);
+  totals.adjustment = roundToTwo(totals.grandTotal - grandTotalBeforeRounding);
+
+  return totals;
 };
 
 export default function PurchaseForm() {
@@ -115,7 +132,10 @@ export default function PurchaseForm() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [invoiceForPayment, setInvoiceForPayment] = useState(null);
-  const [additionalDiscount, setAdditionalDiscount] = useState({per : '', value : ''});
+  const [additionalDiscount, setAdditionalDiscount] = useState({
+    per: "",
+    value: "",
+  });
 
   const [formData, setFormData] = useState({
     purchaseType: "invoice",
@@ -333,7 +353,7 @@ export default function PurchaseForm() {
     return () => {
       document.removeEventListener("keydown", handleShortcutKeyPressed);
     };
-  }, [formData, invoiceDate, distributorName, products]); 
+  }, [formData, invoiceDate, distributorName, products]);
 
   // Update the distributor name input section
   const handleDistributorNameChange = (e) => {
@@ -378,77 +398,98 @@ export default function PurchaseForm() {
   }, []);
 
   const onAdditionalDiscountChange = (key, num) => {
-    if(!amountData?.subtotal) {
-      toast({variant : 'destructive', message : 'Please add at least one product'}); 
+    if (!amountData?.subtotal) {
+      toast({
+        variant: "destructive",
+        message: "Please add at least one product",
+      });
       return;
     }
     const tempNum = Number(num);
     const tempSubtotal = amountData?.subtotal;
-    if(key === 'per') {
-      const value = roundToTwo(tempSubtotal*tempNum/100)
-      setAdditionalDiscount({per : tempNum, value})
+    if (key === "per") {
+      const value = roundToTwo((tempSubtotal * tempNum) / 100);
+      setAdditionalDiscount({ per: tempNum, value });
     } else {
-      const per = roundToTwo(tempNum/tempSubtotal*100);
-      setAdditionalDiscount({per, value : tempNum});
+      const per = roundToTwo((tempNum / tempSubtotal) * 100);
+      setAdditionalDiscount({ per, value: tempNum });
     }
-  }
+  };
 
   const handleAdditionalDiscountApply = () => {
     const additionalDiscountTemp = Number(additionalDiscount?.per || 0);
     if (additionalDiscountTemp <= 0) return;
 
-    setProducts(prevProducts => 
-      prevProducts.map(product => {
-        const newDiscount = Number(product.discount || 0) + additionalDiscountTemp;
+    setProducts((prevProducts) =>
+      prevProducts.map((product) => {
+        const newDiscount =
+          Number(product.discount || 0) + additionalDiscountTemp;
         return {
           ...product,
           discount: newDiscount,
-          amount: calculateProductAmount({
-            ...product,
-            discount: newDiscount,
-          }, formData.amountType)
+          amount: calculateProductAmount(
+            {
+              ...product,
+              discount: newDiscount,
+            },
+            formData.amountType
+          ),
         };
       })
     );
 
     // Reset additional discount after applying
-    setAdditionalDiscount({ per: '', value: '' });
-  }
+    setAdditionalDiscount({ per: "", value: "" });
+  };
 
-  // Helper function to calculate product amount with updated discount
+  // Helper function to calculate product amount with updated discount/scheme
   const calculateProductAmount = (product, amountType) => {
     const quantity = Number(product?.quantity || 0);
     const purchaseRate = Number(product?.purchaseRate || 0);
-    const discountPercent = Number(product?.discount || 0) + Number(product?.schemePercent || 0);
+    const discountPercent = Number(product?.discount || 0); // Use only explicit discount
     const gstPer = Number(product?.gstPer || 0);
+    const s1 = Number(product?.schemeInput1 || 0);
+    const s2 = Number(product?.schemeInput2 || 0);
 
-    // Calculate base amount and effective rate
-    const baseAmount = roundToTwo(quantity * purchaseRate);
-    const discountAmount = roundToTwo((baseAmount * discountPercent) / 100);
-    const effectiveRate = roundToTwo(purchaseRate - (purchaseRate * discountPercent) / 100);
+    // Calculate billable quantity based on scheme
+    let billableQuantity = quantity;
+    if (s1 > 0 && s1 + s2 > 0) {
+      const schemeRatio = s1 / (s1 + s2);
+      billableQuantity = quantity * schemeRatio;
+    }
 
-    // Calculate amount based on mode
+    // Calculate discounted rate per unit
+    const discountedRate = roundToTwo(
+      purchaseRate * (1 - discountPercent / 100)
+    );
+
+    // Calculate GST amount per unit based on discounted rate
+    const gstAmountPerUnit = roundToTwo(discountedRate * (gstPer / 100));
+
+    // Calculate amount based on mode using BILLABLE quantity
     let amount;
     switch (amountType) {
       case "exclusive":
-        // Just Rate × Quantity
-        amount = roundToTwo(purchaseRate * quantity);
+        // Rate × Billable Quantity
+        amount = roundToTwo(purchaseRate * billableQuantity);
         break;
       case "inclusive_all":
-        // (Rate - Rate×Discount%) × Quantity
-        amount = roundToTwo(effectiveRate * quantity);
+        // (Rate - Discount) × Billable Quantity
+        amount = roundToTwo(discountedRate * billableQuantity);
         break;
       case "inclusive_gst":
-        // (Rate - Rate×Discount% + (Rate - Rate×Discount%)×GST%) × Quantity
-        const gstAmount = roundToTwo((effectiveRate * gstPer) / 100);
-        amount = roundToTwo((effectiveRate + gstAmount) * quantity);
+        // (Rate - Discount + GST) × Billable Quantity
+        amount = roundToTwo(
+          (discountedRate + gstAmountPerUnit) * billableQuantity
+        );
         break;
       default:
-        amount = roundToTwo(purchaseRate * quantity);
+        // Default to exclusive logic
+        amount = roundToTwo(purchaseRate * billableQuantity);
     }
 
     return amount;
-  }
+  };
 
   return (
     <div className="relative rounded-lg h-[100vh] pt-4 ">
@@ -597,7 +638,13 @@ export default function PurchaseForm() {
         <div className="p-4 border rounded-lg">
           <div className="flex justify-between">
             <h3 className="mb-4 text-sm font-medium">OVERALL BILL DISCOUNT</h3>
-            <Button size='sm' onClick={handleAdditionalDiscountApply} className='h-5'>Apply</Button>
+            <Button
+              size="sm"
+              onClick={handleAdditionalDiscountApply}
+              className="h-5"
+            >
+              Apply
+            </Button>
           </div>
           <div className="flex gap-4">
             <div className="relative">
@@ -605,18 +652,26 @@ export default function PurchaseForm() {
                 placeholder="Value"
                 className="w-24 pr-5"
                 value={additionalDiscount?.per}
-                onChange={(e)=>onAdditionalDiscountChange('per', e.target.value)}
+                onChange={(e) =>
+                  onAdditionalDiscountChange("per", e.target.value)
+                }
               />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2">%</span>
+              <span className="absolute right-2 top-1/2 -translate-y-1/2">
+                %
+              </span>
             </div>
             <span className="px-2 py-1">OR</span>
             <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-0">₹</span>
-              <Input 
-                placeholder="Value" 
-                className="flex-1 pl-5" 
-                value={additionalDiscount?.value}  
-                onChange={(e)=>onAdditionalDiscountChange('value', e.target.value)} 
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-0">
+                ₹
+              </span>
+              <Input
+                placeholder="Value"
+                className="flex-1 pl-5"
+                value={additionalDiscount?.value}
+                onChange={(e) =>
+                  onAdditionalDiscountChange("value", e.target.value)
+                }
               />
             </div>
           </div>
@@ -672,7 +727,9 @@ export default function PurchaseForm() {
         </div>
         <div className="py-2">
           <div className="">(-) Adjustment</div>
-          <div className="text-lg">{formatCurrency(amountData?.adjustment)}</div>
+          <div className="text-lg">
+            {formatCurrency(amountData?.adjustment)}
+          </div>
         </div>
         <div className="py-2">
           <div className="">(+) Delivery Charge</div>
