@@ -87,6 +87,41 @@ export const fetchBillById = createLoadingAsyncThunk(
   { useGlobalLoader: true }
 );
 
+// Edit sale invoice
+export const editSaleInvoice = createLoadingAsyncThunk(
+  "bill/editSaleInvoice",
+  async (invoiceData, { dispatch }) => {
+    try {
+      const response = await fetch(`${Backend_URL}/api/sales/invoice/${invoiceData._id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(invoiceData),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to edit invoice");
+      }
+
+      const data = await response.json();
+      
+      // Reset related states
+      await dispatch(setAccountsStatusIdle());
+      await dispatch(setCustomerStatusIdle());
+      await dispatch(setItemStatusIdle());
+      await dispatch(setPaymentIdle());
+      
+      return data;
+    } catch (error) {
+      throw new Error(error.message || "Failed to edit invoice");
+    }
+  },
+  { useGlobalLoader: true }
+);
+
 const billSlice = createSlice({
   name: "bill",
   initialState: {
@@ -97,6 +132,7 @@ const billSlice = createSlice({
     },
     selectedPreset: "today",
     createBillStatus: "idle",
+    editBillStatus : 'idle',
     fetchStatus: "idle",
     searchStatus: "idle",
     saleTypeFilter: "all",
@@ -164,6 +200,23 @@ const billSlice = createSlice({
       .addCase(searchBills.rejected, (state, action) => {
         state.searchStatus = "failed";
         state.error = action.payload;
+      })
+      .addCase(editSaleInvoice.pending, (state) => {
+        state.editBillStatus = "loading";
+        state.error = null;
+      })
+      .addCase(editSaleInvoice.fulfilled, (state, action) => {
+        state.editBillStatus = "succeeded";
+        // Update the bill in the bills array
+        const index = state.bills.findIndex(bill => bill._id === action.payload._id);
+        if (index !== -1) {
+          state.bills[index] = action.payload;
+        }
+        state.error = null;
+      })
+      .addCase(editSaleInvoice.rejected, (state, action) => {
+        state.editBillStatus = "failed";
+        state.error = action.error.message;
       });
   },
 });

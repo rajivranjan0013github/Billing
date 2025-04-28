@@ -336,7 +336,8 @@ const SalesInvoicePrint = () => {
                     <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
                     <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
                     <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
-                    <td className=" text-right p-1.5"></td>
+                    <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
+                    {/* <td className=" text-right p-1.5"></td> */}
                   </tr>
                 )
               )}

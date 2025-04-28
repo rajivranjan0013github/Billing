@@ -18,10 +18,12 @@ router.get("/invoice-number", verifyToken, async (req, res) => {
   const invoiceNumber = await SalesBill.getCurrentInvoiceNumber();
   res.json({ invoiceNumber });
 });
+
 router.get("/return-number", verifyToken, async (req, res) => {
   const returnNumber = await SalesReturn.getCurrentReturnNumber();
   res.json({ returnNumber });
 });
+
 // Create new sell bill
 router.post("/", verifyToken, async (req, res) => {
   const session = await mongoose.startSession();
@@ -379,6 +381,15 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
       },
       { new: true, session }
     );
+
+    // update payments 
+    for(const payment of req.body.payments) {
+      const updatePayment = await Payment.findById(payment._id).session(session);
+      const updateAccount = await AccountDetails.findById(updatePayment.accountId);
+      account.balance += payment.amount - updatePayment.amount;
+      await updateAccount.save({session});
+      await updatePayment.save({session});
+    }
 
     await session.commitTransaction();
     res.status(200).json(updatedInvoice);

@@ -354,7 +354,7 @@ export default function MakePaymentDlg({ open, onOpenChange, paymentData, showSt
                 {/* Invoice Summary Section - Only in step 1 */}
                 <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
                   <div className="col-span-2">
-                    <Label className="text-sm text-gray-500">Distributor</Label>
+                    <Label className="text-sm text-gray-500">{paymentData?.invoiceType === 'sales' ? 'Customer' : 'Distributor'} Name</Label>
                     <div className="font-medium">{paymentData?.distributorName}</div>
                   </div>
                   <div>

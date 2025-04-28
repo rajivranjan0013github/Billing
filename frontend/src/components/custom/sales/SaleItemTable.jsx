@@ -120,7 +120,6 @@ export default function SaleTable({
 
   // handle add product to list
   const handleAdd = () => {
-    console.log(newProduct);
     if (!newProduct.productName) {
       toast({ variant: "destructive", title: "Please select item" });
       return;

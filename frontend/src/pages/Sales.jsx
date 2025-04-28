@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Search, Users, X, ArrowLeft } from "lucide-react";
+import { Search, Users, X, ArrowLeft, Calendar, Plus,  } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
-import { Input } from "../components/ui/input";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -17,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
+import { Input } from "../components/ui/input";
 import { cn } from "../lib/utils";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -197,16 +196,31 @@ export default function SalesTransactions() {
   );
 
   // Update the useEffect to use the debounced function
+  // Read the date strings directly from Redux state
+  const { from: reduxFrom, to: reduxTo } = useSelector((state) => state.bill.dateRange);
+
   useEffect(() => {
+    // Ensure we have valid date strings before proceeding
+    if (!reduxFrom || !reduxTo) {
+      return;
+    }
+
+    // Create Date objects inside the effect
+    const currentRange = {
+      from: new Date(reduxFrom),
+      to: new Date(reduxTo),
+    };
+
     const shouldFetch =
       !lastFetchedRange ||
-      lastFetchedRange.from?.getTime() !== dateRange.from?.getTime() ||
-      lastFetchedRange.to?.getTime() !== dateRange.to?.getTime();
+      lastFetchedRange.from?.getTime() !== currentRange.from.getTime() ||
+      lastFetchedRange.to?.getTime() !== currentRange.to.getTime();
 
-    if (shouldFetch && dateRange.from && dateRange.to) {
-      debouncedFetchBills(dateRange);
+    if (shouldFetch) {
+      debouncedFetchBills(currentRange);
     }
-  }, [dateRange.from, dateRange.to, debouncedFetchBills, lastFetchedRange]);
+  // Depend on the stable Redux date strings and other stable dependencies
+  }, [reduxFrom, reduxTo, debouncedFetchBills, lastFetchedRange]);
 
   useEffect(() => {
     setBills(initialBills);
@@ -322,25 +336,31 @@ export default function SalesTransactions() {
         <div className="relative">
           <div className="relative flex items-center bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
             <div className="relative flex items-center border-r border-slate-200">
-              <Select
-                defaultValue="invoice"
-                onValueChange={(value) => setSearchType(value)}
-              >
-                <SelectTrigger className="h-9 w-[120px] border-0 bg-transparent hover:bg-slate-100 focus:ring-0 focus:ring-offset-0">
-                  <SelectValue placeholder="Search by" />
-                </SelectTrigger>
-                <SelectContent align="start" className="w-[120px]">
-                  <SelectItem value="invoice" className="text-sm">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="h-9 w-[120px] border-0 bg-transparent hover:bg-slate-100 focus:ring-0 focus:ring-offset-0 justify-start px-3"
+                  >
+                    {searchType === "invoice"
+                      ? "Invoice No"
+                      : searchType === "customer"
+                      ? "Customer"
+                      : "GRN No"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[120px]">
+                  <DropdownMenuItem onSelect={() => setSearchType("invoice")}>
                     Invoice No
-                  </SelectItem>
-                  <SelectItem value="customer" className="text-sm">
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setSearchType("customer")}>
                     Customer
-                  </SelectItem>
-                  <SelectItem value="grn" className="text-sm">
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setSearchType("grn")}>
                     GRN No
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             <div className="flex-1 relative flex items-center">
@@ -378,18 +398,38 @@ export default function SalesTransactions() {
           </div>
         </div>
 
-        <Select value={selectedPreset} onValueChange={handleDatePresetChange}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Select range" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="yesterday">Yesterday</SelectItem>
-            <SelectItem value="thisWeek">This Week</SelectItem>
-            <SelectItem value="thisMonth">This Month</SelectItem>
-            <SelectItem value="custom">Custom</SelectItem>
-          </SelectContent>
-        </Select>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-[150px]">
+              {selectedPreset === "today"
+                ? "Today"
+                : selectedPreset === "yesterday"
+                ? "Yesterday"
+                : selectedPreset === "thisWeek"
+                ? "This Week"
+                : selectedPreset === "thisMonth"
+                ? "This Month"
+                : "Custom"}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onSelect={() => handleDatePresetChange("today")}>
+              Today
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => handleDatePresetChange("yesterday")}>
+              Yesterday
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => handleDatePresetChange("thisWeek")}>
+              This Week
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => handleDatePresetChange("thisMonth")}>
+              This Month
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => handleDatePresetChange("custom")}>
+              Custom
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {selectedPreset === "custom" && (
           <div className="relative w-[300px]">
@@ -404,19 +444,34 @@ export default function SalesTransactions() {
           </div>
         )}
 
-        <Select
-          value={saleTypeFilter}
-          onValueChange={(value) => dispatch(setSaleTypeFilter(value))}
-        >
-          <SelectTrigger className="w-[120px]">
-            <SelectValue placeholder="Filter by type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="sales">Sales</SelectItem>
-            <SelectItem value="returns">Returns</SelectItem>
-          </SelectContent>
-        </Select>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-[120px]">
+              {saleTypeFilter === "all"
+                ? "All"
+                : saleTypeFilter === "sales"
+                ? "Sales"
+                : "Returns"}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem
+              onSelect={() => dispatch(setSaleTypeFilter("all"))}
+            >
+              All
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => dispatch(setSaleTypeFilter("sales"))}
+            >
+              Sales
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => dispatch(setSaleTypeFilter("returns"))}
+            >
+              Returns
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <div className="flex-1 flex justify-end gap-2">
           <Button

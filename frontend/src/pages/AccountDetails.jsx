@@ -32,6 +32,7 @@ import { useToast } from "../hooks/use-toast";
 import { format } from "date-fns";
 import { Plus, Inbox, ArrowLeft } from "lucide-react";
 import { Separator } from "../components/ui/separator";
+import { formatCurrency } from "../utils/Helper";
 
 const formatDate = (dateString) => {
   try {
@@ -560,7 +561,7 @@ export default function AccountDetails() {
                         <div>
                           <Label>Current Balance</Label>
                           <div className={`text-lg font-semibold ${account.balance < 0 ? 'text-red-600' : ''}`}>
-                            ₹{account.balance || 0}
+                          {formatCurrency(account.balance)}
                           </div>
                         </div>
                       </div>
@@ -591,7 +592,7 @@ export default function AccountDetails() {
                         <div>
                           <Label>Current Balance</Label>
                           <div className={`text-lg font-semibold ${account.balance < 0 ? 'text-red-600' : ''}`}>
-                            ₹{account.balance || 0}
+                          {formatCurrency(account.balance)}
                           </div>
                         </div>
                       </div>
@@ -615,7 +616,7 @@ export default function AccountDetails() {
                         <div>
                           <Label>Current Balance</Label>
                           <div className={`text-lg font-semibold ${account.balance < 0 ? 'text-red-600' : ''}`}>
-                            ₹{account.balance || 0}
+                            {formatCurrency(account.balance)}
                           </div>
                         </div>
                       </div>

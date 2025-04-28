@@ -42,7 +42,6 @@ export default function PaymentDialog({
   const [dueDate, setDueDate] = useState();
   const [showDetails, setShowDetails] = useState(false);
   const [selectedMethodIndex, setSelectedMethodIndex] = useState(1);
-  console.log(invoiceData);
   const inputRef = useRef({});
 
   const [paymentData, setPaymentData] = useState({
@@ -210,10 +209,6 @@ export default function PaymentDialog({
   const canSubmitPayment = () => {
     if (paymentStatus === "due") return dueDate != null;
 
-    const amount = Number(paymentData.amount);
-    // Check if due date is required and present
-    if (amount < Number(invoiceData?.grandTotal) && !dueDate) return false;
-
     switch (paymentData.paymentMethod) {
       case "CHEQUE":
         return (
@@ -230,7 +225,7 @@ export default function PaymentDialog({
         return false;
     }
   };
-
+  
   const handleSubmit = () => {
     const finalData = {
       ...paymentData,
@@ -689,7 +684,7 @@ export default function PaymentDialog({
                             ref={(el) => (inputRef.current["amount"] = el)}
                           />
                         </div>
-                        {Number(paymentData.amount) < Number(invoiceData?.grandTotal) && (
+                        {dueAmount !== 0 && (
                           <div>
                             <Label>Payment Due Date</Label>
                             <Input
@@ -754,7 +749,7 @@ export default function PaymentDialog({
                                 </p>
                               </div>
                               <p className="text-sm font-medium text-green-600 whitespace-nowrap">
-                                ₹{account.balance || 0}
+                                {formatCurrency(account.balance || 0)}
                               </p>
                             </div>
                           </div>
@@ -794,7 +789,7 @@ export default function PaymentDialog({
           </ScrollArea>
         </div>
 
-        <div className="grid grid-cols-3 px-4 py-2 text-lg font-semibold text-center bg-pink-100">
+        <div className="grid grid-cols-3 px-2 py-2 text-lg font-semibold text-center bg-pink-100">
           <div>
             <p className="text-sm text-gray-500">TOTAL AMOUNT</p>
             <p className="font-bold">
@@ -803,14 +798,14 @@ export default function PaymentDialog({
           </div>
           <div>
             <p className="text-sm text-gray-500">
-              {invoiceData?.isNewInvoice ? "PAYING NOW" : "TOTAL PAID"}
+              {/* {invoiceData?.isNewInvoice ? "PAYING NOW" : "TOTAL PAID"} */}
+              PAYING NOW
             </p>
-            <p className="font-bold text-green-600">
-              {formatCurrency(
-                (invoiceData?.alreadyPaid || 0) +
-                  Number(paymentData.amount || 0)
-              )}
+            <p>
+              {!invoiceData?.isNewInvoice && <span className="">{formatCurrency(invoiceData?.alreadyPaid || 0)}+</span>}
+              <span className="font-bold text-green-600"> {formatCurrency( Number(paymentData.amount || 0))} </span>
             </p>
+            {/* <p>Aready Paid : {}</p> */}
           </div>
           <div>
             <p className="text-sm text-gray-500">BALANCE DUE</p>

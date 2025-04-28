@@ -4,14 +4,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
 import { Checkbox } from "../components/ui/checkbox";
-import {
-  ArrowLeft,
-  Pencil,
-  Save,
-  FileText,
-  Trash2,
-  ChevronRight,
-} from "lucide-react";
+import { ArrowLeft, Pencil, Save, FileText, Trash2, ChevronRight, Plus} from "lucide-react";
 import { format } from "date-fns";
 import { Backend_URL, convertQuantityValue } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
@@ -19,10 +12,11 @@ import { CustomerSuggestionWithDialog } from "../components/custom/sales/custome
 import { calculateTotals } from "./CreateSellInvoice";
 import { useParams, useNavigate } from "react-router-dom";
 import SaleItemTable from "../components/custom/sales/SaleItemTable";
-import PaymentDialog from "../components/custom/payment/PaymentDialog";
 import { useSelector, useDispatch } from "react-redux";
 import { formatCurrency } from "../utils/Helper";
 import { fetchSettings } from '../redux/slices/settingsSlice'
+import { editSaleInvoice } from '../redux/slices/SellBillSlice';
+import MakePaymentDlg from "../components/custom/payment/MakePaymentDlg";
 
 // Helper function to round to 2 decimal places
 const roundToTwo = (num) => {
@@ -64,21 +58,10 @@ export default function EditSaleInvoice() {
   const [completeData, setCompleteData] = useState(null);
   const [amountPaid, setAmountPaid] = useState(0);
   const [payments, setPayments] = useState([]);
-  const [paymentOutData, setPaymentOutData] = useState({
-    paymentType: "Payment In",
-    distributorId: "",
-    distributorName: "",
-    amount: 0,
-    bills: [
-      {
-        billId: "",
-        billNumber: "",
-        grandTotal: 0,
-        amountPaid: 0,
-      },
-    ],
-  });
+  const [paymentOutData, setPaymentOutData] = useState(null);
   const [paymentOutDialogOpen, setPaymentOutDialogOpen] = useState(false);
+  const [editedPayments, setEditedPayments] = useState({});
+  const { editBillStatus } = useSelector((state) => state.bill);
 
   const [formData, setFormData] = useState({
     saleType: "invoice",
@@ -96,7 +79,7 @@ export default function EditSaleInvoice() {
     if(status === 'idle') {
       dispatch(fetchSettings());
     }
-  }, [status, settings])
+  }, [status, settings]);
 
   // Fetch invoice data from server
   useEffect(() => {
@@ -112,19 +95,7 @@ export default function EditSaleInvoice() {
         }
         const data = await response.json();
         setCompleteData(data);
-        const {
-          customerName,
-          customerId,
-          invoiceNumber,
-          products,
-          invoiceDate,
-          paymentDueDate,
-          withGst,
-          amountPaid,
-          payments,
-          saleType,
-          is_cash_customer,
-        } = data;
+        const {customerName,customerId,invoiceNumber,products,invoiceDate,paymentDueDate,withGst,amountPaid,payments,saleType,is_cash_customer,} = data;
         const fomateProduct = products.map((item) => {
           const temp = convertQuantityValue(item.quantity, item.pack);
           return { ...item, ...temp };
@@ -146,6 +117,12 @@ export default function EditSaleInvoice() {
         setCustomerName(customerName);
         setIsCashCounter(is_cash_customer);
         setPayments(payments);
+        // Initialize editedPayments with original amounts
+        const initialEditedPayments = {};
+        payments.forEach(payment => {
+          initialEditedPayments[payment._id] = payment.amount;
+        });
+        setEditedPayments(initialEditedPayments);
       } catch (error) {
         console.error("Error fetching bill:", error);
         toast({
@@ -169,9 +146,27 @@ export default function EditSaleInvoice() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Add function to handle payment amount changes
+  const handlePaymentAmountChange = (paymentId, newAmount) => {
+    setEditedPayments(prev => ({
+      ...prev,
+      [paymentId]: Number(newAmount)
+    }));
+
+    // Recalculate total amount paid
+    let newTotalPaid = 0;
+    payments.forEach(payment => {
+      if (payment._id === paymentId) {
+        newTotalPaid += Number(newAmount);
+      } else {
+        newTotalPaid += editedPayments[payment._id] || payment.amount;
+      }
+    });
+    setAmountPaid(newTotalPaid);
+  };
+
   const handleSaveInvoice = async () => {
     try {
-      setLoading(true);
       if (!formData.customerName || !formData.invoiceNumber || !invoiceDate) {
         throw new Error("Please fill all required fields");
       }
@@ -180,33 +175,6 @@ export default function EditSaleInvoice() {
         throw new Error("Please add at least one product");
       }
 
-      // Open payment dialog instead of saving directly
-      setPaymentOutData({
-        invoiceType: "sales",
-        isCashCounter,
-        distributorName: isCashCounter ? "Cash/Counter" : formData.customerName,
-        customerId: isCashCounter ? null : formData.customerId,
-        invoiceNumber: formData.invoiceNumber,
-        invoiceDate: invoiceDate,
-        grandTotal: amountData.grandTotal,
-        alreadyPaid: amountPaid,
-        isNewInvoice: false,
-      });
-      setPaymentOutDialogOpen(true);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to validate invoice",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePaymentSubmit = async (paymentData) => {
-    try {
-      setLoading(true);
       const formattedProducts = products.map((product) => ({
         inventoryId: product.inventoryId,
         productName: product.productName,
@@ -218,10 +186,15 @@ export default function EditSaleInvoice() {
         quantity: Number(product.quantity),
         pack: Number(product.pack),
         saleRate: Number(product.saleRate),
-        saleRate: Number(product.saleRate),
         discount: Number(product.discount || 0),
         gstPer: Number(product.gstPer),
         amount: Number(product.amount),
+      }));
+
+      // Create updated payments array with edited amounts
+      const updatedPayments = payments.map(payment => ({
+        _id : payment._id,
+        amount: editedPayments[payment._id] || payment.amount
       }));
 
       const finalData = {
@@ -232,7 +205,7 @@ export default function EditSaleInvoice() {
         customerId: isCashCounter ? null : formData.customerId,
         is_cash_customer: isCashCounter,
         invoiceDate: invoiceDate,
-        paymentDueDate: paymentData.dueDate || dueDate,
+        paymentDueDate: amountData?.grandTotal > amountPaid  ? dueDate : null,
         products: formattedProducts,
         withGst: formData.withGst === "yes",
         grandTotal: amountData.grandTotal,
@@ -252,30 +225,9 @@ export default function EditSaleInvoice() {
             28: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
           },
         },
-        paymentStatus: paymentData.status,
-        amountPaid:
-          paymentData.status === "due"
-            ? amountPaid
-            : Number(paymentData.amount || 0) + amountPaid,
-        payment:
-          paymentData.status === "paid"
-            ? {
-                amount: Number(paymentData.amount || 0),
-                paymentType: "Payment In",
-                paymentMethod: paymentData.paymentMethod,
-                paymentDate: paymentData.chequeDate || new Date(),
-                accountId: paymentData.accountId,
-                transactionNumber: paymentData.transactionNumber,
-                chequeNumber: paymentData.chequeNumber,
-                chequeDate: paymentData.chequeDate,
-                micrCode: paymentData.micrCode,
-                status:
-                  paymentData.paymentMethod === "CHEQUE"
-                    ? "PENDING"
-                    : "COMPLETED",
-                remarks: paymentData.notes,
-              }
-            : null,
+        paymentStatus: amountPaid >= amountData.grandTotal ? 'paid' : 'due',
+        amountPaid: amountPaid,
+        payments: updatedPayments
       };
 
       // Calculate GST summary
@@ -307,20 +259,7 @@ export default function EditSaleInvoice() {
         }
       });
 
-      const response = await fetch(
-        `${Backend_URL}/api/sales/invoice/${invoiceId}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(finalData),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to save invoice");
-      }
+      const result = await dispatch(editSaleInvoice(finalData)).unwrap();
 
       toast({
         title: "Sale invoice saved successfully",
@@ -334,8 +273,6 @@ export default function EditSaleInvoice() {
         description: error.message || "Failed to save invoice",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -375,11 +312,12 @@ export default function EditSaleInvoice() {
   };
 
   const handleAddNewPayment = () => {
-    setPaymentOutData({
+    setPaymentOutData({ 
+      invoiceType : 'sales',
       paymentType: "Payment In",
       distributorId: formData.customerId,
-      distributorName: formData.customerName,
-      amount:roundToTwo(amountData?.grandTotal - amountPaid),
+      distributorName: isCashCounter ? "Cash/Counter" : formData.customerName,
+      amount: roundToTwo(amountData?.grandTotal - amountPaid),
       bills: [
         {
           billId: invoiceId,
@@ -433,11 +371,11 @@ export default function EditSaleInvoice() {
               </>
             ) : (
               <Button
-                className="gap-2 bg-gray-800"
+                className="gap-2"
                 onClick={handleSaveInvoice}
-                disabled={loading}
+                disabled={editBillStatus === 'loading'}
               >
-                {loading ? (
+                {editBillStatus === 'loading' ? (
                   <>
                     <span className="animate-spin">⏳</span>
                     Saving...
@@ -628,8 +566,10 @@ export default function EditSaleInvoice() {
               size="sm"
               disabled={amountPaid >= amountData?.grandTotal}
               onClick={handleAddNewPayment}
+              className='gap-1 px-2'
             >
-              Add New Payment
+              <Plus className="h-4 w-4" />
+              Add Payment
             </Button>
           </div>
 
@@ -679,7 +619,18 @@ export default function EditSaleInvoice() {
                         {payment.paymentNumber}
                       </td>
                       <td className="px-4 py-3 text-sm font-medium">
-                        ₹{payment.amount.toLocaleString("en-IN")}
+                        {!viewMode ? (
+                          <Input
+                            type="number"
+                            value={editedPayments[payment._id] || payment.amount}
+                            onChange={(e) => handlePaymentAmountChange(payment._id, e.target.value)}
+                            className="w-24 h-8"
+                            min="0"
+                            step="0.01"
+                          />
+                        ) : (
+                          formatCurrency(payment?.amount)
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">
@@ -797,13 +748,11 @@ export default function EditSaleInvoice() {
         </div>
       </div>
 
-      {/* Payment Dialog */}
-      <PaymentDialog
+      <MakePaymentDlg
         open={paymentOutDialogOpen}
         onOpenChange={setPaymentOutDialogOpen}
-        invoiceData={paymentOutData}
-        onSubmit={handlePaymentSubmit}
-        billStatus={loading ? "loading" : "idle"}
+        paymentData={paymentOutData}
+        showStep1={true}
       />
     </div>
   );
