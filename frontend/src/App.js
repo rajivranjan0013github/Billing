@@ -31,15 +31,10 @@ import DistributorDetails from "./pages/DistributorDetails";
 import PaymentOut from "./pages/PaymentOut";
 import CreatePaymentOut from "./pages/CreatePaymentOut";
 import PaymentDetails from "./pages/PaymentDetails";
-import PaymentIn from "./pages/PaymentIn";
-import CreatePaymentIn from "./pages/createPaymentIn";
-import PaymentDetailsIn from "./pages/PaymentDetailsIn";
-import SalesReturn from "./pages/SalesReturn";
 import CreatePurchaseReturn from "./pages/CreatePurchaseReturn";
 import Inventory from "./pages/Inventory";
 import SalesInvoicePrint from "./pages/SalesInvoicePrint";
 import AccountDetails from "./pages/AccountDetails";
-import SalesReturnList from "./pages/SalesReturnList";
 import Customers from "./pages/Customers";
 import ScrollRestoration from "./utils/ScrollRestoration";
 import EditPurchaseReturn from "./pages/EditPurchaseReturn";
@@ -147,24 +142,13 @@ const AppContent = () => {
               />
               <Route path="/purchase/payment-out" element={<PaymentOut />} />
               <Route
-                path="/purchase/payment-out/:paymentId"
+                path="/payment/:paymentId"
                 element={<PaymentDetails />}
               />
               <Route
                 path="/purchase/create-payment-out"
                 element={<CreatePaymentOut />}
               />
-              <Route path="/sales/payment-in" element={<PaymentIn />} />
-              <Route
-                path="/sales/create-payment-in"
-                element={<CreatePaymentIn />}
-              />
-              <Route
-                path="/sales/payment-in/:paymentId"
-                element={<PaymentDetailsIn />}
-              />
-              <Route path="/sales/return" element={<SalesReturn />} />
-              <Route path="/sales/return/list" element={<SalesReturnList />} />
               <Route
                 path="/purchase/return/create"
                 element={<CreatePurchaseReturn />}

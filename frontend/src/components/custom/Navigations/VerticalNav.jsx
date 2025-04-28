@@ -43,27 +43,8 @@ import { useToast } from "../../../hooks/use-toast";
 
 export const navItems = [
   { name: "Quick Menu", icon: Home, path: "/" },
-  
-  {
-    name: "Sales",
-    icon: ShoppingCart,
-    path: "/sales",
-    submenu: [
-      { name: "Sales List", path: "/sales" },
-      { name: "Sales Return", path: "/sales/return/list" },
-      { name: "Payment In", path: "/sales/payment-in" },
-    ],
-  },
-  {
-    name: "Purchase",
-    icon: Truck,
-    path: "/purchase",
-    submenu: [
-      { name: "Purchase List", path: "/purchase" },
-      { name: "Purchase Return", path: "/purchase/return" },
-      { name: "Payment Out", path: "/purchase/payment-out" },
-    ],
-  },
+  { name: "Sales", icon: ShoppingCart, path: "/sales" },
+  { name: "Purchase", icon: Truck, path: "/purchase" },
   { name: "Inventory", icon: Package, path: "/inventory" },
   { name: "Payments", icon: IndianRupee, path: "/payments" },
   { name: "Accounts", icon: Wallet, path: "/accounts" },

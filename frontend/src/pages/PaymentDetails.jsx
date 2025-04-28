@@ -36,7 +36,6 @@ export default function PaymentDetails() {
         setIsLoading(false);
       }
     };
-
     fetchPaymentDetails();
   }, [paymentId]);
 
@@ -67,7 +66,7 @@ export default function PaymentDetails() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex items-center">
-            <h1 className="text-xl font-semibold">Payment Out Details</h1>
+            <h1 className="text-xl font-semibold">Payment Details</h1>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -212,42 +211,87 @@ export default function PaymentDetails() {
           <CardTitle className="text-base font-medium">Invoices settled with this payment</CardTitle>
         </CardHeader>
         <CardContent>
-          {paymentDetails.bills.length === 0 ? (
+          {paymentDetails.bills.length === 0 && paymentDetails.salesBills?.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <FileX className="h-12 w-12 mb-2" />
               <p>No invoices have been settled with this payment</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Invoice Number</TableHead>
-                  <TableHead>Invoice Type</TableHead>
-                  <TableHead>Grand Total</TableHead>
-                  <TableHead>Amount Paid</TableHead>
-                  <TableHead>Due Amount</TableHead>
-                  <TableHead>Payment Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paymentDetails.bills.map((bill) => (
-                  <TableRow key={bill._id} onClick={() => navigate(`/purchase/${bill._id}`)} className="cursor-pointer">
-                    <TableCell>{new Date(bill.invoiceDate).toLocaleDateString()}</TableCell>
-                    <TableCell>{bill.invoiceNumber}</TableCell>
-                    <TableCell>{bill.invoiceType}</TableCell>
-                    <TableCell>₹{bill.grandTotal?.toLocaleString("en-IN")}</TableCell>
-                    <TableCell>₹{bill.amountPaid?.toLocaleString("en-IN")}</TableCell>
-                    <TableCell>₹{(bill.grandTotal - bill.amountPaid)?.toLocaleString("en-IN")}</TableCell>
-                    <TableCell>
-                      <Badge variant={bill.paymentStatus === "paid" ? "success" : "destructive"} className="capitalize">
-                        {bill.paymentStatus}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="space-y-6">
+              {/* Purchase Bills */}
+              {paymentDetails.bills.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Purchase Bills</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Invoice Number</TableHead>
+                        <TableHead>Invoice Type</TableHead>
+                        <TableHead>Grand Total</TableHead>
+                        <TableHead>Amount Paid</TableHead>
+                        <TableHead>Due Amount</TableHead>
+                        <TableHead>Payment Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paymentDetails.bills.map((bill) => (
+                        <TableRow key={bill._id} onClick={() => navigate(`/purchase/${bill._id}`)} className="cursor-pointer">
+                          <TableCell>{new Date(bill.invoiceDate).toLocaleDateString()}</TableCell>
+                          <TableCell>{bill.invoiceNumber}</TableCell>
+                          <TableCell>{bill.invoiceType}</TableCell>
+                          <TableCell>₹{bill.grandTotal?.toLocaleString("en-IN")}</TableCell>
+                          <TableCell>₹{bill.amountPaid?.toLocaleString("en-IN")}</TableCell>
+                          <TableCell>₹{(bill.grandTotal - bill.amountPaid)?.toLocaleString("en-IN")}</TableCell>
+                          <TableCell>
+                            <Badge variant={bill.paymentStatus === "paid" ? "success" : "destructive"} className="capitalize">
+                              {bill.paymentStatus}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {/* Sales Bills */}
+              {paymentDetails.salesBills?.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Sales Bills</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Invoice Number</TableHead>
+                        <TableHead>Sale Type</TableHead>
+                        <TableHead>Grand Total</TableHead>
+                        <TableHead>Amount Paid</TableHead>
+                        <TableHead>Due Amount</TableHead>
+                        <TableHead>Payment Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paymentDetails.salesBills.map((bill) => (
+                        <TableRow key={bill._id} onClick={() => navigate(`/sales/${bill._id}`)} className="cursor-pointer">
+                          <TableCell>{new Date(bill.invoiceDate).toLocaleDateString()}</TableCell>
+                          <TableCell>{bill.invoiceNumber}</TableCell>
+                          <TableCell className="capitalize">{bill.saleType}</TableCell>
+                          <TableCell>₹{bill.grandTotal?.toLocaleString("en-IN")}</TableCell>
+                          <TableCell>₹{bill.amountPaid?.toLocaleString("en-IN")}</TableCell>
+                          <TableCell>₹{(bill.grandTotal - bill.amountPaid)?.toLocaleString("en-IN")}</TableCell>
+                          <TableCell>
+                            <Badge variant={bill.paymentStatus === "paid" ? "success" : "destructive"} className="capitalize">
+                              {bill.paymentStatus}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>

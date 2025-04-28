@@ -436,7 +436,7 @@ const SalesInvoicePrint = () => {
                 <span>{formatCurrency(invoiceData?.grandTotal)}</span>
               </div>
               <div className="flex justify-between px-2">
-                <span className="">Paid/Balance:</span>
+                <span className="">Paid/Due:</span>
                 <span>
                   {formatCurrency(invoiceData?.amountPaid)}/
                   {formatCurrency(

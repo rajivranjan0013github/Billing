@@ -17,7 +17,7 @@ import {
 } from "../components/ui/table";
 import { Input } from "../components/ui/input";
 import { cn } from "../lib/utils";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchBills,
@@ -40,8 +40,10 @@ import { formatCurrency } from "../utils/Helper";
 
 export default function SalesTransactions() {
   const navigate = useNavigate();
-  const location = useLocation();
   const dispatch = useDispatch();
+  const [searchParams, setSearchParams] = useSearchParams();
+  console.log(searchParams.get("filter"));
+  
   const {
     bills: initialBills,
     dateRange: reduxDateRange,
@@ -53,15 +55,6 @@ export default function SalesTransactions() {
   const [searchType, setSearchType] = useState("invoice");
   const [lastFetchedRange, setLastFetchedRange] = useState(null);
 
-  // Add cleanup effect
-  useEffect(() => {
-    return () => {
-      // Only reset if navigating away from sales routes
-      if (!location.pathname.startsWith("/sales")) {
-        dispatch(resetFilters());
-      }
-    };
-  }, [location.pathname, dispatch]);
 
   // Convert ISO strings to Date objects for the component
   const dateRange = {
@@ -83,6 +76,7 @@ export default function SalesTransactions() {
 
   const handleDatePresetChange = (value) => {
     dispatch(setSelectedPreset(value));
+    setSearchParams({ filter: value });
 
     if (value === "custom") {
       return;
@@ -477,7 +471,9 @@ export default function SalesTransactions() {
           <Button
             variant="outline"
             onClick={() => navigate(`/sales/create-sell-invoice`)}
+            className="flex items-center gap-2"
           >
+            <Plus className="h-4 w-4" />
             Create Sales Invoice
           </Button>
         </div>
@@ -498,7 +494,7 @@ export default function SalesTransactions() {
                 <TableHead>INVOICE NO</TableHead>
                 <TableHead>CUSTOMER Name</TableHead>
                 <TableHead>INVOICE DATE</TableHead>
-                <TableHead>GST</TableHead>
+                {/* <TableHead>GST</TableHead> */}
                 <TableHead>BILLED ON</TableHead>
                 <TableHead>BILL TOTAL</TableHead>
                 <TableHead>Due Amt</TableHead>
@@ -539,9 +535,9 @@ export default function SalesTransactions() {
                       By : {bill.createdByName}
                     </p>
                   </TableCell>
-                  <TableCell>
+                  {/* <TableCell>
                     {bill.withGst ? "With GST" : "Without GST"}
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell>
                     <div className="font-medium">
                       {new Date(bill.createdAt).toLocaleDateString("en-IN", {

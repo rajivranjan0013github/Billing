@@ -6,7 +6,6 @@ import { Inventory } from "../models/Inventory.js";
 import { InventoryBatch } from "../models/InventoryBatch.js";
 import { StockTimeline } from "../models/StockTimeline.js";
 import { SalesBill } from "../models/SalesBill.js";
-import { SalesReturn } from "../models/SalesReturn.js";
 import { Distributor } from "../models/Distributor.js";
 import { Customer } from "../models/Customer.js";
 import AccountDetails from "../models/AccountDetails.js";
@@ -19,10 +18,6 @@ router.get("/invoice-number", verifyToken, async (req, res) => {
   res.json({ invoiceNumber });
 });
 
-router.get("/return-number", verifyToken, async (req, res) => {
-  const returnNumber = await SalesReturn.getCurrentReturnNumber();
-  res.json({ returnNumber });
-});
 
 // Create new sell bill
 router.post("/", verifyToken, async (req, res) => {
@@ -385,8 +380,9 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
     // update payments 
     for(const payment of req.body.payments) {
       const updatePayment = await Payment.findById(payment._id).session(session);
-      const updateAccount = await AccountDetails.findById(updatePayment.accountId);
-      account.balance += payment.amount - updatePayment.amount;
+      
+      const updateAccount = await AccountDetails.findById(updatePayment.accountId).session(session);
+      updateAccount.balance += payment.amount - updatePayment.amount;
       await updateAccount.save({session});
       await updatePayment.save({session});
     }
@@ -523,223 +519,6 @@ router.post("/search/invoice", verifyToken, async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: "Error searching invoice",
-      error: error.message,
-    });
-  }
-});
-
-// Create new sell bill
-router.post("/return", verifyToken, async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
-    const {
-      distributorName,
-      returnDate,
-      products,
-      billSummary,
-      originalInvoiceNumber,
-      payment,
-    } = req.body;
-
-    // Get next return number
-    const nextReturnNumber = await SalesReturn.getNextReturnNumber(session);
-
-    // Create new sales return document
-    const newReturn = new SalesReturn({
-      returnNumber: nextReturnNumber,
-      originalInvoiceNumber,
-      distributorName,
-      returnDate,
-      products,
-      billSummary,
-      createdBy: req.user._id,
-    });
-
-    // Handle payment if provided
-    if (payment && payment.amount > 0) {
-      // Create payment record
-      const paymentDoc = new Payment({
-        amount: payment.amount,
-        paymentType: "Payment Out", // Since we're paying out for returns
-        paymentMethod: payment.paymentMethod,
-        paymentDate: payment.chequeDate || new Date(),
-        distributorName: distributorName,
-        accountId: payment.accountId,
-        transactionNumber: payment.transactionNumber,
-        chequeNumber: payment.chequeNumber,
-        chequeDate: payment.chequeDate,
-        micrCode: payment.micrCode,
-        status: payment.paymentMethod === "CHEQUE" ? "PENDING" : "COMPLETED",
-        remarks: payment.remarks,
-      });
-
-      // For cheque payments, we don't need to validate account
-      if (payment.paymentMethod === "CHEQUE") {
-        // Update distributor balance if distributor exists
-        if (req.body.distributorId) {
-          const distributorDetails = await Distributor.findById(
-            req.body.distributorId
-          ).session(session);
-          if (distributorDetails) {
-            distributorDetails.currentBalance =
-              (distributorDetails.currentBalance || 0) - payment.amount;
-            await distributorDetails.save({ session });
-          }
-        }
-      } else {
-        // For non-cheque payments, validate and update account
-        if (!payment.accountId) {
-          throw new Error("Account ID is required for non-cheque payments");
-        }
-
-        // Validate account exists
-        const account = await AccountDetails.findById(
-          payment.accountId
-        ).session(session);
-        if (!account) {
-          throw new Error("Account not found");
-        }
-
-        // Update account balance (decrease since we're paying out)
-        account.balance -= payment.amount;
-
-        // Add transaction details
-        account.transactions.push({
-          transactionNumber: payment.transactionNumber,
-          amount: payment.amount,
-          date: new Date(),
-          type: "DEBIT",
-          paymentId: paymentDoc._id,
-          distributorName: distributorName,
-          remarks: payment.remarks,
-          balance: account.balance,
-        });
-
-        await account.save({ session });
-
-        // Update distributor balance if distributor exists
-        if (req.body.distributorId) {
-          const distributorDetails = await Distributor.findById(
-            req.body.distributorId
-          ).session(session);
-          if (distributorDetails) {
-            distributorDetails.currentBalance =
-              (distributorDetails.currentBalance || 0) - payment.amount;
-            await distributorDetails.save({ session });
-          }
-        }
-      }
-
-      await paymentDoc.save({ session });
-      newReturn.payments.push(paymentDoc._id);
-    }
-
-    // Process inventory updates for returned items
-    for (const product of products) {
-      const { inventoryId, batchId, quantity, pack } = product;
-
-      // Find inventory and validate
-      const inventorySchema = await Inventory.findById(inventoryId).session(
-        session
-      );
-      if (!inventorySchema) {
-        throw new Error(`Inventory not found: ${inventoryId}`);
-      }
-
-      // Find batch and update quantity
-      const batch = await InventoryBatch.findById(batchId).session(session);
-      if (!batch) {
-        throw new Error(`Batch not found: ${batchId}`);
-      }
-
-      // Update batch quantity (add back returned quantity)
-      batch.quantity += quantity;
-      await batch.save({ session });
-
-      // Update inventory quantity
-      inventorySchema.quantity += quantity;
-      await inventorySchema.save({ session });
-
-      // Record timeline entry for return
-      const timeline = new StockTimeline({
-        inventoryId: inventoryId,
-        invoiceId: newReturn._id,
-        type: "SALE_RETURN",
-        pack,
-        invoiceNumber: nextReturnNumber,
-        credit: quantity,
-        balance: inventorySchema.quantity,
-        batchNumber: batch.batchNumber,
-        expiry: batch.expiry,
-        mrp: batch.mrp,
-        purchaseRate: batch.purchaseRate,
-        gstPer: batch.gstPer,
-        saleRate: batch.saleRate,
-        user: req.user._id,
-        userName: req?.user?.name,
-        distributorName: distributorName,
-      });
-      await timeline.save({ session });
-    }
-
-    const savedReturn = await newReturn.save({ session });
-    await session.commitTransaction();
-    res.status(201).json(savedReturn);
-  } catch (error) {
-    await session.abortTransaction();
-    res.status(500).json({
-      message: "Error creating sales return",
-      error: error.message,
-    });
-  } finally {
-    session.endSession();
-  }
-});
-
-// Get all sales returns
-router.get("/returns", verifyToken, async (req, res) => {
-  try {
-    const { startDate, endDate } = req.query;
-    const query = {};
-
-    if (startDate && endDate) {
-      query.returnDate = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
-      };
-    }
-
-    const returns = await SalesReturn.find(query)
-      .sort({ createdAt: -1 })
-      .populate("createdBy", "name");
-
-    res.json(returns);
-  } catch (error) {
-    res.status(500).json({
-      message: "Error fetching sales returns",
-      error: error.message,
-    });
-  }
-});
-
-// Search sales returns
-router.get("/returns/search", verifyToken, async (req, res) => {
-  try {
-    const { query } = req.query;
-    const searchQuery = {
-      returnNumber: { $regex: query, $options: "i" },
-    };
-
-    const returns = await SalesReturn.find(searchQuery)
-      .sort({ createdAt: -1 })
-      .populate("createdBy", "name");
-
-    res.json(returns);
-  } catch (error) {
-    res.status(500).json({
-      message: "Error searching sales returns",
       error: error.message,
     });
   }
