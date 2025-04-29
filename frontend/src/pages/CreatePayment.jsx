@@ -3,7 +3,7 @@ import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
 import { Checkbox } from "../components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "../components/ui/table";
-import { ArrowLeft, Calendar, Search, Settings, Store } from "lucide-react";
+import { ArrowLeft, Calendar, Search, Plus, Store } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
@@ -13,6 +13,7 @@ import { SearchSuggestion } from "../components/custom/custom-fields/CustomSearc
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
 import MakePaymentDlg from "../components/custom/payment/MakePaymentDlg";
+import { formatCurrency } from "../utils/Helper";
 
 // First, let's create a TableContent component for better organization
 export const TableContent = ({ isLoadingBills, pendingInvoices, selectedBills, onBillSelection }) => {
@@ -204,14 +205,11 @@ export default function Component() {
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-semibold">Record Payment Out</h1>
+          <h1 className="text-xl font-semibold">Create Payment</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            Settings
-          </Button>
           <Button onClick={handleSubmit}>
+            <Plus className="h-4 w-4" />
             Create Payment
           </Button>
         </div>
@@ -236,18 +234,19 @@ export default function Component() {
           {
             selecteddistributor && (
               <div className="text-sm text-muted-foreground">
-                Current Balance: ₹{selecteddistributor?.currentBalance.toLocaleString()}
+                Current Balance: {formatCurrency(selecteddistributor?.currentBalance)}
               </div>
             )
           }
 
           <div className="space-y-2">
             <label className="text-sm text-muted-foreground">
-              Enter Payment Amount
+              Payment Amount
             </label>
             <Input 
               type="number" 
               value={paymentAmount || ''}
+              disabled={selectedBills.length !== 0}
               onChange={(e) => {
                 const value = e.target.value;
                 setPaymentAmount(value === '' ? '' : Number(value));
@@ -286,9 +285,9 @@ export default function Component() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm text-muted-foreground">Notes</label>
+            <label className="text-sm text-muted-foreground">Remarks</label>
             <Textarea 
-              placeholder="Enter Notes" 
+              placeholder="Enter Remarks" 
               className="resize-none" 
               value={notes}
               onChange={(e) => setNotes(e.target.value)}

@@ -1,4 +1,4 @@
-import { ArrowLeft, FileText, Plus, Printer, Trash2, ArrowUpDown, Calendar, FileX} from "lucide-react";
+import { ArrowLeft, FileText, Plus, Printer, Trash2, ArrowUpDown, Calendar, FileX, Pen} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle} from "../components/ui/card";
@@ -97,26 +97,14 @@ export default function DistributorDetails() {
           <h1 className="text-xl font-semibold">{distributorDetails.name}</h1>
         </div>
         <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Plus className="h-4 w-4" />
-                Create New Invoice
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem>Create Sales Invoice</DropdownMenuItem>
-              <DropdownMenuItem>Create Purchase Invoice</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button variant="outline" size="icon">
-            <FileText className="h-4 w-4" />
+          <Button variant="outline" onClick={() => navigate("/payment/create-payment")}>
+            <Plus className="h-4 w-4" /> Add Payment
           </Button>
           <Button variant="outline" size="icon">
             <Trash2 className="h-4 w-4" />
           </Button>
           <Button variant="outline" size="icon">
-            <Printer className="h-4 w-4" />
+            <Pen className="h-4 w-4" />
           </Button>
         </div>
       </header>
@@ -302,56 +290,27 @@ export default function DistributorDetails() {
             </div>
           </TabsContent>
           <TabsContent value="invoices" className="m-0">
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full sm:w-auto">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    Last 365 Days
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem>Last 7 Days</DropdownMenuItem>
-                  <DropdownMenuItem>Last 30 Days</DropdownMenuItem>
-                  <DropdownMenuItem>Last 365 Days</DropdownMenuItem>
-                  <DropdownMenuItem>Custom Range</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full sm:w-auto">
-                    Select Invoice Type
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem>All Invoices</DropdownMenuItem>
-                  <DropdownMenuItem>Sales Invoices</DropdownMenuItem>
-                  <DropdownMenuItem>Purchase Invoices</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
 
             <div className="border rounded-lg">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="font-semibold">
+                    <TableHead className="font-medium">
                       <Button
                         variant="ghost"
-                        className="p-0 h-auto font-semibold hover:bg-transparent"
+                        className="p-0 h-auto font-medium hover:bg-transparent"
                       >
                         Date
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
-                    <TableHead className="font-semibold">Invoice Type</TableHead>
-                    <TableHead className="font-semibold">Invoice Number</TableHead>
-                    <TableHead className="font-semibold text-right">Items</TableHead>
-                    <TableHead className="font-semibold text-right">Grand Total</TableHead>
-                    <TableHead className="font-semibold text-right">Due Amount</TableHead>
-                    <TableHead className="font-semibold">Due Date</TableHead>
-                    <TableHead className="font-semibold">Status</TableHead>
+                    <TableHead className="font-medium">Invoice Type</TableHead>
+                    <TableHead className="font-medium">Invoice Number</TableHead>
+                    <TableHead className="font-medium text-right">Items</TableHead>
+                    <TableHead className="font-medium text-right">Grand Total</TableHead>
+                    <TableHead className="font-medium text-right">Due Amount</TableHead>
+                    <TableHead className="font-medium">Due Date</TableHead>
+                    <TableHead className="font-medium">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -407,54 +366,25 @@ export default function DistributorDetails() {
             </div>
           </TabsContent>
           <TabsContent value="payments" className="m-0">
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full sm:w-auto">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    Last 365 Days
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem>Last 7 Days</DropdownMenuItem>
-                  <DropdownMenuItem>Last 30 Days</DropdownMenuItem>
-                  <DropdownMenuItem>Last 365 Days</DropdownMenuItem>
-                  <DropdownMenuItem>Custom Range</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full sm:w-auto">
-                    Select Payment Type
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem>All Payments</DropdownMenuItem>
-                  <DropdownMenuItem>Payment In</DropdownMenuItem>
-                  <DropdownMenuItem>Payment Out</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
 
             <div className="border rounded-lg">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="font-semibold">
+                    <TableHead className="font-medium">
                       <Button
                         variant="ghost"
-                        className="p-0 h-auto font-semibold hover:bg-transparent"
+                        className="p-0 h-auto font-medium hover:bg-transparent"
                       >
                         Date
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
-                    <TableHead className="font-semibold">Payment Type</TableHead>
-                    <TableHead className="font-semibold">Payment Number</TableHead>
-                    <TableHead className="font-semibold">Payment Method</TableHead>
-                    <TableHead className="font-semibold text-right">Amount</TableHead>
-                    <TableHead className="font-semibold">Status</TableHead>
+                    <TableHead className="font-medium">Payment Type</TableHead>
+                    <TableHead className="font-medium">Payment Number</TableHead>
+                    <TableHead className="font-medium">Payment Method</TableHead>
+                    <TableHead className="font-medium text-right">Amount</TableHead>
+                    <TableHead className="font-medium">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

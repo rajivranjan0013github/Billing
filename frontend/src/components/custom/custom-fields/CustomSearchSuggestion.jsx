@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, forwardRef } from 'react';
 import { Input } from "../../ui/input";
 import { Badge } from "../../ui/badge"; // Add this import
+import { formatCurrency } from '../../../utils/Helper';
 
 export const SearchSuggestion = forwardRef(({ suggestions=[], placeholder, value, setValue, onSuggestionSelect, showAmount=false, onKeyDown }, ref) => {
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
@@ -100,8 +101,8 @@ export const SearchSuggestion = forwardRef(({ suggestions=[], placeholder, value
               <div className="flex justify-between items-center">
                 <span className='capitalize text-sm'>{suggestion.name}</span>
                 {showAmount && suggestion?.currentBalance !== undefined && (
-                  <Badge variant={suggestion?.currentBalance <= 0 ? "destructive" : "success"}>
-                    {suggestion?.currentBalance || 0}
+                  <Badge variant={suggestion?.currentBalance <= 0 ? "destructive" : "success"} className={'font-medium'}>
+                    {formatCurrency(suggestion?.currentBalance || 0)}
                   </Badge>
                 )}
               </div>

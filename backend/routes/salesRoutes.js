@@ -480,7 +480,10 @@ router.get("/search", verifyToken, async (req, res) => {
   try {
     const { query } = req.query;
     const searchQuery = {
-      invoiceNumber: { $regex: query, $options: "i" },
+      $or: [
+        { invoiceNumber: { $regex: query, $options: "i" } },
+        { customerName: { $regex: query, $options: "i" } }
+      ]
     };
 
     const bills = await SalesBill.find(searchQuery).sort({ createdAt: -1 });

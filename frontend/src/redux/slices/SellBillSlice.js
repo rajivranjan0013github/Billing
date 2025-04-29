@@ -61,9 +61,9 @@ export const fetchBills = createLoadingAsyncThunk(
 // Search bills
 export const searchBills = createLoadingAsyncThunk(
   "bill/searchBills",
-  async ({ query, startDate, endDate }) => {
+  async ({ query }) => {
     const response = await fetch(
-      `${Backend_URL}/api/sales/search?query=${query}&startDate=${startDate}&endDate=${endDate}`,
+      `${Backend_URL}/api/sales/search?query=${query}`,
       { credentials: "include" }
     );
 

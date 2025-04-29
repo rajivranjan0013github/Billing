@@ -60,7 +60,7 @@ export default function MakePaymentDlg({ open, onOpenChange, paymentData, showSt
         chequeDate: new Date(),
         micrCode: "",
         transactionNumber: "",
-        remarks: "",
+        remarks: paymentData?.remarks || "",
         paymentDate: new Date(),
       });
     }
@@ -171,7 +171,7 @@ export default function MakePaymentDlg({ open, onOpenChange, paymentData, showSt
       .then((data) => {
         toast({title: "Payment added successfully", variant: "success"});
         dispatch(fetchDistributors());
-        navigate(`/purchase/payment-out/${data?._id}`);
+        navigate(`/payment/${data?._id}`);
       })
       .catch((error) => {
         toast({title: "Failed to create payment", variant: "destructive"});

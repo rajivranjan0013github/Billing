@@ -30,8 +30,6 @@ const INITIAL_FORM_DATA = {
   gstin: "",
   DLNumber: "",
   address: "",
-  credit_period: 30,
-  credit_limit: 0,
   bankDetails: {
     accountNumber: "",
     ifsc: ""
@@ -55,8 +53,6 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
     'address',
     'accountNumber',
     'ifsc',
-    'credit_period',
-    'credit_limit',
     'save_button'
   ];
 
@@ -146,7 +142,7 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl p-0 gap-0 font-roboto">
         <DialogHeader className="px-6 py-2.5 flex flex-row items-center justify-between bg-gray-100 border-b">
-          <DialogTitle className="text-base font-semibold">
+          <DialogTitle className="font-medium">
             Create Distributor
           </DialogTitle>
         </DialogHeader>
@@ -325,49 +321,6 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
                   onKeyDown={(e) => handleKeyDown(e, 'address')}
                   ref={el => inputRef.current['address'] = el}
                 />
-              </div>
-            </div>
-
-            <div>
-              <div className="grid grid-cols-2 gap-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="creditPeriod" className="text-xs font-medium ">
-                      Credit Period
-                    </Label>
-                    <div className="relative mt-1">
-                      <Input
-                        id="creditPeriod"
-                        name="credit_period"
-                        type="number"
-                        value={formData.credit_period}
-                        onChange={handleInputChange}
-                        onKeyDown={(e) => handleKeyDown(e, 'credit_period')}
-                        ref={el => inputRef.current['credit_period'] = el}
-                        className="h-8 text-sm pr-12"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
-                        Days
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="creditLimit" className="text-xs font-medium ">
-                      Credit Limit
-                    </Label>
-                    <Input
-                      id="creditLimit"
-                      name="credit_limit"
-                      type="number"
-                      value={formData.credit_limit}
-                      onChange={handleInputChange}
-                      onKeyDown={(e) => handleKeyDown(e, 'credit_limit')}
-                      ref={el => inputRef.current['credit_limit'] = el}
-                      placeholder="₹ 0"
-                      className="h-8 mt-1 text-sm"
-                    />
-                  </div>
-                </div>
               </div>
             </div>
           </div>

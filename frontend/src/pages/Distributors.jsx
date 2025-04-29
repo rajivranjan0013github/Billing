@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Search, Users, X, ArrowLeft } from "lucide-react";
+import { Search, Users, X, ArrowLeft, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchDistributors } from "../redux/slices/distributorSlice";
@@ -125,7 +125,7 @@ export default function Distributors() {
                 <Search className="h-4 w-4 text-slate-400" />
               </div>
               <Input
-                className="w-full h-9 pl-10 pr-10 border-0 focus-visible:ring-0 placeholder:text-slate-400"
+                className="w-[200px] h-9 pl-10 pr-10 border-0 focus-visible:ring-0 placeholder:text-slate-400"
                 placeholder={`Search by ${searchType === "name" ? "distributor name" : "mobile number"}...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -148,9 +148,10 @@ export default function Distributors() {
 
         <div className="flex gap-2">
           <Button
-            className="w-[200px]"
+            variant="outline"
             onClick={() => setIsCreateDialogOpen(true)}
           >
+            <Plus className="mr-2 h-4 w-4" />
             Create Distributor
           </Button>
         </div>
@@ -188,7 +189,7 @@ export default function Distributors() {
                 <TableRow
                   key={distributor._id}
                   className="group cursor-pointer"
-                  onClick={() => navigate(`/distributor-details/${distributor._id}`)}
+                  onClick={() => navigate(`/distributors/${distributor._id}`)}
                 >
                   <TableCell className="font-medium">
                     {distributor.name}

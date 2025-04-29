@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { createPayment, deletePayment, fetchPayments } from "../redux/slices/paymentSlice";
+import { fetchPayments } from "../redux/slices/paymentSlice";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   format,
@@ -55,10 +55,9 @@ const Payments = () => {
   const dispatch = useDispatch();
 
   // Get Redux state
-  const { payments, fetchStatus, error } = useSelector((state) => state.payment);
+  const { payments } = useSelector((state) => state.payment);
   
   // Get params from URL or use defaults
-  const urlFilter = searchParams.get('filter') || 'all';  // Default to 'all'
   const urlDateFilter = searchParams.get('dateFilter') || 'today';
   const urlFromDate = searchParams.get('from');
   const urlToDate = searchParams.get('to');
@@ -356,27 +355,6 @@ const Payments = () => {
     }, {});
   }, [paymentInMethodTotals, paymentOutMethodTotals]);
 
-  // Show loading state
-  if (fetchStatus === "loading") {
-    return (
-      <div className="h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <span className="ml-2 text-lg text-gray-700">Loading payments...</span>
-      </div>
-    );
-  }
-
-  // Show error state
-  if (error) {
-    return (
-      <div className="h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-lg font-semibold text-red-600">Error loading payments</h2>
-          <p className="text-gray-600">{error}</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="w-full p-4 space-y-2">
@@ -444,26 +422,10 @@ const Payments = () => {
             </div>
           )}
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Payment
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => navigate("/sales/create-payment-in")}
-            >
-              Payment In
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => navigate("/purchase/create-payment-out")}
-            >
-              Payment Out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button variant="outline" onClick={() => navigate("/payment/create-payment")}>
+          <Plus className="mr-2 h-4 w-4" />
+          Create Payment
+        </Button>
       </div>
 
       {/* Payment Summary Cards */}
