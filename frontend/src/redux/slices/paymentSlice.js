@@ -6,12 +6,13 @@ import { setDistributorStatusIdle } from "./distributorSlice";
 
 export const fetchPayments = createLoadingAsyncThunk(
   "payment/fetchPayments",
-  async ({ startDate, endDate } = {}) => {
+  async ({ startDate, endDate, filter } = {}) => {
     let url = `${Backend_URL}/api/payment`;
     const params = new URLSearchParams();
 
     if (startDate) params.append("startDate", startDate);
     if (endDate) params.append("endDate", endDate);
+    if (filter) params.append("filter", filter);
 
     const queryString = params.toString();
     if (queryString) url += `?${queryString}`;
@@ -21,7 +22,7 @@ export const fetchPayments = createLoadingAsyncThunk(
       throw new Error("Failed to fetch payments");
     }
     const paymentArray = await response.json();
-    return { paymentArray, startDate, endDate };
+    return { paymentArray, startDate, endDate, filter };
   },
   { useGlobalLoader: true }
 );
@@ -71,71 +72,44 @@ const paymentSlice = createSlice({
   name: "payment",
   initialState: {
     payments: [],
-    dateRange: {
-      from: new Date().toISOString(),
-      to: new Date().toISOString(),
-    },
-    selectedPreset: "today",
-    paymentsStatus: "idle",
     createPaymentStatus: "idle",
     deletePaymentStatus: "idle",
+    fetchStatus: "idle",
     error: null,
   },
-  reducers: {
-    setDateRange: (state, action) => {
-      state.dateRange = {
-        from:
-          action.payload.from instanceof Date
-            ? action.payload.from.toISOString()
-            : action.payload.from,
-        to:
-          action.payload.to instanceof Date
-            ? action.payload.to.toISOString()
-            : action.payload.to,
-      };
-    },
-    setSelectedPreset: (state, action) => {
-      state.selectedPreset = action.payload;
-    },
-    setPaymentIdle: (state) => {
-      state.paymentsStatus = "idle";
-      state.selectedPreset = "today";
-      state.payments = [];
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
     builder
+      // Handle fetchPayments
       .addCase(fetchPayments.pending, (state) => {
-        state.paymentsStatus = "loading";
+        state.fetchStatus = "loading";
       })
       .addCase(fetchPayments.fulfilled, (state, action) => {
-        state.paymentsStatus = "succeeded";
-        state.payments = action.payload.paymentArray || [];
+        state.fetchStatus = "succeeded";
+        state.payments = action.payload.paymentArray;
+        state.error = null;
       })
       .addCase(fetchPayments.rejected, (state, action) => {
-        state.paymentsStatus = "failed";
+        state.fetchStatus = "failed";
         state.error = action.error.message;
       })
+      // Handle createPayment
       .addCase(createPayment.pending, (state) => {
         state.createPaymentStatus = "loading";
       })
-      .addCase(createPayment.fulfilled, (state, action) => {
+      .addCase(createPayment.fulfilled, (state) => {
         state.createPaymentStatus = "succeeded";
-        state.payments.unshift(action.payload);
       })
       .addCase(createPayment.rejected, (state, action) => {
         state.createPaymentStatus = "failed";
         state.error = action.error.message;
       })
+      // Handle deletePayment
       .addCase(deletePayment.pending, (state) => {
         state.deletePaymentStatus = "loading";
       })
-      .addCase(deletePayment.fulfilled, (state, action) => {
+      .addCase(deletePayment.fulfilled, (state) => {
         state.deletePaymentStatus = "succeeded";
-        const paymentId = action.payload.paymentId;
-        state.payments = state.payments.filter(
-          (payment) => payment._id !== paymentId
-        );
       })
       .addCase(deletePayment.rejected, (state, action) => {
         state.deletePaymentStatus = "failed";
@@ -144,6 +118,4 @@ const paymentSlice = createSlice({
   },
 });
 
-export const { setDateRange, setSelectedPreset, setPaymentIdle } =
-  paymentSlice.actions;
 export default paymentSlice.reducer;

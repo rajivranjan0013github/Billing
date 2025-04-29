@@ -4,7 +4,6 @@ import { Backend_URL } from "../../assets/Data";
 import { setAccountsStatusIdle } from "./accountSlice";
 import { setItemStatusIdle } from "./inventorySlice";
 import { setCustomerStatusIdle } from "./CustomerSlice";
-import { setPaymentIdle } from "./paymentSlice";
 
 // Create new bill
 export const createBill = createLoadingAsyncThunk(
@@ -27,7 +26,6 @@ export const createBill = createLoadingAsyncThunk(
       await dispatch(setAccountsStatusIdle());
       await dispatch(setCustomerStatusIdle());
       await dispatch(setItemStatusIdle());
-      await dispatch(setPaymentIdle());
       return data;
     } catch (error) {
       throw new Error("Failed to create bill");
@@ -36,22 +34,28 @@ export const createBill = createLoadingAsyncThunk(
   { useGlobalLoader: true }
 );
 
-// Fetch all bills with date range
+// Fetch bills
 export const fetchBills = createLoadingAsyncThunk(
   "bill/fetchBills",
-  async ({ startDate, endDate }) => {
-    const response = await fetch(
-      `${Backend_URL}/api/sales?startDate=${startDate}&endDate=${endDate}`,
-      {
-        credentials: "include",
-      }
-    );
+  async ({ startDate, endDate, filter } = {}) => {
+    let url = `${Backend_URL}/api/sales`;
+    const params = new URLSearchParams();
 
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+    if (filter) params.append("filter", filter);
+
+    const queryString = params.toString();
+    if (queryString) url += `?${queryString}`;
+
+    const response = await fetch(url, { credentials: "include" });
     if (!response.ok) {
       throw new Error("Failed to fetch bills");
     }
-    return response.json();
-  }
+    const billsArray = await response.json();
+    return { billsArray, startDate, endDate, filter };
+  },
+  { useGlobalLoader: true }
 );
 
 // Search bills
@@ -60,9 +64,7 @@ export const searchBills = createLoadingAsyncThunk(
   async ({ query, startDate, endDate }) => {
     const response = await fetch(
       `${Backend_URL}/api/sales/search?query=${query}&startDate=${startDate}&endDate=${endDate}`,
-      {
-        credentials: "include",
-      }
+      { credentials: "include" }
     );
 
     if (!response.ok) {
@@ -70,21 +72,6 @@ export const searchBills = createLoadingAsyncThunk(
     }
     return response.json();
   }
-);
-
-// Fetch a single bill by ID
-export const fetchBillById = createLoadingAsyncThunk(
-  "bill/fetchBillById",
-  async (id) => {
-    const response = await fetch(`${Backend_URL}/api/sales/sales-bill/${id}`, {
-      credentials: "include",
-    });
-    if (!response.ok) {
-      throw new Error("Failed to fetch bill");
-    }
-    return response.json();
-  },
-  { useGlobalLoader: true }
 );
 
 // Edit sale invoice
@@ -102,8 +89,7 @@ export const editSaleInvoice = createLoadingAsyncThunk(
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to edit invoice");
+        throw new Error("Failed to edit invoice");
       }
 
       const data = await response.json();
@@ -112,7 +98,6 @@ export const editSaleInvoice = createLoadingAsyncThunk(
       await dispatch(setAccountsStatusIdle());
       await dispatch(setCustomerStatusIdle());
       await dispatch(setItemStatusIdle());
-      await dispatch(setPaymentIdle());
       
       return data;
     } catch (error) {
@@ -126,92 +111,69 @@ const billSlice = createSlice({
   name: "bill",
   initialState: {
     bills: [],
-    dateRange: {
-      from: new Date().toISOString(),
-      to: new Date().toISOString()
-    },
-    selectedPreset: "today",
     createBillStatus: "idle",
-    editBillStatus : 'idle',
+    editBillStatus: "idle",
     fetchStatus: "idle",
     searchStatus: "idle",
-    saleTypeFilter: "all",
     error: null,
   },
   reducers: {
     resetStatus: (state) => {
+      state.createBillStatus = "idle";
+      state.editBillStatus = "idle";
       state.fetchStatus = "idle";
+      state.searchStatus = "idle";
       state.error = null;
     },
-    resetFilters: (state) => {
-      state.dateRange = {
-        from: new Date().toISOString(),
-        to: new Date().toISOString()
-      };
-      state.selectedPreset = "today";
-      state.saleTypeFilter = "all";
-    },
-    setDateRange: (state, action) => {
-      state.dateRange = {
-        from: action.payload.from instanceof Date ? action.payload.from.toISOString() : action.payload.from,
-        to: action.payload.to instanceof Date ? action.payload.to.toISOString() : action.payload.to
-      };
-    },
-    setSelectedPreset: (state, action) => {
-      state.selectedPreset = action.payload;
-    },
-    setSaleTypeFilter: (state, action) => {
-      state.saleTypeFilter = action.payload;
-    }
   },
   extraReducers: (builder) => {
     builder
+      // Handle createBill
       .addCase(createBill.pending, (state) => {
         state.createBillStatus = "loading";
         state.error = null;
       })
-      .addCase(createBill.fulfilled, (state, action) => {
+      .addCase(createBill.fulfilled, (state) => {
         state.createBillStatus = "succeeded";
-        state.bills.unshift(action.payload);
+        state.error = null;
       })
       .addCase(createBill.rejected, (state, action) => {
         state.createBillStatus = "failed";
-        state.error = action.payload;
+        state.error = action.error.message;
       })
+      // Handle fetchBills
       .addCase(fetchBills.pending, (state) => {
         state.fetchStatus = "loading";
-        state.error = null;
       })
       .addCase(fetchBills.fulfilled, (state, action) => {
         state.fetchStatus = "succeeded";
-        state.bills = action.payload;
+        state.bills = action.payload.billsArray;
         state.error = null;
       })
       .addCase(fetchBills.rejected, (state, action) => {
         state.fetchStatus = "failed";
-        state.error = action.payload;
+        state.error = action.error.message;
       })
+      // Handle searchBills
       .addCase(searchBills.pending, (state) => {
         state.searchStatus = "loading";
       })
       .addCase(searchBills.fulfilled, (state, action) => {
         state.searchStatus = "succeeded";
+        state.bills = action.payload;
+        state.error = null;
       })
       .addCase(searchBills.rejected, (state, action) => {
         state.searchStatus = "failed";
-        state.error = action.payload;
+        state.error = action.error.message;
       })
+      // Handle editSaleInvoice
       .addCase(editSaleInvoice.pending, (state) => {
         state.editBillStatus = "loading";
         state.error = null;
       })
-      .addCase(editSaleInvoice.fulfilled, (state, action) => {
+      .addCase(editSaleInvoice.fulfilled, (state) => {
         state.editBillStatus = "succeeded";
-        // Update the bill in the bills array
-        const index = state.bills.findIndex(bill => bill._id === action.payload._id);
-        if (index !== -1) {
-          state.bills[index] = action.payload;
-        }
         state.error = null;
       })
       .addCase(editSaleInvoice.rejected, (state, action) => {
@@ -221,5 +183,5 @@ const billSlice = createSlice({
   },
 });
 
-export const { resetStatus, resetFilters, setDateRange, setSelectedPreset, setSaleTypeFilter } = billSlice.actions;
+export const { resetStatus } = billSlice.actions;
 export default billSlice.reducer;

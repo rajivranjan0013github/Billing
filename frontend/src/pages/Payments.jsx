@@ -24,15 +24,12 @@ import {
   TrendingUp,
   TrendingDown,
   ArrowRightLeft,
+  Loader2,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import {
-  fetchPayments,
-  setDateRange,
-  setSelectedPreset,
-} from "../redux/slices/paymentSlice";
-import { useEffect, useState } from "react";
+import { createPayment, deletePayment, fetchPayments } from "../redux/slices/paymentSlice";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   format,
   subDays,
@@ -53,28 +50,79 @@ import { Card, CardContent } from "../components/ui/card";
 
 const Payments = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
-  const { payments, paymentsStatus, dateRange, selectedPreset } = useSelector(
-    (state) => state.payment
-  );
   const dispatch = useDispatch();
-  const [paymentTypeFilter, setPaymentTypeFilter] = useState("all");
 
-  // Convert ISO strings to Date objects for the component
-  const displayDateRange = {
-    from: dateRange.from ? new Date(dateRange.from) : null,
-    to: dateRange.to ? new Date(dateRange.to) : null,
-  };
+  // Get Redux state
+  const { payments, fetchStatus, error } = useSelector((state) => state.payment);
+  
+  // Get params from URL or use defaults
+  const urlFilter = searchParams.get('filter') || 'all';  // Default to 'all'
+  const urlDateFilter = searchParams.get('dateFilter') || 'today';
+  const urlFromDate = searchParams.get('from');
+  const urlToDate = searchParams.get('to');
+
+  const [paymentTypeFilter, setPaymentTypeFilter] = useState('all');  // Set default to 'all'
+  const [dateFilterType, setDateFilterType] = useState(urlDateFilter);
+  const [dateRange, setDateRange] = useState({
+    from: urlFromDate ? new Date(urlFromDate) : new Date(),
+    to: urlToDate ? new Date(urlToDate) : new Date()
+  });
 
   const handleDateSelect = (range) => {
     if (range?.from && range?.to) {
-      dispatch(setDateRange(range));
-      dispatch(setSelectedPreset("custom"));
+      try {
+        const fromDate = new Date(range.from);
+        const toDate = new Date(range.to);
+
+        if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+          throw new Error("Invalid date selection");
+        }
+
+        const newFromDate = format(fromDate, 'yyyy-MM-dd');
+        const newToDate = format(toDate, 'yyyy-MM-dd');
+        
+        setDateRange({ from: fromDate, to: toDate });
+        setDateFilterType("custom");
+        
+        // Update URL with date range and filter
+        setSearchParams(prev => {
+          prev.set('from', newFromDate);
+          prev.set('to', newToDate);
+          prev.set('dateFilter', 'custom');
+          if (paymentTypeFilter !== 'all') {
+            prev.set('filter', paymentTypeFilter);
+          } else {
+            prev.delete('filter');
+          }
+          return prev;
+        });
+
+        dispatch(fetchPayments({
+          startDate: fromDate,
+          endDate: toDate,
+          filter: paymentTypeFilter,
+        })).unwrap()
+        .catch(err => {
+          toast({
+            title: "Error fetching payments",
+            description: err.message,
+            variant: "destructive",
+          });
+        });
+      } catch (err) {
+        toast({
+          title: "Error",
+          description: "Invalid date selection",
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  const handleDatePresetChange = (value) => {
-    dispatch(setSelectedPreset(value));
+  const handleDateFilterChange = (value) => {
+    setDateFilterType(value);
 
     if (value === "custom") {
       return;
@@ -82,147 +130,259 @@ const Payments = () => {
 
     let newRange = { from: new Date(), to: new Date() };
 
-    switch (value) {
-      case "today":
-        newRange = { from: new Date(), to: new Date() };
-        break;
-      case "yesterday":
-        const yesterday = subDays(new Date(), 1);
-        newRange = { from: yesterday, to: yesterday };
-        break;
-      case "thisWeek":
-        newRange = {
-          from: startOfWeek(new Date(), { weekStartsOn: 1 }),
-          to: endOfWeek(new Date(), { weekStartsOn: 1 }),
-        };
-        break;
-      case "thisMonth":
-        newRange = {
-          from: startOfMonth(new Date()),
-          to: endOfMonth(new Date()),
-        };
-        break;
-      default:
-        break;
+    try {
+      switch (value) {
+        case "today":
+          newRange = { from: new Date(), to: new Date() };
+          break;
+        case "yesterday": {
+          const yesterday = subDays(new Date(), 1);
+          newRange = { from: yesterday, to: yesterday };
+          break;
+        }
+        case "thisWeek":
+          newRange = {
+            from: startOfWeek(new Date(), { weekStartsOn: 1 }),
+            to: endOfWeek(new Date(), { weekStartsOn: 1 }),
+          };
+          break;
+        case "thisMonth":
+          newRange = {
+            from: startOfMonth(new Date()),
+            to: endOfMonth(new Date()),
+          };
+          break;
+        default:
+          break;
+      }
+
+      const newFromDate = format(newRange.from, 'yyyy-MM-dd');
+      const newToDate = format(newRange.to, 'yyyy-MM-dd');
+      
+      setDateRange(newRange);
+
+      // Update URL with date range and filter
+      setSearchParams(prev => {
+        prev.set('from', newFromDate);
+        prev.set('to', newToDate);
+        prev.set('dateFilter', value);
+        if (paymentTypeFilter !== 'all') {
+          prev.set('filter', paymentTypeFilter);
+        } else {
+          prev.delete('filter');
+        }
+        return prev;
+      });
+
+      dispatch(fetchPayments({
+        startDate: newRange.from,
+        endDate: newRange.to,
+        filter: paymentTypeFilter,
+      })).unwrap()
+      .catch(err => {
+        toast({
+          title: "Error fetching payments",
+          description: err.message,
+          variant: "destructive",
+        });
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Error setting date range",
+        variant: "destructive",
+      });
     }
-
-    dispatch(setDateRange(newRange));
-    dispatch(
-      fetchPayments({
-        startDate: newRange.from
-          .toLocaleDateString("en-IN", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })
-          .split("/")
-          .reverse()
-          .join("-"),
-        endDate: newRange.to
-          .toLocaleDateString("en-IN", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })
-          .split("/")
-          .reverse()
-          .join("-"),
-      })
-    );
   };
 
-  const handleDateSearch = () => {
-    if (!displayDateRange.to) {
-      const updatedRange = { ...displayDateRange, to: displayDateRange.from };
-      dispatch(setDateRange(updatedRange));
-    }
-    dispatch(
-      fetchPayments({
-        startDate: displayDateRange.from
-          .toLocaleDateString("en-IN", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })
-          .split("/")
-          .reverse()
-          .join("-"),
-        endDate: displayDateRange.to
-          .toLocaleDateString("en-IN", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })
-          .split("/")
-          .reverse()
-          .join("-"),
-      })
-    );
-  };
-
-  const handleDateCancel = () => {
-    const newRange = {
-      from: subDays(new Date(), 7),
-      to: new Date(),
-    };
-    dispatch(setDateRange(newRange));
-    dispatch(setSelectedPreset("thisWeek"));
-  };
-
-  const filteredPayments = payments.filter((payment) => {
-    if (paymentTypeFilter === "all") return true;
-    return payment.paymentType === paymentTypeFilter;
-  });
-
+  // Update effect to initialize with 'all' filter
   useEffect(() => {
-    if (paymentsStatus === "idle") {
-      handleDateSearch();
+    const fromParam = searchParams.get('from');
+    const toParam = searchParams.get('to');
+    const dateFilterParam = searchParams.get('dateFilter');
+
+    // If no params, set to today's date
+    if (!fromParam || !toParam) {
+      const today = new Date();
+      const todayFormatted = format(today, 'yyyy-MM-dd');
+      
+      // Update URL with today's date
+      setSearchParams(prev => {
+        prev.set('from', todayFormatted);
+        prev.set('to', todayFormatted);
+        prev.set('dateFilter', 'today');
+        return prev;
+      });
+
+      setDateRange({ from: today, to: today });
+      setDateFilterType('today');
+      
+      dispatch(fetchPayments({
+        startDate: today,
+        endDate: today
+      })).unwrap()
+      .catch(err => {
+        toast({
+          title: "Error fetching payments",
+          description: err.message,
+          variant: "destructive",
+        });
+      });
+      return;
     }
-  }, [dispatch, paymentsStatus]);
 
-  // Calculate totals
-  const totalPaymentIn = filteredPayments
-    .filter((payment) => payment.paymentType === "Payment In")
-    .reduce((sum, payment) => sum + (payment.amount || 0), 0);
+    try {
+      // Parse dates and validate them
+      const fromDate = new Date(fromParam);
+      const toDate = new Date(toParam);
 
-  const totalPaymentOut = filteredPayments
-    .filter((payment) => payment.paymentType === "Payment Out")
-    .reduce((sum, payment) => sum + (payment.amount || 0), 0);
+      if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+        throw new Error("Invalid date in URL parameters");
+      }
 
-  const netTotal = totalPaymentIn - totalPaymentOut;
+      const paramRange = {
+        from: fromDate,
+        to: toDate
+      };
 
-  // Calculate payment method breakdowns
-  const calculatePaymentMethodTotals = (payments) => {
+      setDateRange(paramRange);
+      
+      if (dateFilterParam) {
+        setDateFilterType(dateFilterParam);
+      }
+
+      dispatch(fetchPayments({
+        startDate: fromDate,
+        endDate: toDate
+      })).unwrap()
+      .catch(err => {
+        toast({
+          title: "Error fetching payments",
+          description: err.message,
+          variant: "destructive",
+        });
+      });
+    } catch (err) {
+      // If dates are invalid, reset to today
+      const today = new Date();
+      const todayFormatted = format(today, 'yyyy-MM-dd');
+      
+      setSearchParams(prev => {
+        prev.set('from', todayFormatted);
+        prev.set('to', todayFormatted);
+        prev.set('dateFilter', 'today');
+        return prev;
+      });
+
+      setDateRange({ from: today, to: today });
+      setDateFilterType('today');
+      
+      dispatch(fetchPayments({
+        startDate: today,
+        endDate: today
+      })).unwrap()
+      .catch(err => {
+        toast({
+          title: "Error fetching payments",
+          description: err.message,
+          variant: "destructive",
+        });
+      });
+
+      toast({
+        title: "Invalid date parameters",
+        description: "Reset to today's date",
+        variant: "destructive",
+      });
+    }
+  }, []);
+
+  const handleFilterChange = (value) => {
+    setPaymentTypeFilter(value);
+  };
+
+  // Filter payments based on payment type
+  const filteredPayments = useMemo(() => {
+    if (!payments) return [];
+    if (paymentTypeFilter === 'all') return payments;
+    return payments.filter(payment => payment.paymentType === paymentTypeFilter);
+  }, [payments, paymentTypeFilter]);
+
+  // Calculate totals based on filtered payments
+  const totalPaymentIn = useMemo(() => {
+    return filteredPayments
+      .filter(payment => payment.paymentType === "Payment In")
+      .reduce((sum, payment) => sum + (payment.amount || 0), 0);
+  }, [filteredPayments]);
+
+  const totalPaymentOut = useMemo(() => {
+    return filteredPayments
+      .filter(payment => payment.paymentType === "Payment Out")
+      .reduce((sum, payment) => sum + (payment.amount || 0), 0);
+  }, [filteredPayments]);
+
+  const netTotal = useMemo(() => totalPaymentIn - totalPaymentOut, [totalPaymentIn, totalPaymentOut]);
+
+  // Calculate payment method breakdowns with memoization
+  const calculatePaymentMethodTotals = useCallback((payments) => {
     return payments.reduce((acc, payment) => {
       const method = payment.paymentMethod || "Other";
       acc[method] = (acc[method] || 0) + (payment.amount || 0);
       return acc;
     }, {});
-  };
+  }, []);
 
-  const paymentInMethodTotals = calculatePaymentMethodTotals(
-    filteredPayments.filter((payment) => payment.paymentType === "Payment In")
-  );
+  const paymentInMethodTotals = useMemo(() => {
+    return calculatePaymentMethodTotals(
+      filteredPayments.filter(payment => payment.paymentType === "Payment In")
+    );
+  }, [filteredPayments, calculatePaymentMethodTotals]);
 
-  const paymentOutMethodTotals = calculatePaymentMethodTotals(
-    filteredPayments.filter((payment) => payment.paymentType === "Payment Out")
-  );
+  const paymentOutMethodTotals = useMemo(() => {
+    return calculatePaymentMethodTotals(
+      filteredPayments.filter(payment => payment.paymentType === "Payment Out")
+    );
+  }, [filteredPayments, calculatePaymentMethodTotals]);
 
-  const netMethodTotals = Object.keys({
-    ...paymentInMethodTotals,
-    ...paymentOutMethodTotals,
-  }).reduce((acc, method) => {
-    acc[method] =
-      (paymentInMethodTotals[method] || 0) -
-      (paymentOutMethodTotals[method] || 0);
-    return acc;
-  }, {});
+  const netMethodTotals = useMemo(() => {
+    return Object.keys({
+      ...paymentInMethodTotals,
+      ...paymentOutMethodTotals,
+    }).reduce((acc, method) => {
+      acc[method] =
+        (paymentInMethodTotals[method] || 0) -
+        (paymentOutMethodTotals[method] || 0);
+      return acc;
+    }, {});
+  }, [paymentInMethodTotals, paymentOutMethodTotals]);
+
+  // Show loading state
+  if (fetchStatus === "loading") {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <span className="ml-2 text-lg text-gray-700">Loading payments...</span>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-lg font-semibold text-red-600">Error loading payments</h2>
+          <p className="text-gray-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full p-4 space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-2xl font-semibold">All Payments</h1>
@@ -245,7 +405,7 @@ const Payments = () => {
           </div>
           <Select
             value={paymentTypeFilter}
-            onValueChange={setPaymentTypeFilter}
+            onValueChange={handleFilterChange}
           >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by type" />
@@ -256,9 +416,9 @@ const Payments = () => {
               <SelectItem value="Payment Out">Payment Out</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={selectedPreset} onValueChange={handleDatePresetChange}>
+          <Select value={dateFilterType} onValueChange={handleDateFilterChange}>
             <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Select range" />
+              <SelectValue placeholder="Select date filter" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="today">Today</SelectItem>
@@ -268,14 +428,17 @@ const Payments = () => {
               <SelectItem value="custom">Custom</SelectItem>
             </SelectContent>
           </Select>
-          {selectedPreset === "custom" && (
+          {dateFilterType === "custom" && (
             <div className="relative w-[300px]">
               <DateRangePicker
-                from={displayDateRange.from}
-                to={displayDateRange.to}
+                from={dateRange.from}
+                to={dateRange.to}
                 onSelect={handleDateSelect}
-                onSearch={handleDateSearch}
-                onCancel={handleDateCancel}
+                onSearch={handleDateSelect}
+                onCancel={() => {
+                  setDateRange({ from: new Date(), to: new Date() });
+                  setDateFilterType("today");
+                }}
                 className="border border-slate-200 rounded-md hover:border-slate-300 transition-colors"
               />
             </div>
@@ -443,17 +606,7 @@ const Payments = () => {
               <TableRow
                 key={payment._id}
                 className="cursor-pointer hover:bg-muted/50 px-10 h-12"
-                onClick={() =>
-                  navigate(
-                    `/${
-                      payment.paymentType === "Payment In"
-                        ? "sales"
-                        : "purchase"
-                    }/payment-${
-                      payment.paymentType === "Payment In" ? "in" : "out"
-                    }/${payment._id}`
-                  )
-                }
+                onClick={() => navigate(`/payment/${payment._id}`)}
               >
                 <TableCell className="pl-5">{index + 1}</TableCell>
                 <TableCell>
@@ -471,11 +624,7 @@ const Payments = () => {
                 <TableCell>{payment?.paymentMethod}</TableCell>
                 <TableCell>{payment?.remarks || "-"}</TableCell>
                 <TableCell
-                  className={`text-right font-bold ${
-                    payment?.paymentType === "Payment In"
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
+                  className={`text-right font-bold ${payment?.paymentType === "Payment In" ? "text-green-600" : "text-red-600"}`}
                 >
                   {payment?.paymentType === "Payment In" ? "+" : "-"}₹{" "}
                   {payment?.amount?.toLocaleString("en-IN")}

@@ -1,7 +1,7 @@
 import { useRef, useState, useMemo, useEffect } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { createBill, fetchBills } from "../redux/slices/SellBillSlice";
+import { createBill } from "../redux/slices/SellBillSlice";
 import { Label } from "../components/ui/label";
 import { Checkbox } from "../components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
@@ -356,7 +356,6 @@ export default function CreateSellInvoice() {
             variant: "success",
           });
           dispatch(fetchItems()); // updating inventory
-          dispatch(fetchBills()); // updating sales list
           // Reset form
           setFormData({
             saleType: "invoice",
