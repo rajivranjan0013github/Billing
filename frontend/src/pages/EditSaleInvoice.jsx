@@ -613,7 +613,11 @@ export default function EditSaleInvoice() {
                       }`}
                     >
                       <td className="px-4 py-3 text-sm">
-                        {new Date(payment.paymentDate).toLocaleDateString()}
+                        {new Date(payment.paymentDate).toLocaleDateString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric'
+                        })}
                       </td>
                       <td className="px-4 py-3 text-sm font-medium">
                         {payment.paymentNumber}

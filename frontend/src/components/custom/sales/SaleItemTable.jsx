@@ -464,7 +464,7 @@ export default function SaleTable({
           <div>
             <Button
               onClick={handleAdd}
-              className="h-8"
+              className="h-8 focus:bg-blue-800 focus:text-white bg"
               ref={(el) => (inputRef.current["add"] = el)}
             >
               Add

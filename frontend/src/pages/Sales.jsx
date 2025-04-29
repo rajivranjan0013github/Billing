@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, Users, X, ArrowLeft, Calendar, Plus,  } from "lucide-react";
+import { Search, Users, X, ArrowLeft, Calendar, Plus } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
   DropdownMenu,
@@ -197,7 +197,9 @@ export default function SalesTransactions() {
 
   // Update the useEffect to use the debounced function
   // Read the date strings directly from Redux state
-  const { from: reduxFrom, to: reduxTo } = useSelector((state) => state.bill.dateRange);
+  const { from: reduxFrom, to: reduxTo } = useSelector(
+    (state) => state.bill.dateRange
+  );
 
   useEffect(() => {
     // Ensure we have valid date strings before proceeding
@@ -219,7 +221,7 @@ export default function SalesTransactions() {
     if (shouldFetch) {
       debouncedFetchBills(currentRange);
     }
-  // Depend on the stable Redux date strings and other stable dependencies
+    // Depend on the stable Redux date strings and other stable dependencies
   }, [reduxFrom, reduxTo, debouncedFetchBills, lastFetchedRange]);
 
   useEffect(() => {
@@ -416,13 +418,19 @@ export default function SalesTransactions() {
             <DropdownMenuItem onSelect={() => handleDatePresetChange("today")}>
               Today
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => handleDatePresetChange("yesterday")}>
+            <DropdownMenuItem
+              onSelect={() => handleDatePresetChange("yesterday")}
+            >
               Yesterday
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => handleDatePresetChange("thisWeek")}>
+            <DropdownMenuItem
+              onSelect={() => handleDatePresetChange("thisWeek")}
+            >
               This Week
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => handleDatePresetChange("thisMonth")}>
+            <DropdownMenuItem
+              onSelect={() => handleDatePresetChange("thisMonth")}
+            >
               This Month
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => handleDatePresetChange("custom")}>
@@ -477,7 +485,9 @@ export default function SalesTransactions() {
           <Button
             variant="outline"
             onClick={() => navigate(`/sales/create-sell-invoice`)}
+            className="flex items-center gap-2"
           >
+            <Plus className="h-4 w-4" />
             Create Sales Invoice
           </Button>
         </div>
@@ -498,7 +508,7 @@ export default function SalesTransactions() {
                 <TableHead>INVOICE NO</TableHead>
                 <TableHead>CUSTOMER Name</TableHead>
                 <TableHead>INVOICE DATE</TableHead>
-                <TableHead>GST</TableHead>
+                {/* <TableHead>GST</TableHead> */}
                 <TableHead>BILLED ON</TableHead>
                 <TableHead>BILL TOTAL</TableHead>
                 <TableHead>Due Amt</TableHead>
@@ -539,9 +549,9 @@ export default function SalesTransactions() {
                       By : {bill.createdByName}
                     </p>
                   </TableCell>
-                  <TableCell>
-                    {bill.withGst ? "With GST" : "Without GST"}
-                  </TableCell>
+                  {/* <TableCell>
+                      {bill.withGst ? "With GST" : "Without GST"}
+                    </TableCell> */}
                   <TableCell>
                     <div className="font-medium">
                       {new Date(bill.createdAt).toLocaleDateString("en-IN", {
