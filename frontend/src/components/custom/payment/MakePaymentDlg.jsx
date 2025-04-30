@@ -75,7 +75,9 @@ export default function MakePaymentDlg({ open, onOpenChange, paymentData, showSt
         paymentNumber: data.paymentNumber,
       }));
     }
-    fetchPaymentNumber();
+    if(open) {
+      fetchPaymentNumber();
+    }
   }, [open]);
 
   const handleBack = () => {
@@ -385,7 +387,7 @@ export default function MakePaymentDlg({ open, onOpenChange, paymentData, showSt
                     <div className="space-y-1">
                     <Label>Amount Paying</Label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2">₹</span>
                       <Input
                         type="number"
                         placeholder="Enter amount"
@@ -396,7 +398,7 @@ export default function MakePaymentDlg({ open, onOpenChange, paymentData, showSt
                             amount: e.target.value,
                           })
                         }
-                        className="pl-7"
+                        className="pl-7 font-semibold"
                       />
                     </div>
                     </div>
@@ -406,6 +408,7 @@ export default function MakePaymentDlg({ open, onOpenChange, paymentData, showSt
                     <Label>Payment Date</Label>
                     <Input
                         type="date"
+                        className='font-bold'
                         value={paymentDetails.paymentDate ? format(paymentDetails.paymentDate, "yyyy-MM-dd") : ""}
                         onChange={(e) =>
                         setPaymentDetails({
@@ -422,6 +425,7 @@ export default function MakePaymentDlg({ open, onOpenChange, paymentData, showSt
                   <Label>Remarks</Label>
                   <Textarea
                     type="text"
+                    className='font-semibold'
                     placeholder="Enter remarks (optional)"
                     value={paymentDetails.remarks}
                     onChange={(e) =>
@@ -501,7 +505,7 @@ export default function MakePaymentDlg({ open, onOpenChange, paymentData, showSt
                                 </p>
                               </div>
                               <p className="text-sm font-medium text-green-600 whitespace-nowrap">
-                                ₹{account.balance || 0}
+                               {formatCurrency(account.balance  || 0)}
                               </p>
                             </div>
                           </div>
@@ -520,6 +524,7 @@ export default function MakePaymentDlg({ open, onOpenChange, paymentData, showSt
         <div className="p-3 bg-gray-100 border-t flex items-center justify-end gap-2">
           <Button
             variant="outline"
+            className='px-4 text-[14px]'
             size="sm"
             onClick={() => onOpenChange(false)}
             disabled={createPaymentStatus === 'loading'}
@@ -545,7 +550,7 @@ export default function MakePaymentDlg({ open, onOpenChange, paymentData, showSt
                step === 3 ? !canSubmitPayment() : false) ||
               createPaymentStatus === 'loading'
             }
-            className="bg-blue-600 text-white hover:bg-blue-700"
+            className="bg-blue-600 text-white hover:bg-blue-700 px-4 text-[14px]"
           >
             {createPaymentStatus === 'loading' ? (
               <div className="flex items-center gap-2">

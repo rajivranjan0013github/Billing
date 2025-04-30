@@ -1,6 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import createLoadingAsyncThunk from "./createLoadingAsyncThunk";
 import { Backend_URL } from "../../assets/Data";
+import { format, startOfMonth } from "date-fns"; // Add date-fns import if needed for default values
 
 // Async thunk for fetching sales report
 export const fetchSalesReport = createLoadingAsyncThunk(
@@ -35,12 +36,45 @@ const reportSlice = createSlice({
     data: null,
     status: "idle", // idle | loading | succeeded | failed
     error: null,
+    // Add date filter state - use null initially or default values if preferred
+    dateRange: {
+      from: null, // Store as ISO string or timestamp for serialization
+      to: null, // Store as ISO string or timestamp for serialization
+    },
+    singleDate: null, // Store as ISO string or timestamp
+    selectedMonth: null, // Store as ISO string or timestamp (e.g., 'yyyy-MM')
   },
   reducers: {
     clearReport: (state) => {
       state.data = null;
       state.error = null;
       state.status = "idle";
+      // Optionally reset dates when clearing report data, or keep them
+      // state.dateRange = { from: null, to: null };
+      // state.singleDate = null;
+      // state.selectedMonth = null;
+    },
+    // Reducer to update date range
+    setDateRange: (state, action) => {
+      // Ensure dates are stored in a serializable format (e.g., ISO string)
+      state.dateRange.from = action.payload.from
+        ? new Date(action.payload.from).toISOString()
+        : null;
+      state.dateRange.to = action.payload.to
+        ? new Date(action.payload.to).toISOString()
+        : null;
+    },
+    // Reducer to update single date
+    setSingleDate: (state, action) => {
+      state.singleDate = action.payload
+        ? new Date(action.payload).toISOString()
+        : null;
+    },
+    // Reducer to update selected month
+    setSelectedMonth: (state, action) => {
+      state.selectedMonth = action.payload
+        ? new Date(action.payload).toISOString()
+        : null; // Store the start of the month
     },
   },
   extraReducers: (builder) => {
@@ -61,6 +95,7 @@ const reportSlice = createSlice({
   },
 });
 
-export const { clearReport } = reportSlice.actions;
+export const { clearReport, setDateRange, setSingleDate, setSelectedMonth } =
+  reportSlice.actions; // Export new actions
 
 export default reportSlice.reducer;

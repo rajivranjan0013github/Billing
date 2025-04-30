@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Search, Users, X, ArrowLeft, Calendar, Plus } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { Search, Users, X, ArrowLeft, Calendar, Plus, Loader2, Filter } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
   DropdownMenu,
@@ -17,16 +17,7 @@ import {
 } from "../components/ui/table";
 import { Input } from "../components/ui/input";
 import { cn } from "../lib/utils";
-import { useNavigate, useLocation } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchBills,
-  searchBills,
-  setDateRange,
-  setSelectedPreset,
-  setSaleTypeFilter,
-  resetFilters,
-} from "../redux/slices/SellBillSlice";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   format,
   subDays,
@@ -37,277 +28,317 @@ import {
 } from "date-fns";
 import { DateRangePicker } from "../components/ui/date-range-picker";
 import { formatCurrency } from "../utils/Helper";
+import { Backend_URL } from "../assets/Data";
+import { useToast } from "../hooks/use-toast";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchBills, searchBills } from "../redux/slices/SellBillSlice";
 
 export default function SalesTransactions() {
   const navigate = useNavigate();
-  const location = useLocation();
   const dispatch = useDispatch();
-  const {
-    bills: initialBills,
-    dateRange: reduxDateRange,
-    selectedPreset,
-    saleTypeFilter,
-  } = useSelector((state) => state.bill);
-  const [bills, setBills] = useState(initialBills);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { toast } = useToast();
+
+  // Get data from Redux
+  const { bills, fetchStatus, searchStatus, error } = useSelector((state) => state.bill);
+  
+  // Local state for filters
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchType, setSearchType] = useState("invoice");
-  const [lastFetchedRange, setLastFetchedRange] = useState(null);
+  
+  // Get params from URL or use defaults
+  const urlFilter = searchParams.get('filter') || 'all';
+  const urlDateFilter = searchParams.get('dateFilter') || 'today';
+  const urlFromDate = searchParams.get('from');
+  const urlToDate = searchParams.get('to');
 
-  // Add cleanup effect
-  useEffect(() => {
-    return () => {
-      // Only reset if navigating away from sales routes
-      if (!location.pathname.startsWith("/sales")) {
-        dispatch(resetFilters());
-      }
-    };
-  }, [location.pathname, dispatch]);
+  const [saleTypeFilter, setSaleTypeFilter] = useState(urlFilter);
+  const [dateFilterType, setDateFilterType] = useState(urlDateFilter);
+  const [dateRange, setDateRange] = useState({
+    from: urlFromDate ? new Date(urlFromDate) : new Date(),
+    to: urlToDate ? new Date(urlToDate) : new Date()
+  });
 
-  // Convert ISO strings to Date objects for the component
-  const dateRange = {
-    from: reduxDateRange.from ? new Date(reduxDateRange.from) : null,
-    to: reduxDateRange.to ? new Date(reduxDateRange.to) : null,
+  const fetchBillsData = async (params) => {
+    try {
+      await dispatch(fetchBills({
+        startDate: format(params.startDate, 'yyyy-MM-dd'),
+        endDate: format(params.endDate, 'yyyy-MM-dd'),
+        filter: saleTypeFilter !== 'all' ? saleTypeFilter : undefined
+      })).unwrap();
+    } catch (err) {
+      toast({
+        title: "Error fetching bills",
+        description: err.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDateSelect = (range) => {
     if (range?.from && range?.to) {
-      // Serialize dates before dispatching
-      const serializedRange = {
-        from: range.from.toISOString(),
-        to: range.to.toISOString(),
-      };
-      dispatch(setDateRange(serializedRange));
-      dispatch(setSelectedPreset("custom"));
+      try {
+        const fromDate = new Date(range.from);
+        const toDate = new Date(range.to);
+
+        if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+          throw new Error("Invalid date selection");
+        }
+
+        const newFromDate = format(fromDate, 'yyyy-MM-dd');
+        const newToDate = format(toDate, 'yyyy-MM-dd');
+        
+        setDateRange({ from: fromDate, to: toDate });
+        setDateFilterType("custom");
+        
+        // Update URL with date range and filter
+        setSearchParams(prev => {
+          prev.set('from', newFromDate);
+          prev.set('to', newToDate);
+          prev.set('dateFilter', 'custom');
+          if (saleTypeFilter !== 'all') {
+            prev.set('filter', saleTypeFilter);
+          } else {
+            prev.delete('filter');
+          }
+          return prev;
+        });
+
+        fetchBillsData({
+          startDate: fromDate,
+          endDate: toDate,
+        });
+      } catch (err) {
+        toast({
+          title: "Error",
+          description: "Invalid date selection",
+          variant: "destructive",
+        });
+      }
     }
   };
 
   const handleDatePresetChange = (value) => {
-    dispatch(setSelectedPreset(value));
+    setDateFilterType(value);
 
     if (value === "custom") {
+      // For custom, we keep existing from/to dates if they exist
+      setSearchParams(prev => {
+        prev.set('dateFilter', 'custom');
+        return prev;
+      });
       return;
     }
 
     let newRange = { from: new Date(), to: new Date() };
 
-    switch (value) {
-      case "today":
-        newRange = { from: new Date(), to: new Date() };
-        break;
-      case "yesterday":
-        const yesterday = subDays(new Date(), 1);
-        newRange = { from: yesterday, to: yesterday };
-        break;
-      case "thisWeek":
-        newRange = {
-          from: startOfWeek(new Date(), { weekStartsOn: 1 }),
-          to: endOfWeek(new Date(), { weekStartsOn: 1 }),
-        };
-        break;
-      case "thisMonth":
-        newRange = {
-          from: startOfMonth(new Date()),
-          to: endOfMonth(new Date()),
-        };
-        break;
-      default:
-        break;
-    }
+    try {
+      switch (value) {
+        case "today":
+          newRange = { from: new Date(), to: new Date() };
+          break;
+        case "yesterday": {
+          const yesterday = subDays(new Date(), 1);
+          newRange = { from: yesterday, to: yesterday };
+          break;
+        }
+        case "thisWeek":
+          newRange = {
+            from: startOfWeek(new Date(), { weekStartsOn: 1 }),
+            to: endOfWeek(new Date(), { weekStartsOn: 1 }),
+          };
+          break;
+        case "thisMonth":
+          newRange = {
+            from: startOfMonth(new Date()),
+            to: endOfMonth(new Date()),
+          };
+          break;
+        default:
+          break;
+      }
 
-    // Serialize dates before dispatching
-    const serializedRange = {
-      from: newRange.from.toISOString(),
-      to: newRange.to.toISOString(),
-    };
-    dispatch(setDateRange(serializedRange));
-  };
+      const newFromDate = format(newRange.from, 'yyyy-MM-dd');
+      const newToDate = format(newRange.to, 'yyyy-MM-dd');
+      
+      setDateRange(newRange);
 
-  const handleDateSearch = () => {
-    if (!dateRange.to) {
-      const updatedRange = {
-        from: dateRange.from.toISOString(),
-        to: dateRange.from.toISOString(),
-      };
-      dispatch(setDateRange(updatedRange));
-    }
-  };
-
-  const handleDateCancel = () => {
-    const newRange = {
-      from: subDays(new Date(), 7),
-      to: new Date(),
-    };
-    // Serialize dates before dispatching
-    const serializedRange = {
-      from: newRange.from.toISOString(),
-      to: newRange.to.toISOString(),
-    };
-    dispatch(setDateRange(serializedRange));
-    dispatch(setSelectedPreset("thisWeek"));
-  };
-
-  // Debounce function to prevent multiple rapid calls
-  const debounce = (func, wait) => {
-    let timeout;
-    return function executedFunction(...args) {
-      const later = () => {
-        clearTimeout(timeout);
-        func(...args);
-      };
-      clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
-    };
-  };
-
-  // Debounced version of fetchBillsData
-  const debouncedFetchBills = React.useCallback(
-    debounce((range) => {
-      const fromDate =
-        range.from instanceof Date ? range.from : new Date(range.from);
-      const toDate = range.to instanceof Date ? range.to : new Date(range.to);
-
-      dispatch(
-        fetchBills({
-          startDate: fromDate
-            .toLocaleDateString("en-IN", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            })
-            .split("/")
-            .reverse()
-            .join("-"),
-          endDate: toDate
-            .toLocaleDateString("en-IN", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            })
-            .split("/")
-            .reverse()
-            .join("-"),
-        })
-      ).then((res) => {
-        setBills(res.payload);
-        setLastFetchedRange(range);
+      // Update URL parameters
+      setSearchParams(prev => {
+        // Set new date parameters
+        prev.set('from', newFromDate);
+        prev.set('to', newToDate);
+        prev.set('dateFilter', value);
+        
+        // Keep sale type filter if it exists and isn't 'all'
+        if (saleTypeFilter === 'all') {
+          prev.delete('filter');
+        }
+        
+        return prev;
       });
-    }, 300),
-    []
-  );
 
-  // Update the useEffect to use the debounced function
-  // Read the date strings directly from Redux state
-  const { from: reduxFrom, to: reduxTo } = useSelector(
-    (state) => state.bill.dateRange
-  );
+      fetchBillsData({
+        startDate: newRange.from,
+        endDate: newRange.to,
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Error setting date range",
+        variant: "destructive",
+      });
+    }
+  };
 
+  // Initialize with URL params or defaults
   useEffect(() => {
-    // Ensure we have valid date strings before proceeding
-    if (!reduxFrom || !reduxTo) {
+    const fromParam = searchParams.get('from');
+    const toParam = searchParams.get('to');
+    const dateFilterParam = searchParams.get('dateFilter');
+
+    // If no params, set to today's date
+    if (!fromParam || !toParam) {
+      const today = new Date();
+      const todayFormatted = format(today, 'yyyy-MM-dd');
+      
+      // Update URL with today's date
+      setSearchParams(prev => {
+        prev.set('from', todayFormatted);
+        prev.set('to', todayFormatted);
+        prev.set('dateFilter', 'today');
+        return prev;
+      });
+
+      setDateRange({ from: today, to: today });
+      setDateFilterType('today');
+      
+      fetchBillsData({
+        startDate: today,
+        endDate: today
+      });
       return;
     }
 
-    // Create Date objects inside the effect
-    const currentRange = {
-      from: new Date(reduxFrom),
-      to: new Date(reduxTo),
-    };
+    try {
+      // Parse dates and validate them
+      const fromDate = new Date(fromParam);
+      const toDate = new Date(toParam);
 
-    const shouldFetch =
-      !lastFetchedRange ||
-      lastFetchedRange.from?.getTime() !== currentRange.from.getTime() ||
-      lastFetchedRange.to?.getTime() !== currentRange.to.getTime();
+      if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+        throw new Error("Invalid date in URL parameters");
+      }
 
-    if (shouldFetch) {
-      debouncedFetchBills(currentRange);
-    }
-    // Depend on the stable Redux date strings and other stable dependencies
-  }, [reduxFrom, reduxTo, debouncedFetchBills, lastFetchedRange]);
+      const paramRange = {
+        from: fromDate,
+        to: toDate
+      };
 
-  useEffect(() => {
-    setBills(initialBills);
-  }, [initialBills]);
+      setDateRange(paramRange);
+      
+      if (dateFilterParam) {
+        setDateFilterType(dateFilterParam);
+      }
 
-  const summary = (bills || []).reduce(
-    (acc, bill) => {
-      if (!bill) return acc;
+      fetchBillsData({
+        startDate: fromDate,
+        endDate: toDate
+      });
+    } catch (err) {
+      // If dates are invalid, reset to today
+      const today = new Date();
+      const todayFormatted = format(today, 'yyyy-MM-dd');
+      
+      setSearchParams(prev => {
+        prev.set('from', todayFormatted);
+        prev.set('to', todayFormatted);
+        prev.set('dateFilter', 'today');
+        return prev;
+      });
 
-      acc.count++;
-      acc.salesAmount += bill.billSummary?.grandTotal || 0;
-      acc.amountPaid += bill.amountPaid || 0;
-      return acc;
-    },
-    { count: 0, salesAmount: 0, amountPaid: 0 }
-  );
+      setDateRange({ from: today, to: today });
+      setDateFilterType('today');
+      
+      fetchBillsData({
+        startDate: today,
+        endDate: today
+      });
 
-  const getFilteredBills = () => {
-    let filteredBills = bills;
-
-    // Apply sale type filter
-    if (saleTypeFilter !== "all") {
-      filteredBills = filteredBills.filter((bill) => {
-        if (saleTypeFilter === "sales") return bill.saleType !== "return";
-        if (saleTypeFilter === "returns") return bill.saleType === "return";
-        return true;
+      toast({
+        title: "Invalid date parameters",
+        description: "Reset to today's date",
+        variant: "destructive",
       });
     }
-
-    // Apply search filter
-    if (searchQuery) {
-      filteredBills = filteredBills.filter((bill) =>
-        bill.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    return filteredBills;
-  };
+  }, []);
 
   const handleSearch = async (value) => {
     setSearchQuery(value);
 
     if (!value.trim()) {
-      setBills(initialBills);
+      fetchBillsData({
+        startDate: dateRange.from,
+        endDate: dateRange.to,
+      });
       return;
     }
 
-    const localResults = bills.filter((bill) =>
-      bill.invoiceNumber.toLowerCase().includes(value.toLowerCase())
-    );
-
-    if (localResults.length === 0) {
-      dispatch(
-        searchBills({
-          query: value,
-          startDate: dateRange.from
-            .toLocaleDateString("en-IN", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            })
-            .split("/")
-            .reverse()
-            .join("-"),
-          endDate: dateRange.to
-            .toLocaleDateString("en-IN", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            })
-            .split("/")
-            .reverse()
-            .join("-"),
-        })
-      ).then((res) => {
-        setBills(res.payload);
+    try {
+      await dispatch(searchBills({
+        query: value,
+        startDate: format(dateRange.from, 'yyyy-MM-dd'),
+        endDate: format(dateRange.to, 'yyyy-MM-dd')
+      })).unwrap();
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to search bills",
+        variant: "destructive",
       });
     }
   };
+
+  // Filter bills based on sale type
+  const filteredBills = useMemo(() => {
+    if (!bills) return [];
+    if (saleTypeFilter === 'all') return bills;
+    return bills.filter(bill => 
+      saleTypeFilter === 'sales' ? bill.saleType !== 'return' : bill.saleType === 'return'
+    );
+  }, [bills, saleTypeFilter]);
+
+  const handleSaleTypeFilterChange = (value) => {
+    setSaleTypeFilter(value);
+    setSearchParams(prev => {
+      if (value === 'all') {
+        prev.delete('filter');
+      } else {
+        prev.set('filter', value);
+      }
+      return prev;
+    });
+  };
+
+  // Calculate summary
+  const summary = useMemo(() => {
+    return (filteredBills || []).reduce(
+      (acc, bill) => {
+        if (!bill) return acc;
+        acc.count++;
+        acc.salesAmount += bill.billSummary?.grandTotal || 0;
+        acc.amountPaid += bill.amountPaid || 0;
+        return acc;
+      },
+      { count: 0, salesAmount: 0, amountPaid: 0 }
+    );
+  }, [filteredBills]);
+
+
 
   return (
     <div className="relative p-4 space-y-2">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-2xl font-bold">Sales Transactions</h1>
@@ -344,22 +375,17 @@ export default function SalesTransactions() {
                     variant="ghost"
                     className="h-9 w-[120px] border-0 bg-transparent hover:bg-slate-100 focus:ring-0 focus:ring-offset-0 justify-start px-3"
                   >
-                    {searchType === "invoice"
+                    {saleTypeFilter === "invoice"
                       ? "Invoice No"
-                      : searchType === "customer"
-                      ? "Customer"
-                      : "GRN No"}
+                      : "Customer"}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-[120px]">
-                  <DropdownMenuItem onSelect={() => setSearchType("invoice")}>
+                  <DropdownMenuItem onSelect={() => setSaleTypeFilter("invoice")}>
                     Invoice No
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setSearchType("customer")}>
+                  <DropdownMenuItem onSelect={() => setSaleTypeFilter("customer")}>
                     Customer
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setSearchType("grn")}>
-                    GRN No
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -372,11 +398,9 @@ export default function SalesTransactions() {
               <Input
                 className="w-full h-9 pl-10 pr-10 border-0 focus-visible:ring-0 placeholder:text-slate-400"
                 placeholder={`Search by ${
-                  searchType === "invoice"
+                  saleTypeFilter === "invoice"
                     ? "invoice number"
-                    : searchType === "customer"
-                    ? "customer name"
-                    : "GRN number"
+                    : "customer name"
                 }...`}
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
@@ -389,7 +413,10 @@ export default function SalesTransactions() {
                     className="h-6 w-6 p-0 hover:bg-slate-100 rounded-full"
                     onClick={() => {
                       setSearchQuery("");
-                      setBills(initialBills);
+                      fetchBillsData({
+                        startDate: dateRange.from,
+                        endDate: dateRange.to,
+                      });
                     }}
                   >
                     <X className="h-3 w-3 text-slate-500" />
@@ -403,13 +430,14 @@ export default function SalesTransactions() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="w-[150px]">
-              {selectedPreset === "today"
+              <Calendar className="mr-2 h-4 w-4" />
+              {dateFilterType === "today"
                 ? "Today"
-                : selectedPreset === "yesterday"
+                : dateFilterType === "yesterday"
                 ? "Yesterday"
-                : selectedPreset === "thisWeek"
+                : dateFilterType === "thisWeek"
                 ? "This Week"
-                : selectedPreset === "thisMonth"
+                : dateFilterType === "thisMonth"
                 ? "This Month"
                 : "Custom"}
             </Button>
@@ -439,14 +467,24 @@ export default function SalesTransactions() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {selectedPreset === "custom" && (
+        {dateFilterType === "custom" && (
           <div className="relative w-[300px]">
             <DateRangePicker
               from={dateRange.from}
               to={dateRange.to}
               onSelect={handleDateSelect}
-              onSearch={handleDateSearch}
-              onCancel={handleDateCancel}
+              onSearch={() => {}}
+              onCancel={() => {
+                setDateRange({ from: new Date(), to: new Date() });
+                setDateFilterType("today");
+                setSearchParams(prev => {
+                  prev.delete('from');
+                  prev.delete('to');
+                  prev.delete('dateFilter');
+                  prev.delete('filter');
+                  return prev;
+                });
+              }}
               className="border border-slate-200 rounded-md hover:border-slate-300 transition-colors"
             />
           </div>
@@ -455,6 +493,7 @@ export default function SalesTransactions() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="w-[120px]">
+              <Filter className="mr-2 h-4 w-4" />
               {saleTypeFilter === "all"
                 ? "All"
                 : saleTypeFilter === "sales"
@@ -464,17 +503,17 @@ export default function SalesTransactions() {
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem
-              onSelect={() => dispatch(setSaleTypeFilter("all"))}
+              onSelect={() => handleSaleTypeFilterChange("all")}
             >
               All
             </DropdownMenuItem>
             <DropdownMenuItem
-              onSelect={() => dispatch(setSaleTypeFilter("sales"))}
+              onSelect={() => handleSaleTypeFilterChange("sales")}
             >
               Sales
             </DropdownMenuItem>
             <DropdownMenuItem
-              onSelect={() => dispatch(setSaleTypeFilter("returns"))}
+              onSelect={() => handleSaleTypeFilterChange("returns")}
             >
               Returns
             </DropdownMenuItem>
@@ -516,7 +555,7 @@ export default function SalesTransactions() {
               </TableRow>
             </TableHeader>
             <TableBody className="border">
-              {getFilteredBills().map((bill, index) => (
+              {filteredBills.map((bill, index) => (
                 <TableRow
                   key={bill._id}
                   className="group cursor-pointer"
@@ -550,8 +589,8 @@ export default function SalesTransactions() {
                     </p>
                   </TableCell>
                   {/* <TableCell>
-                      {bill.withGst ? "With GST" : "Without GST"}
-                    </TableCell> */}
+                    {bill.withGst ? "With GST" : "Without GST"}
+                  </TableCell> */}
                   <TableCell>
                     <div className="font-medium">
                       {new Date(bill.createdAt).toLocaleDateString("en-IN", {

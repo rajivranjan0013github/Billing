@@ -650,7 +650,15 @@ export default function PaymentDialog({
                       <Input
                         type="date"
                         value={dueDate ? format(dueDate, "yyyy-MM-dd") : ""}
-                        onChange={(e) => setDueDate(new Date(e.target.value))}
+                        onChange={(e) => {
+                          const enteredValue = e.target.value;
+                          const potentialDate = enteredValue ? new Date(enteredValue) : null;
+                          if (potentialDate && !isNaN(potentialDate.getTime())) {
+                            setDueDate(potentialDate);
+                          } else {
+                            setDueDate(null); // Set to null if date is invalid
+                          }
+                        }}
                         className="w-full"
                         onKeyDown={(e) => handleKeyDown(e, "dueSubmitButton")}
                         ref={(el) => (inputRef.current["dueDate"] = el)}
@@ -690,7 +698,15 @@ export default function PaymentDialog({
                             <Input
                               type="date"
                               value={dueDate ? format(dueDate, "yyyy-MM-dd") : ""}
-                              onChange={(e) => setDueDate(new Date(e.target.value))}
+                              onChange={(e) => {
+                                const enteredValue = e.target.value;
+                                const potentialDate = enteredValue ? new Date(enteredValue) : null;
+                                if (potentialDate && !isNaN(potentialDate.getTime())) {
+                                  setDueDate(potentialDate);
+                                } else {
+                                  setDueDate(null); // Set to null if date is invalid
+                                }
+                              }}
                               className="w-full"
                               onKeyDown={(e) => handleKeyDown(e, "nextButton")}
                               ref={(el) => (inputRef.current["dueDate2"] = el)}
@@ -834,7 +850,7 @@ export default function PaymentDialog({
                 size="sm"
                 onClick={handleSubmit}
                 className="bg-blue-600 text-white hover:bg-blue-700"
-                disabled={billStatus === "loading"}
+                disabled={!dueDate || billStatus === "loading"}
                 ref={(el) => (inputRef.current["dueSubmitButton"] = el)}
               >
                 {billStatus === "loading" ? "Submitting..." : "Submit"}
@@ -844,13 +860,27 @@ export default function PaymentDialog({
                 size="sm"
                 ref={(el) => (inputRef.current["nextButton"] = el)}
                 onClick={() => {
-                  if (step === 1) setStep(2);
-                  else if (step === 2) setStep(3);
-                  else if (step === 3 && canSubmitPayment()) handleSubmit();
+                  if (step === 1) {
+                    setStep(2);
+                    // Optional: Add focus logic for the first item in step 2 if needed
+                  } else if (step === 2) {
+                    // Explicitly call handlePaymentMethodChange based on the selected index
+                    if (selectedMethodIndex === 0) { // Cheque selected
+                      handlePaymentMethodChange("CHEQUE");
+                    } else if (selectedMethodIndex > 0 && accounts[selectedMethodIndex - 1]) { // Account selected
+                      const selectedAccount = accounts[selectedMethodIndex - 1];
+                      handlePaymentMethodChange(`ACCOUNT_${selectedAccount._id}`);
+                    }
+                    // handlePaymentMethodChange already sets step = 3 and showDetails = true
+                  } else if (step === 3 && canSubmitPayment()) {
+                    handleSubmit();
+                  }
                 }}
                 disabled={
-                  (step === 3 ? !canSubmitPayment() : !paymentData.amount) ||
+                  (step === 1 && !paymentData.amount && paymentStatus !== "due") || // Step 1: Disable if amount is zero/empty when status is 'paid'
+                  (step === 3 && !canSubmitPayment()) || // Step 3: Disable if payment details are incomplete
                   billStatus === "loading"
+                  // Step 2 should always be enabled if not loading, as a selection is implicitly tracked
                 }
                 className="bg-blue-600 text-white hover:bg-blue-700"
               >

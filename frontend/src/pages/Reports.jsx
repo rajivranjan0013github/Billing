@@ -49,7 +49,13 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { cn } from "../lib/utils";
-import { fetchSalesReport, clearReport } from "../redux/slices/reportSlice";
+import {
+  fetchSalesReport,
+  clearReport,
+  setDateRange as setReduxDateRange,
+  setSingleDate as setReduxSingleDate,
+  setSelectedMonth as setReduxSelectedMonth,
+} from "../redux/slices/reportSlice";
 import {
   Dialog,
   DialogContent,
@@ -62,27 +68,38 @@ import SelectInventory from "../components/custom/inventory/SelectInventory";
 const Reports = () => {
   const dispatch = useDispatch();
 
-  // Get report state from Redux
+  // Get report state and date filters from Redux
   const {
     data: reportData,
     status: reportStatus,
     error: reportError,
+    dateRange,
+    singleDate,
+    selectedMonth,
   } = useSelector((state) => state.report);
+
+  // Convert ISO strings back to Date objects for components
+  const localDateRange = {
+    from: dateRange.from ? new Date(dateRange.from) : null,
+    to: dateRange.to ? new Date(dateRange.to) : null,
+  };
+  const localSingleDate = singleDate ? new Date(singleDate) : null;
+  const localSelectedMonth = selectedMonth ? new Date(selectedMonth) : null;
 
   // Add error state
   const [localError, setLocalError] = useState(null);
 
-  // State for date filters
-  const [dateRange, setDateRange] = useState({
-    from: null,
-    to: null,
-  });
-
-  // State for daily report
-  const [singleDate, setSingleDate] = useState();
-
-  // State for monthly report - using Date object for MonthPicker
-  const [selectedMonth, setSelectedMonth] = useState(null);
+  // State for date filters - REMOVED
+  // const [dateRange, setDateRange] = useState({
+  //   from: null,
+  //   to: null,
+  // });
+  //
+  // // State for daily report
+  // const [singleDate, setSingleDate] = useState();
+  //
+  // // State for monthly report - using Date object for MonthPicker
+  // const [selectedMonth, setSelectedMonth] = useState(null);
 
   // State for active tab
   const [activeTab, setActiveTab] = useState("sales");
@@ -264,12 +281,14 @@ const Reports = () => {
     handleFilterChange("product", "");
   };
 
-  // Function to handle date range changes
+  // Function to handle date range changes - Dispatch to Redux
   const handleDateRangeChange = (field, value) => {
-    setDateRange((prev) => ({
-      ...prev,
+    // Dispatch action to update Redux state
+    const newRange = {
+      ...localDateRange,
       [field]: value ? new Date(value) : null,
-    }));
+    };
+    dispatch(setReduxDateRange(newRange));
   };
 
   // Function to generate report
@@ -281,22 +300,25 @@ const Reports = () => {
       // Clear any previous errors
       setLocalError(null);
 
-      // Validate date range if required
+      // Validate date range if required (using Redux state)
       if (isFilterRequired("dateRange")) {
         if (!dateRange.from || !dateRange.to) {
+          // Use Redux state
           setLocalError("Please select both From and To dates");
           return;
         }
       }
 
-      // Validate single date if required
+      // Validate single date if required (using Redux state)
       if (isFilterRequired("singleDate") && !singleDate) {
+        // Use Redux state
         setLocalError("Please select a date");
         return;
       }
 
-      // Validate month if required
+      // Validate month if required (using Redux state)
       if (isFilterRequired("month") && !selectedMonth) {
+        // Use Redux state
         setLocalError("Please select a month");
         return;
       }
@@ -316,20 +338,20 @@ const Reports = () => {
         reportType: selectedReportType[activeTab],
       };
 
-      // Add date range filters - convert dates to ISO strings
+      // Add date range filters - convert dates to ISO strings from Redux state
       if (isFilterRequired("dateRange") && dateRange.from && dateRange.to) {
-        params.startDate = format(dateRange.from, "yyyy-MM-dd");
-        params.endDate = format(dateRange.to, "yyyy-MM-dd");
+        params.startDate = format(new Date(dateRange.from), "yyyy-MM-dd"); // Use Redux state
+        params.endDate = format(new Date(dateRange.to), "yyyy-MM-dd"); // Use Redux state
       }
 
-      // Add single date filter - convert date to ISO string
+      // Add single date filter - convert date to ISO string from Redux state
       if (isFilterRequired("singleDate") && singleDate) {
-        params.date = format(singleDate, "yyyy-MM-dd");
+        params.date = format(new Date(singleDate), "yyyy-MM-dd"); // Use Redux state
       }
 
-      // Add month filter - convert date to string
+      // Add month filter - convert date to string from Redux state
       if (isFilterRequired("month") && selectedMonth) {
-        params.month = format(selectedMonth, "yyyy-MM");
+        params.month = format(new Date(selectedMonth), "yyyy-MM"); // Use Redux state
       }
 
       // Add other filters - ensure all values are strings or primitives
@@ -388,7 +410,9 @@ const Reports = () => {
                 <Input
                   type="date"
                   value={
-                    dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : ""
+                    localDateRange.from
+                      ? format(localDateRange.from, "yyyy-MM-dd")
+                      : ""
                   }
                   onChange={(e) =>
                     handleDateRangeChange("from", e.target.value)
@@ -402,11 +426,15 @@ const Reports = () => {
               <div className="relative">
                 <Input
                   type="date"
-                  value={dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : ""}
+                  value={
+                    localDateRange.to
+                      ? format(localDateRange.to, "yyyy-MM-dd")
+                      : ""
+                  }
                   onChange={(e) => handleDateRangeChange("to", e.target.value)}
                   min={
-                    dateRange.from
-                      ? format(dateRange.from, "yyyy-MM-dd")
+                    localDateRange.from
+                      ? format(localDateRange.from, "yyyy-MM-dd")
                       : undefined
                   } // Prevent selecting 'to' date before 'from' date
                   className="h-8 text-sm py-0 px-2 pr-8" // Added pr-8 for potential icon space
@@ -442,15 +470,17 @@ const Reports = () => {
                         className="h-8 text-sm py-0 px-2 w-full"
                       >
                         <CalendarIcon className="mr-1 h-3.5 w-3.5 opacity-70" />
-                        {singleDate ? format(singleDate, "PP") : "Select Date"}
+                        {localSingleDate
+                          ? format(localSingleDate, "PP")
+                          : "Select Date"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
                       <Calendar
                         mode="single"
-                        selected={singleDate}
+                        selected={localSingleDate}
                         onSelect={(date) => {
-                          setSingleDate(date);
+                          dispatch(setReduxSingleDate(date));
                           setOpen(false);
                         }}
                         initialFocus
@@ -485,16 +515,18 @@ const Reports = () => {
                         className="h-8 text-sm py-0 px-2 w-full"
                       >
                         <CalendarIcon className="mr-1 h-3.5 w-3.5 opacity-70" />
-                        {selectedMonth
-                          ? format(selectedMonth, "MMMM yyyy")
+                        {localSelectedMonth
+                          ? format(localSelectedMonth, "MMMM yyyy")
                           : "Select Month"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
                       <MonthPicker
-                        currentMonth={selectedMonth || startOfMonth(new Date())}
+                        currentMonth={
+                          localSelectedMonth || startOfMonth(new Date())
+                        }
                         onMonthChange={(value) => {
-                          setSelectedMonth(value);
+                          dispatch(setReduxSelectedMonth(value));
                           setOpen(false);
                         }}
                       />
@@ -786,18 +818,18 @@ const Reports = () => {
                 dateRange.from &&
                 dateRange.to && (
                   <p className="text-sm text-gray-500">
-                    {format(dateRange.from, "MMM d, yyyy")} -{" "}
-                    {format(dateRange.to, "MMM d, yyyy")}
+                    {format(new Date(dateRange.from), "MMM d, yyyy")} -{" "}
+                    {format(new Date(dateRange.to), "MMM d, yyyy")}
                   </p>
                 )}
               {isFilterRequired("singleDate") && singleDate && (
                 <p className="text-sm text-gray-500">
-                  {format(singleDate, "MMMM d, yyyy")}
+                  {format(new Date(singleDate), "MMMM d, yyyy")}
                 </p>
               )}
               {isFilterRequired("month") && selectedMonth && (
                 <p className="text-sm text-gray-500">
-                  {format(selectedMonth, "MMMM yyyy")}
+                  {format(new Date(selectedMonth), "MMMM yyyy")}
                 </p>
               )}
             </div>

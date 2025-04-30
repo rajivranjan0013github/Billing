@@ -45,6 +45,7 @@ router.get("/sales", async (req, res) => {
     // Add product filter to query if provided
     if (product) {
       query["products.productName"] = { $regex: new RegExp(product, "i") };
+      query["products.types"] = "sale"; // Only include sale type products, exclude returns
     }
 
     // Add manufacturer filter to query if provided

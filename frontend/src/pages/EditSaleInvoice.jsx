@@ -557,7 +557,7 @@ export default function EditSaleInvoice() {
       </div>
 
       {/* Payment Details Section */}
-      <div className="mb-10 mt-4">
+      <div className="pb-20 mt-4">
         <div className="border rounded-lg overflow-hidden">
           <div className="flex justify-between items-center p-4 border-b bg-gray-50">
             <h3 className="text-lg font-medium">Payment History</h3>
@@ -574,7 +574,7 @@ export default function EditSaleInvoice() {
           </div>
 
           {payments.length > 0 ? (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto ">
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-100 text-left">
@@ -670,7 +670,7 @@ export default function EditSaleInvoice() {
                           variant="ghost"
                           size="icon"
                           onClick={() =>
-                            navigate(`/sales/payment-in/${payment._id}`)
+                            navigate(`/payment/${payment._id}`)
                           }
                           className="h-6 w-6"
                         >
@@ -693,6 +693,7 @@ export default function EditSaleInvoice() {
         </div>
       </div>
 
+      {/* Footer */}
       <div
         className={`fixed bottom-0 text-sm ${
           isCollapsed ? "w-[calc(100%-95px)]" : "w-[calc(100%-225px)]"

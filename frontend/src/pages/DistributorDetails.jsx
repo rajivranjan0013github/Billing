@@ -462,13 +462,7 @@ export default function DistributorDetails() {
                     payments.map((payment) => (
                       <TableRow
                         key={payment._id}
-                        onClick={() => {
-                          if (payment.paymentType === "Payment In") {
-                            navigate(`/sales/payment-in/${payment._id}`);
-                          } else {
-                            navigate(`/purchase/payment-out/${payment._id}`);
-                          }
-                        }}
+                        onClick={() => {navigate(`/payment/${payment._id}`)}}
                         className="cursor-pointer hover:bg-muted/50"
                       >
                         <TableCell>
