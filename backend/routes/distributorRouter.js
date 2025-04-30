@@ -56,5 +56,31 @@ router.get("/details/:distributorId", async (req, res) => {
     }
 });
 
+router.put("/update/:id", async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const { id } = req.params;
+        const distributorData = req.body;
+        
+        const distributor = await Distributor.findByIdAndUpdate(
+            id,
+            distributorData,
+            { new: true, session }
+        );
+        
+        if (!distributor) {
+            throw new Error("Distributor not found");
+        }
+
+        await session.commitTransaction();
+        res.status(200).json(distributor);
+    } catch (error) {
+        await session.abortTransaction();
+        res.status(500).json({ message: error.message });
+    } finally {
+        session.endSession();
+    }
+});
 
 export default router;

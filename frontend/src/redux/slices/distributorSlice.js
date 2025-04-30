@@ -67,11 +67,37 @@ export const fetchDistributorDetails = createLoadingAsyncThunk(
   }
 );
 
+// update distributor
+export const updateDistributor = createLoadingAsyncThunk(
+  'distributor/updateDistributor',
+  async ({ id, distributorData }, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`${Backend_URL}/api/distributor/update/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(distributorData),
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update distributor');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }, {useGlobalLoader: true}
+);
+
 const distributorSlice = createSlice({
   name: 'distributor',
   initialState: {
     distributors: [],
     createDistributorStatus: 'idle',
+    updateDistributorStatus: 'idle',
     fetchStatus: 'idle',
     error: null,
     currentDistributor: {
@@ -130,6 +156,23 @@ const distributorSlice = createSlice({
       })
       .addCase(fetchDistributorDetails.rejected, (state, action) => {
         state.currentDistributor.status = 'failed';
+        state.error = action.payload;
+      })
+      .addCase(updateDistributor.pending, (state) => {
+        state.updateDistributorStatus = 'loading';
+      })
+      .addCase(updateDistributor.fulfilled, (state, action) => {
+        state.updateDistributorStatus = 'succeeded';
+        const index = state.distributors.findIndex(d => d._id === action.payload._id);
+        if (index !== -1) {
+          state.distributors[index] = action.payload;
+        }
+        if (state.currentDistributor.details?._id === action.payload._id) {
+          state.currentDistributor.details = action.payload;
+        }
+      })
+      .addCase(updateDistributor.rejected, (state, action) => {
+        state.updateDistributorStatus = 'failed';
         state.error = action.payload;
       });
   },

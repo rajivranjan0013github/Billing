@@ -12,6 +12,8 @@ import { useDispatch, useSelector } from "react-redux"
 import { deletePayment } from "../redux/slices/paymentSlice"
 import { useToast } from "../hooks/use-toast"
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../components/ui/alert-dialog"
+import { formatCurrency } from "../utils/Helper"
+
 
 export default function PaymentDetails() {
   const navigate = useNavigate();
@@ -78,21 +80,6 @@ export default function PaymentDetails() {
           >
             Print PDF
           </Button>
-          {/* <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="text-sm">
-                <Share2 className="h-4 w-4 mr-2" />
-                Share
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem>Share via email</DropdownMenuItem>
-              <DropdownMenuItem>Copy link</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu> */}
-          {/* <Button variant="ghost" size="icon">
-            <Pencil className="h-4 w-4" />
-          </Button> */}
           <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <AlertDialogTrigger asChild>
               <Button variant="ghost" size="icon" className="text-destructive">
@@ -148,7 +135,7 @@ export default function PaymentDetails() {
           <div className="grid grid-cols-4 gap-4">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">DISTRIBUTOR NAME</p>
-              <p className="font-medium">{paymentDetails.distributorName}</p>
+              <p className="font-medium">{paymentDetails?.distributorName || paymentDetails?.customerName || "-"}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">PAYMENT DATE</p>
@@ -158,7 +145,7 @@ export default function PaymentDetails() {
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">PAYMENT AMOUNT</p>
-              <p className="font-medium">₹{paymentDetails.amount.toLocaleString("en-IN")}</p>
+              <p className="font-medium">₹{formatCurrency(paymentDetails.amount)}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">PAYMENT NUMBER</p>

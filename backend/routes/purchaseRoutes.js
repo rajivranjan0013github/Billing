@@ -510,16 +510,28 @@ router.get("/invoice/:invoiceId", verifyToken, async (req, res) => {
 // Add new search route
 router.get("/search", verifyToken, async (req, res) => {
   try {
-    const { query } = req.query;
+    const { query, searchType } = req.query;
 
     const searchQuery = {
       invoiceType: "PURCHASE",
-      invoiceNumber: { $regex: query, $options: "i" },
+      $or: [
+        { invoiceNumber: { $regex: query, $options: "i" } },
+        { distributorName: { $regex: query, $options: "i" } }
+      ]
     };
 
-    // Add date range to query if provided
+    // If searchType is specified, narrow down the search
+    if (searchType === "invoice") {
+      delete searchQuery.$or;
+      searchQuery.invoiceNumber = { $regex: query, $options: "i" };
+    } else if (searchType === "distributor") {
+      delete searchQuery.$or;
+      searchQuery.distributorName = { $regex: query, $options: "i" };
+    }
 
-    const bills = await InvoiceSchema.find(searchQuery).sort({ createdAt: -1 });
+    const bills = await InvoiceSchema.find(searchQuery)
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.json(bills);
   } catch (error) {
@@ -550,9 +562,7 @@ router.post("/search-by-invoice", verifyToken, async (req, res) => {
       searchQuery.invoiceDate = new Date(invoiceDate);
     }
 
-    const invoice = await InvoiceSchema.findOne(searchQuery)
-      .populate("products.inventoryId")
-      .lean();
+    const invoice = await InvoiceSchema.findOne(searchQuery).populate("products.inventoryId").lean();
 
     if (!invoice) {
       return res.status(404).json({ message: "Invoice not found" });

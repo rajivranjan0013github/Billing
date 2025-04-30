@@ -44,6 +44,8 @@ export default function SalesTransactions() {
   
   // Local state for filters
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [searchType, setSearchType] = useState("invoice");
   
   // Get params from URL or use defaults
   const urlFilter = searchParams.get('filter') || 'all';
@@ -51,12 +53,48 @@ export default function SalesTransactions() {
   const urlFromDate = searchParams.get('from');
   const urlToDate = searchParams.get('to');
 
-  const [saleTypeFilter, setSaleTypeFilter] = useState(urlFilter);
+  const [saleTypeFilter, setSaleTypeFilter] = useState('all');
   const [dateFilterType, setDateFilterType] = useState(urlDateFilter);
   const [dateRange, setDateRange] = useState({
     from: urlFromDate ? new Date(urlFromDate) : new Date(),
     to: urlToDate ? new Date(urlToDate) : new Date()
   });
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Handle debounced search
+  useEffect(() => {
+    const handleDebouncedSearch = async () => {
+      if (!debouncedSearchQuery.trim()) {
+        await fetchBillsData({
+          startDate: dateRange.from,
+          endDate: dateRange.to,
+        });
+        return;
+      }
+
+      try {
+        await dispatch(searchBills({
+          query: debouncedSearchQuery
+        })).unwrap();
+      } catch (err) {
+        toast({
+          title: "Error",
+          description: "Failed to search bills",
+          variant: "destructive",
+        });
+      }
+    };
+
+    handleDebouncedSearch();
+  }, [debouncedSearchQuery]);
 
   const fetchBillsData = async (params) => {
     try {
@@ -271,30 +309,8 @@ export default function SalesTransactions() {
     }
   }, []);
 
-  const handleSearch = async (value) => {
+  const handleSearch = (value) => {
     setSearchQuery(value);
-
-    if (!value.trim()) {
-      fetchBillsData({
-        startDate: dateRange.from,
-        endDate: dateRange.to,
-      });
-      return;
-    }
-
-    try {
-      await dispatch(searchBills({
-        query: value,
-        startDate: format(dateRange.from, 'yyyy-MM-dd'),
-        endDate: format(dateRange.to, 'yyyy-MM-dd')
-      })).unwrap();
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to search bills",
-        variant: "destructive",
-      });
-    }
   };
 
   // Filter bills based on sale type
@@ -308,14 +324,6 @@ export default function SalesTransactions() {
 
   const handleSaleTypeFilterChange = (value) => {
     setSaleTypeFilter(value);
-    setSearchParams(prev => {
-      if (value === 'all') {
-        prev.delete('filter');
-      } else {
-        prev.set('filter', value);
-      }
-      return prev;
-    });
   };
 
   // Calculate summary
@@ -375,16 +383,16 @@ export default function SalesTransactions() {
                     variant="ghost"
                     className="h-9 w-[120px] border-0 bg-transparent hover:bg-slate-100 focus:ring-0 focus:ring-offset-0 justify-start px-3"
                   >
-                    {saleTypeFilter === "invoice"
+                    {searchType === "invoice"
                       ? "Invoice No"
                       : "Customer"}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-[120px]">
-                  <DropdownMenuItem onSelect={() => setSaleTypeFilter("invoice")}>
+                  <DropdownMenuItem onSelect={() => setSearchType("invoice")}>
                     Invoice No
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setSaleTypeFilter("customer")}>
+                  <DropdownMenuItem onSelect={() => setSearchType("customer")}>
                     Customer
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -398,7 +406,7 @@ export default function SalesTransactions() {
               <Input
                 className="w-full h-9 pl-10 pr-10 border-0 focus-visible:ring-0 placeholder:text-slate-400"
                 placeholder={`Search by ${
-                  saleTypeFilter === "invoice"
+                  searchType === "invoice"
                     ? "invoice number"
                     : "customer name"
                 }...`}
@@ -419,7 +427,7 @@ export default function SalesTransactions() {
                       });
                     }}
                   >
-                    <X className="h-3 w-3 text-slate-500" />
+                    <X className="h-4 w-4 text-blue-500" />
                   </Button>
                 </div>
               )}
@@ -533,11 +541,21 @@ export default function SalesTransactions() {
       </div>
 
       <div className="relative overflow-x-auto border-t">
-        {bills.length === 0 ? (
+        {filteredBills.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <Users className="h-12 w-12 mb-4" />
-            <p className="text-lg">No sales bills found</p>
-            <p className="text-sm">Create a new sales invoice to get started</p>
+            {searchQuery ? (
+              <>
+                <Search className="h-12 w-12 mb-4 text-gray-400" />
+                <p className="text-lg">No sales bills found for "{searchQuery}"</p>
+                <p className="text-sm">Try searching with a different invoice number or customer name</p>
+              </>
+            ) : (
+              <>
+                <Users className="h-12 w-12 mb-4 text-gray-400" />
+                <p className="text-lg">No sales bills found</p>
+                <p className="text-sm">Create a new sales invoice to get started</p>
+              </>
+            )}
           </div>
         ) : (
           <Table>

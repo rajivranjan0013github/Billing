@@ -33,13 +33,20 @@ export const createPurchaseBill = createLoadingAsyncThunk(
 // Fetch all purchase bills
 export const fetchPurchaseBills = createLoadingAsyncThunk(
   "purchaseBill/fetchPurchaseBills",
-  async ({ startDate, endDate }) => {
-    const response = await fetch(
-      `${Backend_URL}/api/purchase?startDate=${startDate}&endDate=${endDate}`,
-      {
-        credentials: "include",
-      }
-    );
+  async ({ startDate, endDate, filter } = {}) => {
+    let url = `${Backend_URL}/api/purchase`;
+    const params = new URLSearchParams();
+
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+    if (filter) params.append("filter", filter);
+
+    const queryString = params.toString();
+    if (queryString) url += `?${queryString}`;
+
+    const response = await fetch(url, {
+      credentials: "include",
+    });
 
     if (!response.ok) {
       throw new Error("Failed to fetch purchase bills");
@@ -48,15 +55,13 @@ export const fetchPurchaseBills = createLoadingAsyncThunk(
   }
 );
 
-// Add new search thunk
+// Search purchase bills
 export const searchPurchaseBills = createLoadingAsyncThunk(
   "purchaseBill/searchPurchaseBills",
-  async ({ query, startDate, endDate }) => {
+  async ({ query, searchType }) => {
     const response = await fetch(
-      `${Backend_URL}/api/purchase/search?query=${query}&startDate=${startDate}&endDate=${endDate}`,
-      {
-        credentials: "include",
-      }
+      `${Backend_URL}/api/purchase/search?query=${query}&searchType=${searchType}`,
+      { credentials: "include" }
     );
 
     if (!response.ok) {
@@ -90,11 +95,6 @@ const purchaseBillSlice = createSlice({
   name: "purchaseBill",
   initialState: {
     purchaseBills: [],
-    dateRange: {
-      from: new Date().toISOString(),
-      to: new Date().toISOString(),
-    },
-    selectedPreset: "today",
     fetchStatus: "idle",
     createPurchaseBillStatus: "idle",
     searchStatus: "idle",
@@ -104,22 +104,10 @@ const purchaseBillSlice = createSlice({
   reducers: {
     resetStatus: (state) => {
       state.fetchStatus = "idle";
+      state.createPurchaseBillStatus = "idle";
+      state.searchStatus = "idle";
+      state.deleteStatus = "idle";
       state.error = null;
-    },
-    setDateRange: (state, action) => {
-      state.dateRange = {
-        from:
-          action.payload.from instanceof Date
-            ? action.payload.from.toISOString()
-            : action.payload.from,
-        to:
-          action.payload.to instanceof Date
-            ? action.payload.to.toISOString()
-            : action.payload.to,
-      };
-    },
-    setSelectedPreset: (state, action) => {
-      state.selectedPreset = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -154,10 +142,12 @@ const purchaseBillSlice = createSlice({
       })
       .addCase(searchPurchaseBills.fulfilled, (state, action) => {
         state.searchStatus = "succeeded";
+        state.purchaseBills = action.payload;
+        state.error = null;
       })
       .addCase(searchPurchaseBills.rejected, (state, action) => {
         state.searchStatus = "failed";
-        state.error = action.payload;
+        state.error = action.error.message;
       })
       .addCase(deletePurchaseBill.pending, (state) => {
         state.deleteStatus = "loading";
@@ -176,6 +166,5 @@ const purchaseBillSlice = createSlice({
   },
 });
 
-export const { resetStatus, setDateRange, setSelectedPreset } =
-  purchaseBillSlice.actions;
+export const { resetStatus } = purchaseBillSlice.actions;
 export default purchaseBillSlice.reducer;
