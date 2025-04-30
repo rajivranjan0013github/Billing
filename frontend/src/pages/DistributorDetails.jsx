@@ -12,11 +12,13 @@ import {
   fetchDistributorDetails,
   setTabName
 } from "../redux/slices/distributorSlice";
+import CreateDistributorDlg from "../components/custom/distributor/CreateDistributorDlg";
 
 export default function DistributorDetails() {
   const navigate = useNavigate();
   const { distributorId } = useParams();
   const dispatch = useDispatch();
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { 
     details: distributorDetails, 
     status,
@@ -32,6 +34,10 @@ export default function DistributorDetails() {
         }
     }
   }, [distributorId, dispatch]);
+
+  const handleEditSuccess = () => {
+    dispatch(fetchDistributorDetails(distributorId));
+  };
 
   if (!distributorDetails || status === 'loading') {
     return (
@@ -103,7 +109,7 @@ export default function DistributorDetails() {
           <Button variant="outline" size="icon">
             <Trash2 className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="icon">
+          <Button variant="outline" size="icon" onClick={() => setIsEditDialogOpen(true)}>
             <Pen className="h-4 w-4" />
           </Button>
         </div>
@@ -443,6 +449,12 @@ export default function DistributorDetails() {
           </TabsContent>
         </div>
       </Tabs>
+      <CreateDistributorDlg 
+        open={isEditDialogOpen} 
+        onOpenChange={setIsEditDialogOpen} 
+        onSuccess={handleEditSuccess}
+        distributorToEdit={distributorDetails}
+      />
     </div>
   );
 }

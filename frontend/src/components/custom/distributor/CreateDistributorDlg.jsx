@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { createDistributor } from "../../../redux/slices/distributorSlice";
+import { createDistributor, updateDistributor } from "../../../redux/slices/distributorSlice";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
@@ -36,10 +36,10 @@ const INITIAL_FORM_DATA = {
   }
 }
 
-export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) {
+export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, distributorToEdit }) {
   const inputRef = useRef([]);
   const dispatch = useDispatch();
-  const { createDistributorStatus } = useSelector((state) => state.distributor);
+  const { createDistributorStatus, updateDistributorStatus } = useSelector((state) => state.distributor);
   const { toast } = useToast();
   
   const inputKeys = [
@@ -50,9 +50,9 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
     'email',
     'gstin',
     'DLNumber',
-    'address',
     'accountNumber',
     'ifsc',
+    'address',
     'save_button'
   ];
 
@@ -78,6 +78,22 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
   };
 
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
+
+  useEffect(() => {
+    if (distributorToEdit) {
+      setFormData({
+        ...distributorToEdit,
+        balance_type: distributorToEdit.openBalance >= 0 ? "collect" : "pay",
+        openBalance: Math.abs(distributorToEdit.openBalance || 0).toString(),
+        bankDetails: {
+          accountNumber: distributorToEdit.bankDetails?.accountNumber || "",
+          ifsc: distributorToEdit.bankDetails?.ifsc || ""
+        }
+      });
+    } else {
+      setFormData(INITIAL_FORM_DATA);
+    }
+  }, [distributorToEdit]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -111,17 +127,32 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
       }
       distributorData.openBalance = openBalance;
       
-      const newDistributor = await dispatch(createDistributor(distributorData)).unwrap();
-      toast({
-        title: "Distributor created successfully",
-        variant: "success",
-      });
+      let result;
+      if (distributorToEdit) {
+        result = await dispatch(updateDistributor({ 
+          id: distributorToEdit._id, 
+          distributorData 
+        })).unwrap();
+        toast({
+          title: "Distributor updated successfully",
+          variant: "success",
+        });
+      } else {
+        result = await dispatch(createDistributor(distributorData)).unwrap();
+        toast({
+          title: "Distributor created successfully",
+          variant: "success",
+        });
+      }
+      
       onOpenChange(false);
-      onSuccess?.(newDistributor);
-      setFormData(INITIAL_FORM_DATA);
+      onSuccess?.(result);
+      if (!distributorToEdit) {
+        setFormData(INITIAL_FORM_DATA);
+      }
     } catch (error) {
       toast({
-        title: "Distributor creation failed",
+        title: distributorToEdit ? "Failed to update distributor" : "Failed to create distributor",
         variant: "destructive",
       });
     }
@@ -138,12 +169,14 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
     return () => clearTimeout(timer);
   }, [open]);
 
+  const isLoading = createDistributorStatus === "loading" || updateDistributorStatus === "loading";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl p-0 gap-0 font-roboto">
         <DialogHeader className="px-6 py-2.5 flex flex-row items-center justify-between bg-gray-100 border-b">
           <DialogTitle className="font-medium">
-            Create Distributor
+            {distributorToEdit ? "Edit Distributor" : "Create Distributor"}
           </DialogTitle>
         </DialogHeader>
         <Separator />
@@ -339,10 +372,10 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess }) 
             type="submit"
             form="createDistributorForm"
             ref={el => inputRef.current['save_button'] = el}
-            disabled={createDistributorStatus === "loading"}
+            disabled={isLoading}
             className="h-8 px-10 text-sm bg-blue-600 text-white hover:bg-blue-700"
           >
-            {createDistributorStatus === "loading" ? "Saving..." : "Save"}
+            {isLoading ? "Saving..." : "Save"}
           </Button>
         </div>
       </DialogContent>

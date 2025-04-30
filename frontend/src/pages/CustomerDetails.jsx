@@ -1,19 +1,21 @@
-import { ArrowLeft, FileText, Plus, Printer, Trash2, ArrowUpDown, Calendar, FileX } from "lucide-react";
-import { useEffect } from "react";
+import { ArrowLeft, FileText, Plus, Printer, Trash2, ArrowUpDown, Calendar, FileX, Pen } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useNavigate, useParams } from "react-router-dom";
 import { Badge } from "../components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchCustomerDetails, setTabName } from "../redux/slices/CustomerSlice";
+import CreateCustomerDialog from "../components/custom/customer/CreateCustomerDialog";
+import { formatCurrency } from "../utils/Helper";
 
 export default function CustomerDetails() {
   const navigate = useNavigate();
   const { customerId } = useParams();
   const dispatch = useDispatch();
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const {  details: customerDetails,  status, tabName, invoices, payments} = useSelector((state) => state.customers.currentCustomer);
 
   useEffect(() => {
@@ -83,11 +85,21 @@ export default function CustomerDetails() {
           <Button variant="outline" size="icon">
             <Trash2 className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="icon">
-            <Printer className="h-4 w-4" />
+          <Button variant="outline" size="icon" onClick={() => setIsEditDialogOpen(true)}>
+            <Pen className="h-4 w-4" />
           </Button>
         </div>
       </header>
+
+      <CreateCustomerDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        editingCustomer={customerDetails}
+        onSuccess={() => {
+          dispatch(fetchCustomerDetails(customerId));
+        }}
+      />
+
       <Tabs defaultValue={tabName} className="flex-1" onValueChange={(value) => dispatch(setTabName(value))}>
         <div className="border-b">
           <div className="px-6">
@@ -168,23 +180,6 @@ export default function CustomerDetails() {
             </div>
           </TabsContent>
           <TabsContent value="invoices" className="m-0">
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full sm:w-auto">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    Last 365 Days
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem>Last 7 Days</DropdownMenuItem>
-                  <DropdownMenuItem>Last 30 Days</DropdownMenuItem>
-                  <DropdownMenuItem>Last 365 Days</DropdownMenuItem>
-                  <DropdownMenuItem>Custom Range</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
             <div className="border rounded-lg">
               <Table>
                 <TableHeader>
@@ -258,23 +253,6 @@ export default function CustomerDetails() {
             </div>
           </TabsContent>
           <TabsContent value="payments" className="m-0">
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full sm:w-auto">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    Last 365 Days
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem>Last 7 Days</DropdownMenuItem>
-                  <DropdownMenuItem>Last 30 Days</DropdownMenuItem>
-                  <DropdownMenuItem>Last 365 Days</DropdownMenuItem>
-                  <DropdownMenuItem>Custom Range</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
             <div className="border rounded-lg">
               <Table>
                 <TableHeader>
@@ -288,7 +266,7 @@ export default function CustomerDetails() {
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
-                    <TableHead className="font-semibold">Payment Number</TableHead>
+                    <TableHead className="font-semibold">Payment Ndisumber</TableHead>
                     <TableHead className="font-semibold">Payment Method</TableHead>
                     <TableHead className="font-semibold text-right">Amount</TableHead>
                     <TableHead className="font-semibold">Status</TableHead>
@@ -299,7 +277,7 @@ export default function CustomerDetails() {
                     payments.map((payment) => (
                       <TableRow
                         key={payment._id}
-                        onClick={() => navigate(`/payments/${payment._id}`)}
+                        onClick={() => navigate(`/payment/${payment._id}`)}
                         className="cursor-pointer hover:bg-muted/50"
                       >
                         <TableCell>
@@ -307,7 +285,7 @@ export default function CustomerDetails() {
                         </TableCell>
                         <TableCell>{payment.paymentNumber || '-'}</TableCell>
                         <TableCell>{payment.paymentMethod}</TableCell>
-                        <TableCell className="text-right">₹ {payment.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">₹ {formatCurrency(payment.amount)}</TableCell>
                         <TableCell>
                           <Badge
                             variant="secondary"

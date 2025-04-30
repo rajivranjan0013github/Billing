@@ -52,6 +52,11 @@ router.post("/", verifyToken, async (req, res) => {
       address  : distributorDetails?.address
     });
 
+    if(distributorDetails) {
+      distributorDetails.invoices.push(newSalesBill._id);
+    }
+    
+
     // Handle payment if provided
       if (payment && payment.amount !== 0) {
       // Create payment record
@@ -81,7 +86,6 @@ router.post("/", verifyToken, async (req, res) => {
         // Update distributor balance since it's still a payment promise
         if (distributorDetails) {
           distributorDetails.currentBalance = (distributorDetails.currentBalance || 0) + payment.amount;
-          await distributorDetails.save({ session });
         }
       } else {
         // For non-cheque payments, validate and update account
@@ -103,7 +107,7 @@ router.post("/", verifyToken, async (req, res) => {
         // Update distributor balance if not cash customer
         if (distributorDetails) {
           distributorDetails.currentBalance = (distributorDetails.currentBalance || 0) + payment.amount;
-          await distributorDetails.save({ session });
+          distributorDetails.payments.push(paymentDoc._id);
         }
       }
 
@@ -113,7 +117,6 @@ router.post("/", verifyToken, async (req, res) => {
     } else {
       if(distributorDetails) {
         distributorDetails.currentBalance = (distributorDetails.currentBalance || 0) + (details.grandTotal || 0);
-        await distributorDetails.save({ session });
       }
     }
 
@@ -166,6 +169,10 @@ router.post("/", verifyToken, async (req, res) => {
     
     // Save the sales bill
     const savedSalesBill = await newSalesBill.save({ session });
+
+    if(distributorDetails) {
+      await distributorDetails.save({ session });
+    }
 
     await session.commitTransaction();
     res.status(201).json(savedSalesBill);
