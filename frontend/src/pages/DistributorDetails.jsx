@@ -13,6 +13,7 @@ import {
   setTabName
 } from "../redux/slices/distributorSlice";
 import CreateDistributorDlg from "../components/custom/distributor/CreateDistributorDlg";
+import LedgerTabContent from "../components/custom/distributor/LedgerTabContent";
 
 export default function DistributorDetails() {
   const navigate = useNavigate();
@@ -135,6 +136,12 @@ export default function DistributorDetails() {
                 className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
               >
                 Payments
+              </TabsTrigger>
+              <TabsTrigger
+                value="ledger"
+                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+              >
+                Ledger
               </TabsTrigger>
             </TabsList>
           </div>
@@ -446,6 +453,9 @@ export default function DistributorDetails() {
                 </TableBody>
               </Table>
             </div>
+          </TabsContent>
+          <TabsContent value="ledger" className="m-0">
+            <LedgerTabContent isActive={tabName === 'ledger'} distributorId={distributorId} />
           </TabsContent>
         </div>
       </Tabs>

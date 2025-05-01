@@ -68,6 +68,22 @@ export const deletePayment = createLoadingAsyncThunk(
   { useGlobalLoader: true }
 );
 
+// Search payments
+export const searchPayments = createLoadingAsyncThunk(
+  "payment/searchPayments",
+  async ({ query }) => {
+    const response = await fetch(
+      `${Backend_URL}/api/payment/search?query=${query}`,
+      { credentials: "include" }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to search payments");
+    }
+    return response.json();
+  }
+);
+
 const paymentSlice = createSlice({
   name: "payment",
   initialState: {
@@ -75,6 +91,7 @@ const paymentSlice = createSlice({
     createPaymentStatus: "idle",
     deletePaymentStatus: "idle",
     fetchStatus: "idle",
+    searchStatus: "idle",
     error: null,
   },
   reducers: {},
@@ -91,6 +108,19 @@ const paymentSlice = createSlice({
       })
       .addCase(fetchPayments.rejected, (state, action) => {
         state.fetchStatus = "failed";
+        state.error = action.error.message;
+      })
+      // Handle searchPayments
+      .addCase(searchPayments.pending, (state) => {
+        state.searchStatus = "loading";
+      })
+      .addCase(searchPayments.fulfilled, (state, action) => {
+        state.searchStatus = "succeeded";
+        state.payments = action.payload;
+        state.error = null;
+      })
+      .addCase(searchPayments.rejected, (state, action) => {
+        state.searchStatus = "failed";
         state.error = action.error.message;
       })
       // Handle createPayment

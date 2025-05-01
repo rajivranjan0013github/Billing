@@ -47,6 +47,21 @@ export const fetchDistributors = createLoadingAsyncThunk(
   }
 );
 
+export const fetchLedgerEntries = createLoadingAsyncThunk(
+  'distributor/fetchLedgerEntries',
+  async (distributorId, { rejectWithValue }) => {
+    const response = await fetch(`${Backend_URL}/api/distributor/ledger/${distributorId}`, {
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      return rejectWithValue('Failed to fetch ledger entries');
+    }
+
+    return await response.json();
+  }
+);
+
 // fetch details of a distributor
 export const fetchDistributorDetails = createLoadingAsyncThunk(
   'distributor/fetchDistributorDetails',

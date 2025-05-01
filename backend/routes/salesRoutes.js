@@ -10,6 +10,7 @@ import { Distributor } from "../models/Distributor.js";
 import { Customer } from "../models/Customer.js";
 import AccountDetails from "../models/AccountDetails.js";
 import { Payment } from "../models/Payment.js";
+import { Ledger } from "../models/ledger.js";
 
 const router = express.Router();
 
@@ -106,7 +107,7 @@ router.post("/", verifyToken, async (req, res) => {
 
         // Update distributor balance if not cash customer
         if (distributorDetails) {
-          distributorDetails.currentBalance = (distributorDetails.currentBalance || 0) + payment.amount;
+          distributorDetails.currentBalance = (distributorDetails.currentBalance || 0) + (details.grandTotal || 0) - payment.amount;
           distributorDetails.payments.push(paymentDoc._id);
         }
       }
@@ -171,6 +172,16 @@ router.post("/", verifyToken, async (req, res) => {
     const savedSalesBill = await newSalesBill.save({ session });
 
     if(distributorDetails) {
+      const ledgerEntry = new Ledger({
+        distributorId: distributorDetails._id,
+        customerId: distributorDetails._id,
+        balance: distributorDetails.currentBalance,
+        debit : details.grandTotal,
+        credit : payment.amount,
+        invoiceNumber : newSalesBill.invoiceNumber,
+        description : "Sales Bill",
+      });
+      await ledgerEntry.save({ session });
       await distributorDetails.save({ session });
     }
 

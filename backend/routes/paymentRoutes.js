@@ -7,6 +7,7 @@ import { Distributor } from "../models/Distributor.js";
 import AccountDetails from "../models/AccountDetails.js";
 import {Customer} from '../models/Customer.js'
 import { verifyToken } from '../middleware/authMiddleware.js';
+import { Ledger } from "../models/ledger.js";
 const router = express.Router();
 
 // Get current payment number
@@ -51,6 +52,31 @@ router.get("/", async (req, res) => {
   } catch (error) {
     console.error("Error fetching payments:", error);
     res.status(500).json({ message: "Error fetching payments", error: error.message });
+  }
+});
+
+// Search payments
+router.get("/search", async (req, res) => {
+  try {
+    const { query } = req.query;
+    const searchQuery = {
+      $or: [
+        { paymentNumber: { $regex: query, $options: "i" } },
+        { distributorName: { $regex: query, $options: "i" } },
+        { customerName: { $regex: query, $options: "i" } }
+      ]
+    };
+
+    const payments = await Payment.find(searchQuery)
+      .sort({ createdAt: -1 })
+      .lean();
+      
+    res.status(200).json(payments);
+  } catch (error) {
+    res.status(500).json({
+      message: "Error searching payments",
+      error: error.message,
+    });
   }
 });
 
@@ -214,6 +240,20 @@ router.post("/make-payment", verifyToken, async (req, res) => {
 
     await payment.save({ session });
     await distributorDoc.save({ session });
+
+    const ledgerEntry = new Ledger({
+      distributorId: distributorId,
+      customerId: distributorDoc._id, 
+      balance: distributorDoc.currentBalance,
+      invoiceNumber: payment.paymentNumber,
+      description: paymentType,
+    });
+    if (paymentType === "Payment Out") {
+      ledgerEntry.debit = payment.amount;
+    } else {
+      ledgerEntry.credit = payment.amount;
+    }
+    await ledgerEntry.save({ session });
     
     await session.commitTransaction();
     res.status(201).json(payment);

@@ -25,10 +25,11 @@ import {
   TrendingDown,
   ArrowRightLeft,
   Loader2,
+  X,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { fetchPayments } from "../redux/slices/paymentSlice";
+import { fetchPayments, searchPayments } from "../redux/slices/paymentSlice";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   format,
@@ -68,6 +69,48 @@ const Payments = () => {
     from: urlFromDate ? new Date(urlFromDate) : new Date(),
     to: urlToDate ? new Date(urlToDate) : new Date()
   });
+
+  // Add search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [searchType, setSearchType] = useState("invoice");
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Handle debounced search
+  useEffect(() => {
+    const handleDebouncedSearch = async () => {
+      if (!debouncedSearchQuery.trim()) {
+        await dispatch(fetchPayments({
+          startDate: dateRange.from,
+          endDate: dateRange.to,
+          filter: paymentTypeFilter !== 'all' ? paymentTypeFilter : undefined
+        })).unwrap();
+        return;
+      }
+
+      try {
+        await dispatch(searchPayments({
+          query: debouncedSearchQuery
+        })).unwrap();
+      } catch (err) {
+        toast({
+          title: "Error",
+          description: "Failed to search payments",
+          variant: "destructive",
+        });
+      }
+    };
+
+    handleDebouncedSearch();
+  }, [debouncedSearchQuery]);
 
   const handleDateSelect = (range) => {
     if (range?.from && range?.to) {
@@ -377,9 +420,60 @@ const Payments = () => {
 
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 flex-1">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input className="pl-8" placeholder="Search payments..." />
+          <div className="relative flex items-center bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
+            <div className="relative flex items-center border-r border-slate-200">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="h-9 w-[120px] border-0 bg-transparent hover:bg-slate-100 focus:ring-0 focus:ring-offset-0 justify-start px-3"
+                  >
+                    {searchType === "invoice" ? "Payment No" : "Name"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[120px]">
+                  <DropdownMenuItem onSelect={() => setSearchType("invoice")}>
+                    Payment No
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setSearchType("name")}>
+                    Name
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="flex-1 relative flex items-center">
+              <div className="absolute left-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-slate-400" />
+              </div>
+              <Input
+                className="w-full h-9 pl-10 pr-10 border-0 focus-visible:ring-0 placeholder:text-slate-400"
+                placeholder={`Search by ${
+                  searchType === "invoice" ? "payment number" : "name"
+                }...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <div className="absolute right-3 flex items-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 hover:bg-slate-100 rounded-full"
+                    onClick={() => {
+                      setSearchQuery("");
+                      dispatch(fetchPayments({
+                        startDate: dateRange.from,
+                        endDate: dateRange.to,
+                        filter: paymentTypeFilter !== 'all' ? paymentTypeFilter : undefined
+                      }));
+                    }}
+                  >
+                    <X className="h-4 w-4 text-blue-500" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
           <Select
             value={paymentTypeFilter}

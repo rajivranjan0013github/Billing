@@ -56,6 +56,10 @@ const paymentSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "AccountDetails",
     },
+    accountBalance: {
+      type: Number,
+      default: 0,
+    },
     transactionNumber: String,
     chequeNumber: String,
     chequeDate: Date,

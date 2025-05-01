@@ -9,6 +9,7 @@ import { Distributor } from "../models/Distributor.js";
 import AccountDetails from "../models/AccountDetails.js";
 import { Payment } from "../models/Payment.js";
 import { PurchaseReturn } from "../models/PurchaseReturn.js";
+import { Ledger } from "../models/ledger.js";
 
 const router = express.Router();
 
@@ -180,6 +181,17 @@ router.post("/", verifyToken, async (req, res) => {
     // Update distributor balance
     distributorDetails.currentBalance = (distributorDetails.currentBalance || 0) - dueAmount;
     await distributorDetails.save({ session });
+
+    const ledgerEntry = new Ledger({
+      distributorId : distributorId,
+      customerId : distributorDetails._id,
+      balance : distributorDetails.currentBalance,
+      debit : payment.amount,
+      credit : details.grandTotal,
+      invoiceNumber : newInvoice.invoiceNumber,
+      description : "Purchase Bill",
+    })
+    await ledgerEntry.save({ session });
 
     // Process inventory updates
     for (const product of req.body.products) {
