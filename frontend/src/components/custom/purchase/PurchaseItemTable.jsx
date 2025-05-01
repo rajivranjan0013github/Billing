@@ -185,6 +185,7 @@ export default function PurchaseTable({
   const handleProductSeletor = (product) => {
     setNewProduct((prev) => ({
       ...prev,
+      mfcName: product.mfcName,
       productName: product.name,
       inventoryId: product._id,
     }));

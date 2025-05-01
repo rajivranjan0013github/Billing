@@ -15,6 +15,7 @@ const invoiceShema = new mongoose.Schema(
         inventoryId: { type: mongoose.Schema.Types.ObjectId, ref: "Inventory" },
         productName: String,
         batchNumber: String,
+        mfcName: String,
         batchId: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "InventoryBatch",

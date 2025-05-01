@@ -30,6 +30,60 @@ export const fetchSalesReport = createLoadingAsyncThunk(
   { useGlobalLoader: true }
 );
 
+// Async thunk for fetching purchase report
+export const fetchPurchaseReport = createLoadingAsyncThunk(
+  "report/fetchPurchaseReport",
+  async (params) => {
+    // Convert params to URLSearchParams
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        searchParams.append(key, value);
+      }
+    });
+
+    const response = await fetch(
+      `${Backend_URL}/api/reports/purchase?${searchParams.toString()}`,
+      {
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to generate report");
+    }
+    return response.json();
+  },
+  { useGlobalLoader: true }
+);
+
+// Async thunk for fetching inventory report
+export const fetchInventoryReport = createLoadingAsyncThunk(
+  "report/fetchInventoryReport",
+  async (params) => {
+    // Convert params to URLSearchParams
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        searchParams.append(key, value);
+      }
+    });
+
+    const response = await fetch(
+      `${Backend_URL}/api/reports/inventory?${searchParams.toString()}`,
+      {
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to generate inventory report");
+    }
+    return response.json();
+  },
+  { useGlobalLoader: true }
+);
+
 const reportSlice = createSlice({
   name: "report",
   initialState: {
@@ -89,6 +143,34 @@ const reportSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchSalesReport.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.error.message;
+      })
+      // Add purchase report cases
+      .addCase(fetchPurchaseReport.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
+      .addCase(fetchPurchaseReport.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.data = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchPurchaseReport.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.error.message;
+      })
+      // Add inventory report cases
+      .addCase(fetchInventoryReport.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
+      .addCase(fetchInventoryReport.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.data = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchInventoryReport.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.error.message;
       });

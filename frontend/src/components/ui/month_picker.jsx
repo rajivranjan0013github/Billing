@@ -73,7 +73,7 @@ import {
                     'absolute right-1 disabled:bg-slate-100'
                   )}
                   type="button"
-                  disabled={isFuture(add(firstDayCurrentYear, { years: 1 }))}
+                  // disabled={isFuture(add(firstDayCurrentYear, { years: 1 }))}
                   onClick={nextYear}
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -101,7 +101,7 @@ import {
                         isEqual(month, getStartOfCurrentMonth()) &&
                         'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-50'
                     )}
-                    disabled={isFuture(month)}
+                    // disabled={isFuture(month)}
                     role="gridcell"
                     tabIndex={-1}
                     type="button"

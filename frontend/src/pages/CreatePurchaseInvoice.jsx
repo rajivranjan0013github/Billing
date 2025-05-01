@@ -217,6 +217,7 @@ export default function PurchaseForm() {
   const handlePaymentSubmit = async (paymentData) => {
     try {
       const formattedProducts = products.map((product) => ({
+        mfcName: product.mfcName,
         inventoryId: product.inventoryId,
         productName: product.productName,
         batchNumber: product.batchNumber,

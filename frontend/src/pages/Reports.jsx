@@ -51,6 +51,8 @@ import {
 import { cn } from "../lib/utils";
 import {
   fetchSalesReport,
+  fetchPurchaseReport,
+  fetchInventoryReport,
   clearReport,
   setDateRange as setReduxDateRange,
   setSingleDate as setReduxSingleDate,
@@ -64,6 +66,8 @@ import {
   DialogTrigger,
 } from "../components/ui/dialog";
 import SelectInventory from "../components/custom/inventory/SelectInventory";
+import SelectManufacturer from "../components/custom/manufacturer/SelectManufacturer";
+import { fetchDistributors } from "../redux/slices/distributorSlice";
 
 const Reports = () => {
   const dispatch = useDispatch();
@@ -110,6 +114,11 @@ const Reports = () => {
     distributor: "all",
     customer: "all",
     product: "",
+    expiryRange: {
+      preset: "1month",
+      custom: false,
+      selectedMonth: null,
+    },
   });
 
   // Get data from Redux store
@@ -117,6 +126,9 @@ const Reports = () => {
   const purchaseData = useSelector((state) => state.purchaseBill.bills);
   const inventoryData = useSelector((state) => state.inventory.items);
   const distributors = useSelector((state) => state.distributor.distributors);
+  const distributorFetchStatus = useSelector(
+    (state) => state.distributor.fetchStatus
+  );
   const customers = useSelector((state) => state.customers.customers);
 
   // Add state for selected product
@@ -125,6 +137,11 @@ const Reports = () => {
   // Replace product dialog state with search state
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [productSearch, setProductSearch] = useState("");
+
+  // Add state for manufacturer dialog
+  const [isManufacturerDialogOpen, setIsManufacturerDialogOpen] =
+    useState(false);
+  const [manufacturerSearch, setManufacturerSearch] = useState("");
 
   // Report metadata with icons - using a more subtle approach
   const reportTypes = {
@@ -181,25 +198,7 @@ const Reports = () => {
         id: "expiry-alert",
         name: "Near Expiry",
         icon: Clock,
-        filters: ["dateRange"],
-      },
-      {
-        id: "stock-movement",
-        name: "Stock Movement",
-        icon: RefreshCcw,
-        filters: ["dateRange"],
-      },
-      {
-        id: "fast-moving",
-        name: "Fast Moving",
-        icon: Package,
-        filters: ["dateRange", "manufacturer"],
-      },
-      {
-        id: "slow-moving",
-        name: "Slow Moving",
-        icon: Package,
-        filters: ["dateRange", "manufacturer"],
+        filters: ["expiryRange"],
       },
     ],
   };
@@ -218,7 +217,7 @@ const Reports = () => {
     );
   };
 
-  // Clear report data when changing report type
+  // Handle report type change
   const handleReportTypeChange = (newType) => {
     setSelectedReportType({
       ...selectedReportType,
@@ -230,6 +229,11 @@ const Reports = () => {
       distributor: "all",
       customer: "all",
       product: "",
+      expiryRange: {
+        preset: "1month",
+        custom: false,
+        selectedMonth: null,
+      },
     });
     // Reset selected product state as well
     setSelectedProduct(null);
@@ -237,6 +241,14 @@ const Reports = () => {
     dispatch(clearReport());
     // Clear any local errors
     setLocalError(null);
+
+    // Fetch distributors data if distributor-wise report is selected and data not loaded
+    if (
+      newType === "distributor-wise" &&
+      distributorFetchStatus !== "succeeded"
+    ) {
+      dispatch(fetchDistributors());
+    }
   };
 
   // Check if a specific filter is needed for the current report
@@ -291,6 +303,19 @@ const Reports = () => {
     dispatch(setReduxDateRange(newRange));
   };
 
+  // Add function to clear manufacturer selection
+  const clearManufacturerSelection = (e) => {
+    e.stopPropagation();
+    handleFilterChange("manufacturer", "");
+    setManufacturerSearch("");
+  };
+
+  // Add function to handle manufacturer selection
+  const handleManufacturerSelect = (manufacturer) => {
+    handleFilterChange("manufacturer", manufacturer);
+    setManufacturerSearch(manufacturer);
+  };
+
   // Function to generate report
   const generateReport = async () => {
     try {
@@ -333,6 +358,12 @@ const Reports = () => {
         }
       }
 
+      // Validate expiry range if custom is selected
+      if (filters.expiryRange.custom && !filters.expiryRange.selectedMonth) {
+        setLocalError("Please select an expiry month for custom range");
+        return;
+      }
+
       // Prepare filter parameters - ensure all values are serializable
       let params = {
         reportType: selectedReportType[activeTab],
@@ -354,6 +385,20 @@ const Reports = () => {
         params.month = format(new Date(selectedMonth), "yyyy-MM"); // Use Redux state
       }
 
+      // Add expiry range filter
+      if (filters.expiryRange) {
+        if (filters.expiryRange.custom && filters.expiryRange.selectedMonth) {
+          params.expiryRange = "custom";
+          // Format the date to ensure it will be interpreted correctly for mm/yy format
+          params.selectedMonth = format(
+            filters.expiryRange.selectedMonth,
+            "yyyy-MM-01"
+          );
+        } else {
+          params.expiryRange = filters.expiryRange.preset;
+        }
+      }
+
       // Add other filters - ensure all values are strings or primitives
       if (filters.customer !== "all") params.customerId = filters.customer;
       if (filters.distributor !== "all")
@@ -366,7 +411,12 @@ const Reports = () => {
         case "sales":
           await dispatch(fetchSalesReport(params)).unwrap();
           break;
-        // Add cases for purchase and inventory when implementing those
+        case "purchase":
+          await dispatch(fetchPurchaseReport(params)).unwrap();
+          break;
+        case "inventory":
+          await dispatch(fetchInventoryReport(params)).unwrap();
+          break;
         default:
           throw new Error("Invalid report type");
       }
@@ -385,6 +435,7 @@ const Reports = () => {
     const needsDistributorFilter = isFilterRequired("distributor");
     const needsManufacturerFilter = isFilterRequired("manufacturer");
     const needsProductFilter = isFilterRequired("product");
+    const needsExpiryDurationFilter = isFilterRequired("expiryRange");
 
     // If no filters are required, don't render the filter section
     if (
@@ -394,7 +445,8 @@ const Reports = () => {
       !needsCustomerFilter &&
       !needsDistributorFilter &&
       !needsManufacturerFilter &&
-      !needsProductFilter
+      !needsProductFilter &&
+      !needsExpiryDurationFilter
     ) {
       return null;
     }
@@ -403,7 +455,6 @@ const Reports = () => {
       <div className="bg-white rounded-lg border border-gray-200 mb-4 p-3">
         <p className="text-sm font-medium text-gray-700 mb-2">Filters</p>
         <div className="flex flex-wrap gap-x-2 gap-y-2">
-          {/* Date range picker */}
           {needsDateRange && (
             <div className="flex items-center space-x-1">
               <div className="relative">
@@ -677,17 +728,198 @@ const Reports = () => {
                 width: "160px",
               }}
             >
-              <div className="relative w-full">
-                <Search className="absolute left-2 top-2 h-3.5 w-3.5 opacity-50" />
-                <Input
-                  placeholder="Manufacturer"
-                  value={filters.manufacturer}
-                  onChange={(e) =>
-                    handleFilterChange("manufacturer", e.target.value)
-                  }
-                  className="pl-7 h-8 text-sm py-0 pr-2"
-                />
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-sm py-0 px-2 w-full flex justify-between items-center"
+                onClick={() => setIsManufacturerDialogOpen(true)}
+              >
+                <span className="flex items-center truncate">
+                  <Store className="mr-2 h-3.5 w-3.5 opacity-70" />
+                  {filters.manufacturer || "Select Manufacturer"}
+                </span>
+                {filters.manufacturer && (
+                  <X
+                    className="h-3.5 w-3.5 opacity-70 hover:opacity-100"
+                    onClick={clearManufacturerSelection}
+                  />
+                )}
+              </Button>
+
+              <SelectManufacturer
+                open={isManufacturerDialogOpen}
+                onOpenChange={setIsManufacturerDialogOpen}
+                onSelect={handleManufacturerSelect}
+                search={manufacturerSearch}
+                setSearch={setManufacturerSearch}
+              />
+            </div>
+          )}
+
+          {/* Expiry Duration filter */}
+          {needsExpiryDurationFilter && (
+            <div
+              className="space-y-2"
+              style={{ width: "100%", maxWidth: "600px" }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700">
+                  Expiry:
+                </span>
+                <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg flex-1">
+                  <Button
+                    type="button"
+                    variant={
+                      filters.expiryRange.preset === "1month" &&
+                      !filters.expiryRange.custom
+                        ? "default"
+                        : "ghost"
+                    }
+                    className={`flex-1 h-7 text-xs ${
+                      filters.expiryRange.preset === "1month" &&
+                      !filters.expiryRange.custom
+                        ? "bg-white shadow-sm text-black"
+                        : ""
+                    }`}
+                    onClick={() =>
+                      handleFilterChange("expiryRange", {
+                        preset: "1month",
+                        custom: false,
+                        months: 1,
+                        years: 0,
+                      })
+                    }
+                  >
+                    1 Month
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={
+                      filters.expiryRange.preset === "3months" &&
+                      !filters.expiryRange.custom
+                        ? "default"
+                        : "ghost"
+                    }
+                    className={`flex-1 h-7 text-xs ${
+                      filters.expiryRange.preset === "3months" &&
+                      !filters.expiryRange.custom
+                        ? "bg-white shadow-sm text-black"
+                        : ""
+                    }`}
+                    onClick={() =>
+                      handleFilterChange("expiryRange", {
+                        preset: "3months",
+                        custom: false,
+                        months: 3,
+                        years: 0,
+                      })
+                    }
+                  >
+                    3 Months
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={
+                      filters.expiryRange.preset === "6months" &&
+                      !filters.expiryRange.custom
+                        ? "default"
+                        : "ghost"
+                    }
+                    className={`flex-1 h-7 text-xs ${
+                      filters.expiryRange.preset === "6months" &&
+                      !filters.expiryRange.custom
+                        ? "bg-white shadow-sm text-black"
+                        : ""
+                    }`}
+                    onClick={() =>
+                      handleFilterChange("expiryRange", {
+                        preset: "6months",
+                        custom: false,
+                        months: 6,
+                        years: 0,
+                      })
+                    }
+                  >
+                    6 Months
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={
+                      filters.expiryRange.preset === "1year" &&
+                      !filters.expiryRange.custom
+                        ? "default"
+                        : "ghost"
+                    }
+                    className={`flex-1 h-7 text-xs ${
+                      filters.expiryRange.preset === "1year" &&
+                      !filters.expiryRange.custom
+                        ? "bg-white shadow-sm text-black"
+                        : ""
+                    }`}
+                    onClick={() =>
+                      handleFilterChange("expiryRange", {
+                        preset: "1year",
+                        custom: false,
+                        months: 0,
+                        years: 1,
+                      })
+                    }
+                  >
+                    1 Year
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={filters.expiryRange.custom ? "default" : "ghost"}
+                    className={`flex-1 h-7 text-xs ${
+                      filters.expiryRange.custom ? "bg-white shadow-sm" : ""
+                    }`}
+                    onClick={() =>
+                      handleFilterChange("expiryRange", {
+                        ...filters.expiryRange,
+                        custom: true,
+                      })
+                    }
+                  >
+                    Custom
+                  </Button>
+                </div>
               </div>
+
+              {filters.expiryRange.custom && (
+                <div className="flex items-center gap-2 p-2 bg-white border rounded-md">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-sm py-0 px-2 w-[200px] justify-start"
+                      >
+                        <CalendarIcon className="mr-2 h-3.5 w-3.5 opacity-70" />
+                        {filters.expiryRange.selectedMonth
+                          ? format(
+                              filters.expiryRange.selectedMonth,
+                              "MMMM yyyy"
+                            )
+                          : "Select Expiry Month"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <MonthPicker
+                        currentMonth={
+                          filters.expiryRange.selectedMonth || new Date()
+                        }
+                        onMonthChange={(date) => {
+                          handleFilterChange("expiryRange", {
+                            ...filters.expiryRange,
+                            selectedMonth: date,
+                            custom: true,
+                          });
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
             </div>
           )}
 
@@ -789,13 +1021,41 @@ const Reports = () => {
             default:
               return Object.keys(data).length === 0; // Fallback check for sales tab
           }
-        // Add cases for 'purchase' and 'inventory' tabs when implemented
-        // case 'purchase':
-        //   // Add specific checks for purchase report types
-        //   return Object.keys(data).length === 0;
-        // case 'inventory':
-        //   // Add specific checks for inventory report types
-        //   return Object.keys(data).length === 0;
+        case "purchase":
+          switch (reportId) {
+            case "all-purchases":
+              return !data.purchases || data.purchases.length === 0;
+            case "distributor-wise":
+              return (
+                !data.distributorSummary || data.distributorSummary.length === 0
+              );
+            case "manufacturer-wise":
+              return (
+                !data.manufacturerSummary ||
+                data.manufacturerSummary.length === 0
+              );
+            case "product-wise":
+              return !data.productSummary || data.productSummary.length === 0;
+            default:
+              return Object.keys(data).length === 0;
+          }
+        case "inventory":
+          switch (reportId) {
+            case "stock-status":
+              return !data.items || data.items.length === 0;
+            case "low-stock":
+              return !data.lowStockItems || data.lowStockItems.length === 0;
+            case "expiry-alert":
+              return !data.expiryAlerts || data.expiryAlerts.length === 0;
+            case "stock-movement":
+              return !data.stockMovement || data.stockMovement.length === 0;
+            case "fast-moving":
+              return !data.fastMovingItems || data.fastMovingItems.length === 0;
+            case "slow-moving":
+              return !data.slowMovingItems || data.slowMovingItems.length === 0;
+            default:
+              return Object.keys(data).length === 0;
+          }
         default:
           // General fallback check if tab is unknown or not handled yet
           return !data || Object.keys(data).length === 0;
@@ -903,9 +1163,8 @@ const Reports = () => {
           <div className="space-y-4">
             <div className="overflow-x-auto">
               {activeTab === "sales" && renderSalesTable()}
-              {/* TODO: Add rendering for purchase and inventory tabs */}
-              {/* {activeTab === "purchase" && renderPurchaseTable()} */}
-              {/* {activeTab === "inventory" && renderInventoryTable()} */}
+              {activeTab === "purchase" && renderPurchaseTable()}
+              {/* TODO: Add rendering for inventory tab */}
             </div>
           </div>
         )}
@@ -1284,6 +1543,269 @@ const Reports = () => {
                     <TableCell>₹{day.totalAmount.toFixed(2)}</TableCell>
                   </TableRow>
                 ))}
+              </TableBody>
+            </Table>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  // Function to render the purchase table based on report type
+  const renderPurchaseTable = () => {
+    if (!reportData) return null;
+
+    switch (selectedReportType[activeTab]) {
+      case "all-purchases":
+        return (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>INVOICE NO</TableHead>
+                <TableHead>INVOICE DATE</TableHead>
+                <TableHead>DISTRIBUTOR</TableHead>
+                <TableHead>TOTAL ITEMS</TableHead>
+                <TableHead>TAXABLE(₹)</TableHead>
+                <TableHead>GST(₹)</TableHead>
+                <TableHead>TOTAL(₹)</TableHead>
+                <TableHead>STATUS</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reportData.purchases?.map((purchase) => (
+                <TableRow key={purchase._id}>
+                  <TableCell>{purchase.invoiceNumber}</TableCell>
+                  <TableCell>
+                    {format(new Date(purchase.invoiceDate), "dd/MM/yyyy")}
+                  </TableCell>
+                  <TableCell>
+                    <div>{purchase.distributorName}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {purchase.mob}
+                    </div>
+                  </TableCell>
+                  <TableCell>{purchase.billSummary.productCount}</TableCell>
+                  <TableCell>
+                    {purchase.billSummary.taxableAmount.toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    {purchase.billSummary.gstAmount.toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    {purchase.billSummary.grandTotal.toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium",
+                        {
+                          "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20":
+                            purchase.paymentStatus === "paid",
+                          "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20":
+                            purchase.paymentStatus === "due",
+                        }
+                      )}
+                    >
+                      {purchase.paymentStatus === "paid" ? "Paid" : "Due"}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        );
+
+      case "distributor-wise":
+        return (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>DISTRIBUTOR</TableHead>
+                <TableHead>TOTAL BILLS</TableHead>
+                <TableHead>TOTAL AMOUNT</TableHead>
+                <TableHead>AVERAGE BILL VALUE</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reportData.distributorSummary?.map((distributor) => (
+                <TableRow key={distributor.distributorId}>
+                  <TableCell>{distributor.distributorName}</TableCell>
+                  <TableCell>{distributor.totalPurchases}</TableCell>
+                  <TableCell>₹{distributor.totalAmount.toFixed(2)}</TableCell>
+                  <TableCell>
+                    ₹
+                    {(
+                      distributor.totalAmount / distributor.totalPurchases
+                    ).toFixed(2)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        );
+
+      case "manufacturer-wise":
+        return (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>MANUFACTURER</TableHead>
+                <TableHead>PRODUCTS PURCHASED</TableHead>
+                <TableHead>TOTAL QUANTITY</TableHead>
+                <TableHead>TOTAL AMOUNT</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reportData.manufacturerSummary?.map((mfr) => (
+                <TableRow key={mfr.manufacturer}>
+                  <TableCell>{mfr.manufacturer}</TableCell>
+                  <TableCell>{mfr.uniqueProducts}</TableCell>
+                  <TableCell>{mfr.totalQuantity}</TableCell>
+                  <TableCell>₹{mfr.totalAmount.toFixed(2)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        );
+
+      case "product-wise":
+        return (
+          <div className="space-y-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>PRODUCT</TableHead>
+                  <TableHead>BATCH</TableHead>
+                  <TableHead>MANUFACTURER</TableHead>
+                  <TableHead>QUANTITY PURCHASED</TableHead>
+                  <TableHead>TOTAL AMOUNT</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reportData.productSummary?.map((product) => {
+                  const productKey = `${product.productName}-${product.batchNumber}`;
+                  const isSelected = selectedProduct === productKey;
+
+                  return (
+                    <React.Fragment key={productKey}>
+                      <TableRow
+                        className={cn(
+                          "cursor-pointer hover:bg-gray-50",
+                          isSelected && "bg-gray-50"
+                        )}
+                        onClick={() =>
+                          setSelectedProduct(isSelected ? null : productKey)
+                        }
+                      >
+                        <TableCell>{product.productName}</TableCell>
+                        <TableCell>{product.batchNumber}</TableCell>
+                        <TableCell>{product.manufacturer}</TableCell>
+                        <TableCell>{product.quantityPurchased}</TableCell>
+                        <TableCell>₹{product.totalAmount.toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedProduct(
+                                isSelected ? null : productKey
+                              );
+                            }}
+                          >
+                            <ChevronDown
+                              className={cn(
+                                "h-4 w-4 transition-transform",
+                                isSelected && "transform rotate-180"
+                              )}
+                            />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+
+                      {isSelected &&
+                        reportData.productPurchases[productKey] && (
+                          <TableRow>
+                            <TableCell colSpan={6} className="p-0">
+                              <div className="bg-gray-50 p-4">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead className="text-xs">
+                                        INVOICE NO
+                                      </TableHead>
+                                      <TableHead className="text-xs">
+                                        DATE
+                                      </TableHead>
+                                      <TableHead className="text-xs">
+                                        DISTRIBUTOR
+                                      </TableHead>
+                                      <TableHead className="text-xs">
+                                        QUANTITY
+                                      </TableHead>
+                                      <TableHead className="text-xs">
+                                        RATE
+                                      </TableHead>
+                                      <TableHead className="text-xs">
+                                        AMOUNT
+                                      </TableHead>
+                                      <TableHead className="text-xs">
+                                        GST
+                                      </TableHead>
+                                      <TableHead className="text-xs">
+                                        TOTAL
+                                      </TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {reportData.productPurchases[
+                                      productKey
+                                    ].map((purchase, index) => (
+                                      <TableRow
+                                        key={`${purchase.invoiceNumber}-${index}`}
+                                      >
+                                        <TableCell className="text-xs">
+                                          {purchase.invoiceNumber}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          {format(
+                                            new Date(purchase.invoiceDate),
+                                            "dd/MM/yyyy"
+                                          )}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          {purchase.distributorName}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          {purchase.quantity}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          ₹{purchase.rate?.toFixed(2)}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          ₹{purchase.amount?.toFixed(2)}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          {purchase.gst}%
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          ₹{purchase.totalAmount?.toFixed(2)}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                    </React.Fragment>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
