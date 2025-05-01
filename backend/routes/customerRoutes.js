@@ -1,6 +1,7 @@
 import express from "express";
 const router = express.Router();
 import { Customer } from "../models/Customer.js";
+import { Ledger } from "../models/ledger.js";
 
 // Get all customers
 router.get("/", async (req, res) => {
@@ -56,6 +57,17 @@ router.post("/", async (req, res) => {
 
   try {
     const newCustomer = await customer.save();
+    const ledgerEntry = new Ledger({
+      customerId: newCustomer._id,
+      balance: newCustomer.openBalance,
+      description: "Opening Balance",
+    });
+    if(newCustomer.openBalance > 0){
+      ledgerEntry.debit = newCustomer.openBalance;
+    }else{
+      ledgerEntry.credit = newCustomer.openBalance * -1;
+    }
+    await ledgerEntry.save();
     res.status(201).json(newCustomer);
   } catch (error) {
     res.status(400).json({ message: error.message });

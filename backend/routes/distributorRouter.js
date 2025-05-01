@@ -3,6 +3,7 @@ import { Distributor } from "../models/Distributor.js";
 import mongoose from "mongoose";
 import {InvoiceSchema} from '../models/InvoiceSchema.js'
 import {Payment} from '../models/Payment.js'
+import {Ledger} from '../models/ledger.js'
 
 const router = express.Router();
 
@@ -15,6 +16,18 @@ router.post("/create", async (req, res) => {
         // Use session for all database operations
         const distributor = new Distributor({...distributorData, currentBalance: distributorData.openBalance});
         await distributor.save({ session });
+
+        const ledger = new Ledger({
+            distributorId : distributor._id,
+            balance : distributorData.openBalance,
+            description : "Opening Balance",
+        });
+        if(distributorData.openBalance > 0){
+            ledger.debit = distributorData.openBalance;
+        }else{
+            ledger.credit = distributorData.openBalance * -1;
+        }  
+        await ledger.save({ session });
 
         // Commit the transaction
         await session.commitTransaction();
@@ -80,6 +93,21 @@ router.put("/update/:id", async (req, res) => {
         res.status(500).json({ message: error.message });
     } finally {
         session.endSession();
+    }
+});
+
+router.get("/ledger/:distributorId", async (req, res) => {
+    try {
+        const id = req.params.distributorId;
+        const ledger = await Ledger.find({ 
+            $or: [
+                { distributorId: id },
+                { customerId: id }
+            ]
+        });
+        res.status(200).json(ledger);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 });
 

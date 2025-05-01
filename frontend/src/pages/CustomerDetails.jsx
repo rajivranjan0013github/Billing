@@ -10,6 +10,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchCustomerDetails, setTabName } from "../redux/slices/CustomerSlice";
 import CreateCustomerDialog from "../components/custom/customer/CreateCustomerDialog";
 import { formatCurrency } from "../utils/Helper";
+import LedgerTabContent from "../components/custom/distributor/LedgerTabContent";
 
 export default function CustomerDetails() {
   const navigate = useNavigate();
@@ -121,6 +122,12 @@ export default function CustomerDetails() {
                 className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
               >
                 Payments
+              </TabsTrigger>
+              <TabsTrigger
+                value="ledger"
+                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+              >
+                Ledger
               </TabsTrigger>
             </TabsList>
           </div>
@@ -314,6 +321,9 @@ export default function CustomerDetails() {
                 </TableBody>
               </Table>
             </div>
+          </TabsContent>
+          <TabsContent value="ledger" className="m-0">
+            <LedgerTabContent isActive={tabName === 'ledger'} distributorId={customerId} />
           </TabsContent>
         </div>
       </Tabs>
