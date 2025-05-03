@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import {
@@ -13,7 +13,6 @@ import {
   ChevronDown,
   LogOut,
   Users,
-  ChevronRight,
   Wallet,
   WalletMinimal,
   ChartColumn
@@ -97,21 +96,11 @@ export default function VerticalNav() {
   const { toast } = useToast();
   const user = useSelector((state) => state.user.userData);
   const {isCollapsed} = useSelector(state=>state.loader);
-  const [expandedItems, setExpandedItems] = useState([]);
 
-  const isActive = (itemPath, submenuPaths = []) => {
+  const isActive = (itemPath) => {
     if (itemPath === "/") {
       return location.pathname === "/";
     }
-
-    // If this is a parent menu with submenu
-    if (submenuPaths.length > 0) {
-      return submenuPaths.some((subPath) =>
-        location.pathname.startsWith(subPath)
-      );
-    }
-
-    // For regular menu items and submenu items
     return location.pathname === itemPath;
   };
 
@@ -145,14 +134,6 @@ export default function VerticalNav() {
         variant: "destructive",
       });
     }
-  };
-
-  const toggleSubmenu = (itemName) => {
-    setExpandedItems((prev) =>
-      prev.includes(itemName)
-        ? prev.filter((item) => item !== itemName)
-        : [...prev, itemName]
-    );
   };
 
   return (
@@ -193,38 +174,17 @@ export default function VerticalNav() {
                       variant="ghost"
                       className={cn(
                         "w-full justify-start",
-                        isActive(
-                          item.path,
-                          item.submenu?.map((sub) => sub.path) || []
-                        )
+                        isActive(item.path)
                           ? "bg-blue-300 text-blue-900"
                           : "text-gray-600 hover:bg-blue-100 hover:text-blue-900",
                         isCollapsed ? "px-2" : "px-4"
                       )}
-                      onClick={() => {
-                        if (item.submenu) {
-                          toggleSubmenu(item.name);
-                        } else {
-                          navigate(item.path);
-                        }
-                      }}
+                      onClick={() => navigate(item.path)}
                     >
                       <item.icon
                         className={cn("h-5 w-5", isCollapsed ? "mr-0" : "mr-3")}
                       />
-                      {!isCollapsed && (
-                        <>
-                          <span>{item.name}</span>
-                          {item.submenu && (
-                            <ChevronRight
-                              className={cn(
-                                "ml-auto h-4 w-4 transition-transform",
-                                expandedItems.includes(item.name) && "rotate-90"
-                              )}
-                            />
-                          )}
-                        </>
-                      )}
+                      {!isCollapsed && <span>{item.name}</span>}
                     </Button>
                   </TooltipTrigger>
                   {isCollapsed && (
@@ -234,37 +194,6 @@ export default function VerticalNav() {
                   )}
                 </Tooltip>
               </TooltipProvider>
-
-              {/* Submenu items - Updated with animation */}
-              {!isCollapsed && item.submenu && (
-                <div
-                  className={cn(
-                    "overflow-hidden transition-all duration-300 ease-in-out",
-                    expandedItems.includes(item.name)
-                      ? "max-h-[500px]"
-                      : "max-h-0"
-                  )}
-                >
-                  <ul className="ml-6 mt-1 space-y-1">
-                    {item.submenu.map((subItem) => (
-                      <li key={subItem.name}>
-                        <Button
-                          variant="ghost"
-                          className={cn(
-                            "w-full justify-start pl-7",
-                            isActive(subItem.path)
-                              ? "bg-blue-100 text-blue-900"
-                              : "text-gray-600 hover:bg-blue-50 hover:text-blue-900"
-                          )}
-                          onClick={() => navigate(subItem.path)}
-                        >
-                          <span>{subItem.name}</span>
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </li>
           ))}
         </ul>

@@ -295,10 +295,25 @@ router.delete("/:paymentId", async (req, res) => {
       return res.status(404).json({ message: "Payment not found" });
     }
 
+    const model = payment.paymentType === "Payment Out" ? Distributor : Customer;
+
     // Find distributor and revert balance
-    const distributor = await Distributor.findById(payment.distributorId).session(session);
+    const distributor = await model.findById(payment.distributorId).session(session);
     if (distributor) {
       distributor.currentBalance -= payment.paymentType === "Payment Out" ? payment.amount : -payment.amount;
+      const ledgerEntry = new Ledger({
+        distributorId: distributor._id,
+        customerId: distributor._id,
+        balance: distributor.currentBalance,
+        description: payment.paymentType + " Deleted",
+        invoiceNumber: payment.paymentNumber,
+      });
+      if(payment.paymentType === "Payment Out"){
+        ledgerEntry.credit = payment.amount;
+      }else{
+        ledgerEntry.debit = payment.amount;
+      }
+      await ledgerEntry.save({ session });
       await distributor.save({ session });
     }
 

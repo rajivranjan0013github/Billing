@@ -59,7 +59,7 @@ router.post("/", verifyToken, async (req, res) => {
     
 
     // Handle payment if provided
-      if (payment && payment.amount !== 0) {
+    if (payment && payment.amount !== 0) {
       // Create payment record
       const paymentNumber = await Payment.getNextPaymentNumber(session);
       const paymentDoc = new Payment({
@@ -102,6 +102,8 @@ router.post("/", verifyToken, async (req, res) => {
 
         // Update account balance
         account.balance += payment.amount;
+
+        paymentDoc.accountBalance = account.balance;
 
         await account.save({ session });
 
@@ -177,7 +179,7 @@ router.post("/", verifyToken, async (req, res) => {
         customerId: distributorDetails._id,
         balance: distributorDetails.currentBalance,
         debit : details.grandTotal,
-        credit : payment.amount,
+        credit : payment?.amount || 0,
         invoiceNumber : newSalesBill.invoiceNumber,
         description : "Sales Bill",
       });

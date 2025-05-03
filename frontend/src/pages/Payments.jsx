@@ -409,12 +409,12 @@ const Payments = () => {
           <h1 className="text-2xl font-semibold">All Payments</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon">
+          {/* <Button variant="ghost" size="icon">
             <Settings className="h-5 w-5" />
           </Button>
           <Button variant="ghost" size="icon">
             <MessageSquare className="h-5 w-5" />
-          </Button>
+          </Button> */}
         </div>
       </div>
 

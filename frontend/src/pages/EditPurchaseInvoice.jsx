@@ -758,7 +758,7 @@ export default function EditPurchaseInvoice() {
                             variant="ghost"
                             size="icon"
                             onClick={() =>
-                              navigate(`/purchase/payment-out/${payment._id}`)
+                              navigate(`/payment/${payment._id}`)
                             }
                             className="h-6 w-6"
                           >

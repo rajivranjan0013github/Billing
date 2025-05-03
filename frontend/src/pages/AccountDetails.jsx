@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import {
   fetchAccounts,
   addAccount,
@@ -58,6 +59,7 @@ const formatDateTime = (dateString) => {
 
 export default function AccountDetails() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { accounts, error, fetchStatus, createAccountStatus } = useSelector((state) => state.accounts);
   const [addAccountOpen, setAddAccountOpen] = useState(false);
   const { toast } = useToast();
@@ -465,7 +467,6 @@ export default function AccountDetails() {
               <DialogTitle className="text-base font-semibold">Add New Account</DialogTitle>
             </DialogHeader>
             <Separator />
-
             <div className="p-6">
               <div className="space-y-4">
                 <div>
@@ -490,13 +491,11 @@ export default function AccountDetails() {
                 {renderAccountForm()}
               </div>
             </div>
-
             <div className="p-3 bg-gray-100 border-t flex items-center justify-end gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setAddAccountOpen(false)}
-                className=""
               >
                 Cancel
               </Button>
@@ -504,7 +503,7 @@ export default function AccountDetails() {
                 type="submit"
                 size="sm"
                 onClick={handleAddAccount}
-                className="bg-blue-600 text-white hover:bg-blue-700"  
+                className="bg-blue-600 text-white hover:bg-blue-700"
                 disabled={createAccountStatus === 'loading'}
               >
                 {createAccountStatus === 'loading' ? 'Adding...' : 'Add Account'}
@@ -530,10 +529,22 @@ export default function AccountDetails() {
               {accounts.map((account) => (
                 <Card key={account._id}>
                   <CardHeader>
-                    <CardTitle>{account.accountType}</CardTitle>
-                    <CardDescription>
-                      Last updated: {formatDateTime(account.lastUpdated)}
-                    </CardDescription>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle>{account.accountType}</CardTitle>
+                        <CardDescription>
+                          Last updated: {formatDateTime(account.lastUpdated)}
+                        </CardDescription>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/accounts/transactions/${account._id}`)}
+                        className="text-sm"
+                      >
+                        View Transactions
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {account.accountType === "BANK" && (

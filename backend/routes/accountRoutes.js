@@ -1,6 +1,8 @@
 import express from "express";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import AccountDetails from "../models/AccountDetails.js";
+import {Payment} from "../models/Payment.js";
+import mongoose from "mongoose";  
 
 const router = express.Router();
 
@@ -11,6 +13,53 @@ router.get("/", verifyToken, async (req, res) => {
     res.json(accounts);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// Get transactions for an account
+router.get("/transactions", verifyToken, async (req, res) => {
+  try {
+    const { accountId, page = 1 } = req.query;
+    const limit = 30;
+    const skip = (page - 1) * limit;
+
+    // Validate accountId format
+    if (!accountId || !mongoose.Types.ObjectId.isValid(accountId)) {
+      return res.status(400).json({ message: "Invalid account ID format" });
+    }
+
+    // Fetch total count of transactions
+    const totalCount = await Payment.countDocuments({
+      accountId: new mongoose.Types.ObjectId(accountId)
+    });
+
+    // Fetch paginated transactions for the specified account
+    const transactions = await Payment.find({ 
+      accountId: new mongoose.Types.ObjectId(accountId) 
+    })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+    if (!transactions) {
+      return res.status(404).json({ message: "No transactions found" });
+    }
+
+    res.status(200).json({
+      transactions,
+      pagination: {
+        total: totalCount,
+        pages: Math.ceil(totalCount / limit),
+        currentPage: parseInt(page),
+        limit
+      }
+    });
+  } catch (error) {
+    console.error('Transaction fetch error:', error);
+    res.status(500).json({ 
+      message: "Error fetching transactions", 
+      error: error.message 
+    });
   }
 });
 
@@ -113,54 +162,6 @@ router.patch("/:id", verifyToken, async (req, res) => {
         if (balance !== undefined) {
           account.balance = balance;
         }
-        break;
-    }
-
-    account.lastUpdated = new Date();
-    const updatedAccount = await account.save();
-    res.json(updatedAccount);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
-
-// Get account transactions
-router.get("/:id/transactions", verifyToken, async (req, res) => {
-  try {
-    const { startDate, endDate } = req.query;
-    const account = await AccountDetails.findById(req.params.id);
-    if (!account) {
-      return res.status(404).json({ message: "Account not found" });
-    }
-
-    // Add logic to fetch transactions for this account
-    // This will depend on how you're storing transactions
-    res.json([]);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Update account balance
-router.post("/:id/update-balance", verifyToken, async (req, res) => {
-  try {
-    const { amount, type } = req.body; // type: 'credit' or 'debit'
-    const account = await AccountDetails.findById(req.params.id);
-    if (!account) {
-      return res.status(404).json({ message: "Account not found" });
-    }
-
-    // Update balance based on account type
-    switch (account.accountType) {
-      case "BANK":
-        account.bankDetails.balance += type === "credit" ? amount : -amount;
-        break;
-      case "UPI":
-        account.upiDetails.balance += type === "credit" ? amount : -amount;
-        break;
-      case "CASH":
-      case "OTHERS":
-        account.balance += type === "credit" ? amount : -amount;
         break;
     }
 
