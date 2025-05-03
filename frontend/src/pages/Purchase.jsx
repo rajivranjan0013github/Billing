@@ -618,7 +618,7 @@ export default function PurchasesTransactions() {
                 <TableHead>BILLED ON</TableHead>
                 <TableHead>BILL TOTAL</TableHead>
                 <TableHead>Due Amt</TableHead>
-                <TableHead>PAID / DUE</TableHead>
+                <TableHead>STATUS</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="border">
@@ -695,7 +695,7 @@ export default function PurchasesTransactions() {
                     <div className="flex items-center gap-2">
                       <span
                         className={cn(
-                          "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium",
+                          "inline-flex items-center px-2 py-1 text-xs font-medium",
                           {
                             "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20":
                               bill.paymentStatus === "paid",

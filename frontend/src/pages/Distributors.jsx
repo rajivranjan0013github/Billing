@@ -15,13 +15,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Search, Users, X, ArrowLeft, Plus } from "lucide-react";
+import { Search, Users, X, ArrowLeft, Plus, FileInput } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchDistributors } from "../redux/slices/distributorSlice";
 import { useNavigate } from "react-router-dom";
 import CreateDistributorDlg from "../components/custom/distributor/CreateDistributorDlg";
 import { formatCurrency } from "../utils/Helper";
+import * as XLSX from "xlsx";
 
 export default function Distributors() {
   const dispatch = useDispatch();
@@ -61,6 +62,42 @@ export default function Distributors() {
       }
       return true;
     });
+  };
+
+  // Function to handle exporting data to Excel
+  const handleExport = () => {
+    const dataToExport = getFilteredDistributors().map((distributor) => ({
+      "Distributor Name": distributor.name,
+      "Mobile Number": distributor.mob || "-",
+      "Address": distributor.address || "-",
+      "Account Number": distributor.bankDetails?.accountNumber || "-",
+      "IFSC Code": distributor.bankDetails?.ifsc || "-",
+      "Balance": distributor.currentBalance || 0,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Distributors");
+
+    // Set column widths (optional, but improves readability)
+    worksheet["!cols"] = [
+      { wch: 25 }, // Distributor Name
+      { wch: 15 }, // Mobile Number
+      { wch: 30 }, // Address
+      { wch: 20 }, // Account Number
+      { wch: 15 }, // IFSC Code
+      { wch: 15 }, // Balance
+    ];
+
+    // Format Balance column as currency (optional)
+    dataToExport.forEach((_row, index) => {
+      const cellRef = XLSX.utils.encode_cell({ r: index + 1, c: 5 }); // Updated column index for Balance (0-based)
+      if (worksheet[cellRef]) {
+        worksheet[cellRef].z = '"₹"#,##0.00'; // Indian Rupee format
+      }
+    });
+
+    XLSX.writeFile(workbook, "distributors.xlsx");
   };
 
   return (
@@ -154,6 +191,14 @@ export default function Distributors() {
             <Plus className="mr-2 h-4 w-4" />
             Create Distributor
           </Button>
+          <Button
+            variant="outline"
+            onClick={handleExport}
+            disabled={getFilteredDistributors().length === 0}
+          >
+            <FileInput className="mr-2 h-4 w-4" />
+            Export to Excel
+          </Button>
         </div>
       </div>
 
@@ -181,6 +226,8 @@ export default function Distributors() {
                 <TableHead>DISTRIBUTOR NAME</TableHead>
                 <TableHead>MOBILE NUMBER</TableHead>
                 <TableHead>ADDRESS</TableHead>
+                {/* <TableHead>ACCOUNT NUMBER</TableHead>
+                <TableHead>IFSC CODE</TableHead> */}
                 <TableHead className="text-right">BALANCE</TableHead>
               </TableRow>
             </TableHeader>
@@ -196,6 +243,8 @@ export default function Distributors() {
                   </TableCell>
                   <TableCell>{distributor.mob || "-"}</TableCell>
                   <TableCell>{distributor.address || "-"}</TableCell>
+                  {/* <TableCell>{distributor.bankDetails?.accountNumber || "-"}</TableCell>
+                  <TableCell>{distributor.bankDetails?.ifsc || "-"}</TableCell> */}
                   <TableCell className="text-right">
                     <span
                       className={

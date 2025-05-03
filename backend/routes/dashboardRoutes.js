@@ -2,8 +2,8 @@ import express from "express";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import { SalesBill } from "../models/SalesBill.js";
 import { Payment } from "../models/Payment.js";
-import { Inventory } from "../models/Inventory.js";
-import { StockTimeline } from "../models/StockTimeline.js";
+import { InvoiceSchema } from "../models/InvoiceSchema.js";
+import mongoose from "mongoose";
 
 const router = express.Router();
 
@@ -17,210 +17,216 @@ router.get("/metrics", verifyToken, async (req, res) => {
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
 
-    const monthStart = new Date(start.getFullYear(), start.getMonth(), 1);
-    const lastMonthStart = new Date(
-      start.getFullYear(),
-      start.getMonth() - 1,
-      1
-    );
-    const lastMonthEnd = new Date(start.getFullYear(), start.getMonth(), 0);
-
-    // Get sales for the selected period
-    const periodSales = await SalesBill.find({
-      invoiceDate: {
-        $gte: start,
-        $lte: end,
+    // --- Sales Calculations ---
+    const salesPipeline = [
+      {
+        $match: {
+          invoiceDate: { $gte: start, $lte: end },
+          status: "active",
+        },
       },
-      status: "active",
-    });
-
-    // Calculate period metrics
-    const todayMetrics = periodSales.reduce(
-      (acc, sale) => {
-        acc.totalRevenue += sale.grandTotal || 0;
-        acc.totalSales += 1;
-        acc.totalItems += sale.billSummary.totalQuantity || 0;
-        return acc;
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$grandTotal" },
+          totalAmountReceived: { $sum: "$amountPaid" },
+          totalSales: { $sum: 1 },
+          totalItems: { $sum: "$billSummary.totalQuantity" },
+          dueAmount: {
+            $sum: {
+              $cond: [
+                { $eq: ["$paymentStatus", "due"] },
+                { $subtract: ["$grandTotal", "$amountPaid"] },
+                0,
+              ],
+            },
+          },
+          dueInvoicesCount: {
+            $sum: { $cond: [{ $eq: ["$paymentStatus", "due"] }, 1, 0] },
+          },
+        },
       },
-      { totalRevenue: 0, totalSales: 0, totalItems: 0 }
-    );
-
-    // Get payment methods distribution for the period
-    const periodPayments = await Payment.find({
-      paymentDate: {
-        $gte: start,
-        $lte: end,
+      {
+        $project: {
+          _id: 0,
+          totalRevenue: { $ifNull: ["$totalRevenue", 0] },
+          totalAmountReceived: { $ifNull: ["$totalAmountReceived", 0] },
+          totalSales: { $ifNull: ["$totalSales", 0] },
+          totalItems: { $ifNull: ["$totalItems", 0] },
+          totalAmountDue: { $ifNull: ["$dueAmount", 0] },
+          dueInvoicesCount: { $ifNull: ["$dueInvoicesCount", 0] },
+        },
       },
-      paymentType: "Payment In",
-      status: "COMPLETED",
-    });
+    ];
 
-    const paymentMethodsDistribution = periodPayments.reduce((acc, payment) => {
-      acc[payment.paymentMethod] =
-        (acc[payment.paymentMethod] || 0) + payment.amount;
-      return acc;
-    }, {});
+    const salesSummaryResult = await SalesBill.aggregate(salesPipeline);
+    const salesSummary =
+      salesSummaryResult[0] || {
+        totalRevenue: 0,
+        totalAmountReceived: 0,
+        totalSales: 0,
+        totalItems: 0,
+        totalAmountDue: 0,
+        dueInvoicesCount: 0,
+      };
 
-    // Monthly metrics
-    const thisMonthSales = await SalesBill.find({
-      invoiceDate: { $gte: monthStart, $lte: end },
-      status: "active",
-    });
+    // --- Purchase Calculations ---
+    const purchasePipeline = [
+       {
+        $match: {
+          invoiceDate: { $gte: start, $lte: end },
+          status: "active",
+          invoiceType: "PURCHASE",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalCost: { $sum: "$grandTotal" },
+          totalAmountPaid: { $sum: "$amountPaid" },
+          totalPurchases: { $sum: 1 },
+          dueAmount: {
+            $sum: {
+              $cond: [
+                { $eq: ["$paymentStatus", "due"] },
+                { $subtract: ["$grandTotal", "$amountPaid"] },
+                0,
+              ],
+            },
+          },
+          dueInvoicesCount: {
+            $sum: { $cond: [{ $eq: ["$paymentStatus", "due"] }, 1, 0] },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalCost: { $ifNull: ["$totalCost", 0] },
+          totalAmountPaid: { $ifNull: ["$totalAmountPaid", 0] },
+          totalPurchases: { $ifNull: ["$totalPurchases", 0] },
+          totalAmountDue: { $ifNull: ["$dueAmount", 0] },
+          dueInvoicesCount: { $ifNull: ["$dueInvoicesCount", 0] },
+        },
+      },
+    ];
 
-    const lastMonthSales = await SalesBill.find({
-      invoiceDate: { $gte: lastMonthStart, $lt: lastMonthEnd },
-      status: "active",
-    });
+    const purchaseSummaryResult = await InvoiceSchema.aggregate(purchasePipeline);
+    const purchaseSummary =
+      purchaseSummaryResult[0] || {
+        totalCost: 0,
+        totalAmountPaid: 0,
+        totalPurchases: 0,
+        totalAmountDue: 0,
+        dueInvoicesCount: 0,
+      };
 
-    const thisMonthRevenue = thisMonthSales.reduce(
-      (acc, sale) => acc + (sale.grandTotal || 0),
-      0
-    );
-    const lastMonthRevenue = lastMonthSales.reduce(
-      (acc, sale) => acc + (sale.grandTotal || 0),
-      0
-    );
 
-    const revenueGrowth =
-      lastMonthRevenue === 0
-        ? 100
-        : ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
-
-    // Customer metrics
-    const thirtyDaysAgo = new Date(start);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const activeCustomers = await SalesBill.distinct("distributorId", {
-      invoiceDate: { $gte: thirtyDaysAgo },
-      status: "active",
-      is_cash_customer: false,
-    });
-
-    // Inventory metrics
-    const inventoryItems = await Inventory.find().populate("batch");
-    const lowStockThreshold = 10; // Configure based on your needs
-
-    const inventoryMetrics = {
-      lowStockItems: 0,
-      outOfStockItems: 0,
-      expiringSoonItems: 0,
-    };
-
-    const thirtyDaysFromNow = new Date();
-    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-
-    inventoryItems.forEach((item) => {
-      if (item.quantity === 0) {
-        inventoryMetrics.outOfStockItems++;
-      } else if (item.quantity <= lowStockThreshold) {
-        inventoryMetrics.lowStockItems++;
-      }
-
-      // Check expiring batches
-      item.batch.forEach((batch) => {
-        if (batch.expiry) {
-          const [month, year] = batch.expiry.split("/");
-          const expiryDate = new Date(
-            2000 + parseInt(year),
-            parseInt(month) - 1
-          );
-          if (expiryDate <= thirtyDaysFromNow) {
-            inventoryMetrics.expiringSoonItems++;
-          }
+    // --- Payment Calculations ---
+    const paymentInPipeline = [
+        {
+            $match: {
+                paymentDate: { $gte: start, $lte: end },
+                paymentType: "Payment In",
+                status: "COMPLETED",
+            },
+        },
+        {
+            $facet: {
+                totalCollection: [
+                    { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
+                    { $project: { _id: 0, totalAmount: { $ifNull: ["$totalAmount", 0] } } }
+                ],
+                accountWiseCollection: [
+                    {
+                        $group: {
+                             _id: "$accountId",
+                             totalAmount: { $sum: "$amount" }
+                        }
+                    },
+                     { $sort: { _id: 1 } },
+                ],
+                methodWiseCollection: [
+                     { $group: { _id: "$paymentMethod", totalAmount: { $sum: "$amount" } } },
+                     { $project: { _id: 0, method: "$_id", totalAmount: 1 } },
+                     { $sort: { method: 1 } },
+                ]
+            }
         }
-      });
-    });
+    ];
 
-    // Financial metrics
-    const dueSales = await SalesBill.find({
-      paymentStatus: "due",
-      status: "active",
-    });
+    const paymentOutPipeline = [
+        {
+            $match: {
+                paymentDate: { $gte: start, $lte: end },
+                paymentType: "Payment Out",
+                status: "COMPLETED",
+            },
+        },
+        {
+            $facet: {
+                totalPayment: [
+                    { $group: { _id: null, totalAmount: { $sum: "$amount" } } },
+                    { $project: { _id: 0, totalAmount: { $ifNull: ["$totalAmount", 0] } } }
+                ],
+                 methodWisePayment: [
+                     { $group: { _id: "$paymentMethod", totalAmount: { $sum: "$amount" } } },
+                     { $project: { _id: 0, method: "$_id", totalAmount: 1 } },
+                     { $sort: { method: 1 } },
+                 ],
+                 accountWisePayment: [
+                    {
+                        $group: {
+                             _id: "$accountId",
+                             totalAmount: { $sum: "$amount" }
+                        }
+                    },
+                     { $sort: { _id: 1 } },
+                 ]
+            }
+        }
+    ];
 
-    const duePayments = await Payment.find({
-      paymentType: "Payment Out",
-      status: "PENDING",
-    });
+    const [paymentInResult, paymentOutResult] = await Promise.all([
+      Payment.aggregate(paymentInPipeline),
+      Payment.aggregate(paymentOutPipeline),
+    ]);
 
-    const financialMetrics = {
-      totalReceivables: dueSales.reduce(
-        (acc, sale) => acc + (sale.grandTotal - sale.amountPaid),
-        0
-      ),
-      overdueReceivables: dueSales
-        .filter(
-          (sale) => sale.paymentDueDate && new Date(sale.paymentDueDate) < start
-        )
-        .reduce((acc, sale) => acc + (sale.grandTotal - sale.amountPaid), 0),
-      totalPayables: duePayments.reduce(
-        (acc, payment) => acc + payment.amount,
-        0
-      ),
-      dueThisWeek: duePayments
-        .filter((payment) => {
-          const dueDate = new Date(payment.paymentDate);
-          const weekFromNow = new Date(start);
-          weekFromNow.setDate(weekFromNow.getDate() + 7);
-          return dueDate <= weekFromNow;
-        })
-        .reduce((acc, payment) => acc + payment.amount, 0),
+    const totalPaymentIn = paymentInResult[0]?.totalCollection[0]?.totalAmount || 0;
+    const accountWiseCollection = paymentInResult[0]?.accountWiseCollection || [];
+    const methodWiseCollectionIn = paymentInResult[0]?.methodWiseCollection || [];
+
+    const totalPaymentOut = paymentOutResult[0]?.totalPayment[0]?.totalAmount || 0;
+    const methodWiseCollectionOut = paymentOutResult[0]?.methodWisePayment || [];
+    const accountWisePaymentOut = paymentOutResult[0]?.accountWisePayment || [];
+
+    const paymentSummary = {
+        totalPaymentIn,
+        totalPaymentOut,
+        netCashFlow: totalPaymentIn - totalPaymentOut,
+        accountWiseCollection: accountWiseCollection.map(acc => ({ accountId: acc._id, totalAmount: acc.totalAmount })),
+        paymentInMethods: methodWiseCollectionIn,
+        paymentOutMethods: methodWiseCollectionOut,
+        accountWisePayment: accountWisePaymentOut.map(acc => ({ accountId: acc._id, totalAmount: acc.totalAmount })),
     };
 
-    // Recent transactions
-    const recentTransactions = await StockTimeline.find({
-      createdAt: { $gte: start, $lte: end },
-    })
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .select("type invoiceNumber credit debit createdAt");
 
-    const formattedTransactions = recentTransactions.map((t) => ({
-      type: t.type.toLowerCase(),
-      date: t.createdAt,
-      amount: t.credit || t.debit,
-      reference: t.invoiceNumber,
-    }));
+    // --- Financial Metrics (Strictly based on sales/purchases within the range) ---
+    const financialMetrics = {
+        totalReceivables: salesSummary.totalAmountDue, // Receivables from sales made in the period
+        totalPayables: purchaseSummary.totalAmountDue, // Payables from purchases made in the period
+    };
 
-    // Sales trend
-    const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-    const salesTrend = [];
-
-    for (let i = daysDiff - 1; i >= 0; i--) {
-      const date = new Date(end);
-      date.setDate(date.getDate() - i);
-      date.setHours(0, 0, 0, 0);
-
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
-
-      const daySales = await SalesBill.find({
-        invoiceDate: { $gte: date, $lt: nextDate },
-        status: "active",
-      });
-
-      salesTrend.push({
-        date: date.toISOString().split("T")[0],
-        revenue: daySales.reduce(
-          (acc, sale) => acc + (sale.grandTotal || 0),
-          0
-        ),
-      });
-    }
-
+    // --- Final Response (Only range-bound metrics) ---
     res.json({
-      todayMetrics,
-      monthlyMetrics: {
-        revenue: thisMonthRevenue,
-        revenueGrowth: parseFloat(revenueGrowth.toFixed(2)),
+      period: {
+        startDate: start.toISOString().split("T")[0],
+        endDate: end.toISOString().split("T")[0],
       },
-      customerMetrics: {
-        activeCustomers: activeCustomers.length,
-      },
-      inventoryMetrics,
-      financialMetrics,
-      paymentMethodsDistribution,
-      recentTransactions: formattedTransactions,
-      salesTrend,
+      salesSummary, 
+      purchaseSummary,
+      paymentSummary,
+      financialMetrics, // Contains only range-relevant receivables/payables
     });
   } catch (error) {
     console.error("Dashboard metrics error:", error);

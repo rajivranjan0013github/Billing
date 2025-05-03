@@ -11,6 +11,7 @@ import { fetchCustomerDetails, setTabName } from "../redux/slices/CustomerSlice"
 import CreateCustomerDialog from "../components/custom/customer/CreateCustomerDialog";
 import { formatCurrency } from "../utils/Helper";
 import LedgerTabContent from "../components/custom/distributor/LedgerTabContent";
+import { cn } from "../lib/utils";
 
 export default function CustomerDetails() {
   const navigate = useNavigate();
@@ -229,18 +230,21 @@ export default function CustomerDetails() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant="secondary"
-                            className={
-                              invoice.status === "Paid"
-                                ? "bg-green-100 text-green-700 hover:bg-green-100"
-                                : invoice.status === "Unpaid"
-                                ? "bg-red-100 text-red-700 hover:bg-red-100"
-                                : "bg-yellow-100 text-yellow-700 hover:bg-yellow-100"
-                            }
-                          >
-                            {invoice.status}
-                          </Badge>
+                        <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "inline-flex items-center  px-2 py-1 text-xs font-medium",
+                          {
+                            "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20":
+                              invoice.status === "Paid",
+                            "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20":
+                              invoice.status === "Unpaid",
+                          }
+                        )}
+                      >
+                        {invoice.status}
+                      </span>
+                    </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -298,8 +302,8 @@ export default function CustomerDetails() {
                             variant="secondary"
                             className={
                               payment.status === "Completed"
-                                ? "bg-green-100 text-green-700 hover:bg-green-100"
-                                : "bg-yellow-100 text-yellow-700 hover:bg-yellow-100"
+                                ? "bg-green-100 text-green-700 hover:bg-green-100 font-medium"
+                                : "bg-yellow-100 text-yellow-700 hover:bg-yellow-100 font-medium"
                             }
                           >
                             {payment.status}

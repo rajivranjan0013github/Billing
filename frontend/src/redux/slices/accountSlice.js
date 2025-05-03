@@ -5,95 +5,71 @@ import { Backend_URL } from "../../assets/Data";
 // Async thunks
 export const fetchAccounts = createLoadingAsyncThunk(
   "accounts/fetchAccounts",
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await fetch(`${Backend_URL}/api/accounts`, {
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to fetch accounts");
-      return await response.json();
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  },  { useGlobalLoader: true }
+  async () => {
+    const response = await fetch(`${Backend_URL}/api/accounts`, {
+      credentials: "include",
+    });
+    if (!response.ok) throw new Error("Failed to fetch accounts");
+    return await response.json();
+  },
+  { useGlobalLoader: true }
 );
 
 export const addAccount = createLoadingAsyncThunk(
   "accounts/addAccount",
-  async (accountData, { rejectWithValue }) => {
-    try {
-      const response = await fetch(`${Backend_URL}/api/accounts`, {
+  async (accountData) => {
+    const response = await fetch(`${Backend_URL}/api/accounts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(accountData),
+    });
+    if (!response.ok) throw new Error("Failed to add account");
+    return await response.json();
+  },
+  { useGlobalLoader: true }
+);
+
+export const updateAccount = createLoadingAsyncThunk(
+  "accounts/updateAccount",
+  async ({ id, data }) => {
+    const response = await fetch(`${Backend_URL}/api/accounts/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error("Failed to update account");
+    return await response.json();
+  },
+  { useGlobalLoader: true }
+);
+
+export const updateAccountBalance = createLoadingAsyncThunk(
+  "accounts/updateBalance",
+  async ({ id, amount, type }) => {
+    const response = await fetch(
+      `${Backend_URL}/api/accounts/${id}/update-balance`,
+      {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(accountData),
-      });
-      if (!response.ok) throw new Error("Failed to add account");
-      return await response.json();
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }, { useGlobalLoader: true }
-);
-
-export const updateAccount = createAsyncThunk(
-  "accounts/updateAccount",
-  async ({ id, data }, { rejectWithValue }) => {
-    try {
-      const response = await fetch(`${Backend_URL}/api/accounts/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error("Failed to update account");
-      return await response.json();
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  }, { useGlobalLoader: true }
-);
-
-export const updateAccountBalance = createAsyncThunk(
-  "accounts/updateBalance",
-  async ({ id, amount, type }, { rejectWithValue }) => {
-    try {
-      const response = await fetch(
-        `${Backend_URL}/api/accounts/${id}/update-balance`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ amount, type }),
-        }
-      );
-      if (!response.ok) throw new Error("Failed to update balance");
-      return await response.json();
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
+        body: JSON.stringify({ amount, type }),
+      }
+    );
+    if (!response.ok) throw new Error("Failed to update balance");
+    return await response.json();
   }
 );
 
-export const fetchAccountTransactions = createAsyncThunk(
+export const fetchAccountTransactions = createLoadingAsyncThunk(
   "accounts/fetchTransactions",
-  async ({ id, startDate, endDate }, { rejectWithValue }) => {
-    try {
-      const queryParams = new URLSearchParams();
-      if (startDate) queryParams.append("startDate", startDate);
-      if (endDate) queryParams.append("endDate", endDate);
-
-      const response = await fetch(
-        `${Backend_URL}/api/accounts/${id}/transactions?${queryParams}`,
-        {
-          credentials: "include",
-        }
-      );
-      if (!response.ok) throw new Error("Failed to fetch transactions");
-      return await response.json();
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
+  async ({ accountId, page = 1 }) => {
+    const response = await fetch(`${Backend_URL}/api/accounts/transactions?accountId=${accountId}&page=${page}`, {
+      credentials: "include"
+    });
+    if (!response.ok) throw new Error("Failed to fetch transactions");
+    return await response.json();
   }
 );
 
@@ -102,6 +78,12 @@ const accountSlice = createSlice({
   initialState: {
     accounts: [],
     transactions: [],
+    pagination: {
+      total: 0,
+      pages: 0,
+      currentPage: 1,
+      limit: 30
+    },
     error: null,
     selectedAccount: null,
     fetchStatus: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
@@ -194,7 +176,8 @@ const accountSlice = createSlice({
       })
       .addCase(fetchAccountTransactions.fulfilled, (state, action) => {
         state.transactionsStatus = 'succeeded';
-        state.transactions = action.payload;
+        state.transactions = action.payload.transactions;
+        state.pagination = action.payload.pagination;
       })
       .addCase(fetchAccountTransactions.rejected, (state, action) => {
         state.transactionsStatus = 'failed';
