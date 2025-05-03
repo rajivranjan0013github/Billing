@@ -87,7 +87,7 @@ export default function SalesTab({inventoryId}) {
                                         <tr
                                             key={sale._id}
                                             className="hover:bg-secondary cursor-pointer border-b last:border-0"
-                                            onClick={() => {navigate(`/sale/${sale.invoiceId}`)}}
+                                            onClick={() => {navigate(`/sales/${sale.invoiceId}`)}}
                                         >
                                             <td className="px-4 py-2">
                                                 <div className="text-sm font-medium">
