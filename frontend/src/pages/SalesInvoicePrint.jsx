@@ -87,7 +87,7 @@ const SalesInvoicePrint = () => {
   };
 
   return (
-    <div className="p-4">
+    <div className="p-4 font-semibold">
       {/* Header Controls - Only visible on screen */}
       <div className="flex items-center justify-between mb-4 print:hidden">
         <div className="flex items-center gap-2">

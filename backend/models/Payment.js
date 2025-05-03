@@ -79,6 +79,7 @@ const paymentSchema = new mongoose.Schema(
       },
     ],
     salesBills: [{
+        type: mongoose.Schema.Types.ObjectId,
         ref: "SalesBill",
       },
     ],

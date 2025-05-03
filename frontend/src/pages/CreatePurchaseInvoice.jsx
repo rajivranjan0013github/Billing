@@ -324,19 +324,36 @@ export default function PurchaseForm() {
   const handleKeyDown = (e, nextInputId) => {
     if (e.key === "Enter") {
       e.preventDefault();
+      // Shift+Enter logic for header inputs
       if (e.shiftKey) {
-        const nextInputIndex = inputKeys.indexOf(nextInputId);
-        if (nextInputIndex > 1) {
-          const newInputId = inputKeys[nextInputIndex - 2];
-          if (newInputId && inputRef.current[newInputId]) {
-            inputRef.current[newInputId].focus();
+        const currentInputIndex = inputKeys.indexOf(nextInputId); // Use nextInputId as current here
+        // Only handle shift+enter for header fields before 'product'
+        if (
+          currentInputIndex > 0 &&
+          currentInputIndex < inputKeys.indexOf("product")
+        ) {
+          const prevInputId = inputKeys[currentInputIndex - 1];
+          if (prevInputId && inputRef.current[prevInputId]) {
+            inputRef.current[prevInputId].focus();
           }
         }
+        // If Shift+Enter is pressed in the table, let the table handle it (handled in PurchaseItemTable now)
+        return;
+      }
+
+      // Normal Enter logic
+      // Special case: from invoiceDate, focus the product input in the table
+      if (nextInputId === "product") {
+        if (inputRef.current["product"]) {
+          inputRef.current["product"].focus();
+        }
       } else {
+        // Standard navigation for header fields
         if (nextInputId && inputRef.current[nextInputId]) {
           inputRef.current[nextInputId].focus();
         }
       }
+      // Navigation within the table is handled by PurchaseItemTable itself
     }
   };
 
@@ -493,7 +510,7 @@ export default function PurchaseForm() {
   };
 
   return (
-    <div className="relative rounded-lg h-[100vh] pt-4 ">
+    <div className="relative rounded-lg h-[100vh] pt-4 font-semibold\">
       <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-300">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
@@ -631,7 +648,6 @@ export default function PurchaseForm() {
           products={products}
           setProducts={setProducts}
           gstMode={formData.amountType}
-          handleKeyDown={handleKeyDown}
         />
       </div>
 

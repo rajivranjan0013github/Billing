@@ -118,15 +118,139 @@ export default function SaleTable({
     setNewProduct(updatedProduct);
   };
 
+  // --- Refactored handleKeyDown for focus management ---
+  const handleInputKeyDown = (e, currentField) => {
+    // Define the full order of fields for navigation
+    const fullFieldOrder = [
+      "product",
+      "batchNumber",
+      "HSN",
+      "pack",
+      "expiry",
+      "mrp",
+      "packs",
+      "loose",
+      "saleRate",
+      "discount",
+      "gstPer",
+      "add",
+    ];
+
+    // Handle Shift+Enter first - Go back to the previous input
+    if (e.key === "Enter" && e.shiftKey) {
+      e.preventDefault();
+      const currentIndex = fullFieldOrder.indexOf(currentField);
+      if (currentIndex > 0) {
+        // Find the *previous* field regardless of its value
+        const previousField = fullFieldOrder[currentIndex - 1];
+        if (inputRef.current[previousField]) {
+          // Check if the previous field is 'batchNumber' or 'product' and handle refs correctly
+          if (previousField === "batchNumber") {
+            // BatchSuggestion forwards its ref to the input
+            if (inputRef.current["batchNumber"]) {
+              inputRef.current["batchNumber"].focus();
+            }
+          } else if (previousField === "product") {
+            // InventorySuggestion manages its own internal input ref
+            if (inputRef.current["product"]?.focus) {
+              // Access the actual input ref inside InventorySuggestion
+              inputRef.current["product"].focus();
+            }
+          } else if (inputRef.current[previousField]) {
+            inputRef.current[previousField].focus();
+          }
+        }
+      }
+    }
+    // Handle Enter (without Shift) - Move to next *empty* field or 'add' button
+    else if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault(); // Prevent default form submission
+
+      const currentIndex = fullFieldOrder.indexOf(currentField);
+
+      if (currentIndex !== -1) {
+        let nextIndex = currentIndex + 1;
+        let nextField = null;
+
+        // Find the next focusable field (either empty input or the 'add' button)
+        while (nextIndex < fullFieldOrder.length) {
+          const potentialNextField = fullFieldOrder[nextIndex];
+
+          // Special handling for 'product' and 'batchNumber' suggestions
+          if (potentialNextField === "product") {
+            if (!productSearch && inputRef.current[potentialNextField]) {
+              nextField = potentialNextField;
+              break;
+            }
+          } else if (potentialNextField === "batchNumber") {
+            if (!batchNumber && inputRef.current[potentialNextField]) {
+              nextField = potentialNextField;
+              break;
+            }
+          }
+          // Check normal inputs in newProduct state
+          else if (
+            potentialNextField !== "add" &&
+            !newProduct[potentialNextField] && // Check if the field in state is empty
+            inputRef.current[potentialNextField] // Check if the ref exists
+          ) {
+            nextField = potentialNextField;
+            break; // Found the next empty field
+          }
+          // Always allow focusing the 'add' button
+          else if (potentialNextField === "add" && inputRef.current["add"]) {
+            nextField = "add";
+            break;
+          }
+
+          nextIndex++;
+        }
+
+        // Focus the determined next field or the add button
+        if (nextField) {
+          if (nextField === "product" && inputRef.current["product"]) {
+            inputRef.current["product"].focus(); // Focus the input inside InventorySuggestion
+          } else if (
+            nextField === "batchNumber" &&
+            inputRef.current["batchNumber"]
+          ) {
+            inputRef.current["batchNumber"].focus(); // Focus the input inside BatchSuggestion
+          } else if (inputRef.current[nextField]) {
+            inputRef.current[nextField].focus();
+          }
+        } else if (inputRef.current["add"]) {
+          // If no other empty field is found, default to the 'add' button
+          inputRef.current["add"].focus();
+        }
+      } else if (currentField === "add") {
+        // If Enter is pressed on the 'Add' button itself, trigger the add action
+        handleAdd();
+      }
+    }
+  };
+  // --- End of Refactored handleKeyDown ---
+
   // handle add product to list
   const handleAdd = () => {
     if (!newProduct.productName) {
       toast({ variant: "destructive", title: "Please select item" });
+      if (inputRef.current["product"]) inputRef.current["product"].focus(); // Focus product input if item not selected
       return;
     }
 
-    if (!newProduct?.quantity && !newProduct?.loose) {
-      toast({ variant: "destructive", title: "Please add quantity" });
+    if (!newProduct.batchNumber && !batchNumber) {
+      toast({ variant: "destructive", title: "Please select batch" });
+      if (inputRef.current["batchNumber"])
+        inputRef.current["batchNumber"].focus(); // Focus batch input if not selected
+      return;
+    }
+
+    if (!newProduct?.quantity && !(newProduct?.packs || newProduct?.loose)) {
+      toast({
+        variant: "destructive",
+        title: "Please add quantity (packs or loose)",
+      });
+      if (inputRef.current["packs"]) inputRef.current["packs"].focus(); // Focus packs if quantity missing
       return;
     }
 
@@ -302,7 +426,7 @@ export default function SaleTable({
 
       {/* Input row */}
       {!viewMode && (
-        <div className="grid grid-cols-16 w-full space-x-1">
+        <div className="grid grid-cols-16 w-full space-x-1 font-semibold">
           <div className="col-span-3 grid grid-cols-6">
             <div className="flex items-center justify-center">
               {saleType === "return" && (
@@ -343,7 +467,7 @@ export default function SaleTable({
               value={newProduct.HSN || ""}
               type="text"
               className="h-8 w-full border-[1px] border-gray-300 px-1"
-              onKeyDown={(e) => handleKeyDown(e, "hsn")}
+              onKeyDown={(e) => handleInputKeyDown(e, "HSN")}
             />
           </div>
           <div>
@@ -357,7 +481,7 @@ export default function SaleTable({
                 value={newProduct.pack || ""}
                 type="text"
                 className="h-8 w-full border-[1px] border-gray-300 px-1 pl-7"
-                onKeyDown={(e) => handleKeyDown(e, "pack")}
+                onKeyDown={(e) => handleInputKeyDown(e, "pack")}
               />
             </div>
           </div>
@@ -369,7 +493,7 @@ export default function SaleTable({
               type="text"
               placeholder="MM/YY"
               className="h-8 w-full border-[1px] border-gray-300 px-2"
-              onKeyDown={(e) => handleKeyDown(e, "expiry")}
+              onKeyDown={(e) => handleInputKeyDown(e, "expiry")}
             />
           </div>
           <div>
@@ -383,7 +507,7 @@ export default function SaleTable({
                 value={newProduct.mrp || ""}
                 type="text"
                 className="h-8 w-full border-[1px] border-gray-300 pl-5 rounded-sm"
-                onKeyDown={(e) => handleKeyDown(e, "mrp")}
+                onKeyDown={(e) => handleInputKeyDown(e, "mrp")}
               />
             </div>
           </div>
@@ -394,7 +518,7 @@ export default function SaleTable({
               value={newProduct.packs || ""}
               type="text"
               className="h-8 w-full border-[1px] border-gray-300 px-1"
-              onKeyDown={(e) => handleKeyDown(e, "packs")}
+              onKeyDown={(e) => handleInputKeyDown(e, "packs")}
             />
           </div>
           <div>
@@ -404,7 +528,7 @@ export default function SaleTable({
               value={newProduct.loose || ""}
               type="text"
               className="h-8 w-full border-[1px] border-gray-300 px-1"
-              onKeyDown={(e) => handleKeyDown(e, "loose")}
+              onKeyDown={(e) => handleInputKeyDown(e, "loose")}
             />
           </div>
           <div>
@@ -418,7 +542,7 @@ export default function SaleTable({
                 value={newProduct.saleRate || ""}
                 type="text"
                 className="h-8 w-full border-[1px] border-gray-300 pl-5 rounded-sm"
-                onKeyDown={(e) => handleKeyDown(e, "saleRate")}
+                onKeyDown={(e) => handleInputKeyDown(e, "saleRate")}
               />
             </div>
           </div>
@@ -430,7 +554,7 @@ export default function SaleTable({
                 value={newProduct.discount || ""}
                 type="text"
                 className="h-8 w-full border-[1px] border-gray-300 px-1 pr-5"
-                onKeyDown={(e) => handleKeyDown(e, "discount")}
+                onKeyDown={(e) => handleInputKeyDown(e, "discount")}
               />
               <span className="absolute right-2 top-1/2 -translate-y-1/2">
                 %
@@ -445,7 +569,7 @@ export default function SaleTable({
                 value={newProduct.gstPer || ""}
                 type="text"
                 className="h-8 w-full border-[1px] border-gray-300 px-1 pr-5"
-                onKeyDown={(e) => handleKeyDown(e, "gstPer")}
+                onKeyDown={(e) => handleInputKeyDown(e, "gstPer")}
               />
               <span className="absolute right-2 top-1/2 -translate-y-1/2">
                 %

@@ -172,5 +172,6 @@ const customerSlice = createSlice({
   },
 });
 
-export const { setTabName, setCustomerStatusIdle, setSearch } = customerSlice.actions;
+export const { setTabName, setCustomerStatusIdle, setSearch } =
+  customerSlice.actions;
 export default customerSlice.reducer;

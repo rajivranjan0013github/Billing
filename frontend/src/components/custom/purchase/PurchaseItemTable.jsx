@@ -6,6 +6,24 @@ import { useToast } from "../../../hooks/use-toast";
 import BatchSuggestion from "../sales/BatchSuggestion";
 import { Input } from "../../ui/input";
 
+// Define the order of inputs within the table row
+const tableInputKeys = [
+  "product",
+  "batchNumber",
+  "HSN",
+  "expiry",
+  "pack",
+  "quantity",
+  "free",
+  "mrp",
+  "purchaseRate",
+  "schemeInput1",
+  "schemeInput2",
+  "discount",
+  "gstPer",
+  "addButton",
+];
+
 // Helper function to format expiry date input
 const formatExpiryInput = (currentValue) => {
   let value = currentValue.replace(/\D/g, ""); // Remove all non-digits first
@@ -35,7 +53,6 @@ export default function PurchaseTable({
   setProducts,
   viewMode,
   gstMode = "exclusive",
-  handleKeyDown,
 }) {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(true);
@@ -159,6 +176,48 @@ export default function PurchaseTable({
       updatedProduct.amount = "";
     }
     setNewProduct(updatedProduct);
+  };
+
+  // Internal keydown handler for the table's input row
+  const handleTableKeyDown = (e, currentKey) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      const currentIndex = tableInputKeys.indexOf(currentKey);
+
+      if (currentIndex === -1) return; // Key not found
+
+      // Find the next *truly* empty input field
+      for (let i = currentIndex + 1; i < tableInputKeys.length; i++) {
+        const nextKey = tableInputKeys[i];
+
+        // Consider a field empty if it's undefined, null, or an empty/whitespace string.
+        const isFieldEmpty =
+          newProduct[nextKey] === undefined ||
+          newProduct[nextKey] === null ||
+          String(newProduct[nextKey]).trim() === "";
+
+        // Focus if the field is empty OR it's the addButton
+        if (isFieldEmpty || nextKey === "addButton") {
+          if (inputRef.current[nextKey]) {
+            inputRef.current[nextKey].focus();
+            return; // Focus set, exit loop
+          }
+        }
+      }
+      // If no empty field found after the current one, default to the add button
+      if (inputRef.current["addButton"]) {
+        inputRef.current["addButton"].focus();
+      }
+    } else if (e.key === "Enter" && e.shiftKey) {
+      e.preventDefault();
+      const currentIndex = tableInputKeys.indexOf(currentKey);
+      if (currentIndex > 0) {
+        const prevKey = tableInputKeys[currentIndex - 1];
+        if (inputRef.current[prevKey]) {
+          inputRef.current[prevKey].focus();
+        }
+      }
+    }
   };
 
   // handle add product to list
@@ -461,17 +520,17 @@ export default function PurchaseTable({
 
       {/* Input row */}
       {!viewMode && (
-        <div className="grid grid-cols-[30px_3fr_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_50px] gap-1 px-2 mt-2">
+        <div className="grid grid-cols-[30px_3fr_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_50px] gap-1 px-2 mt-2 font-semibold">
           <div></div>
           <div>
             <Input
               ref={(el) => (inputRef.current["product"] = el)}
               onChange={handleProductNameChange}
-              onKeyDown={(e) => handleKeyDown(e, "batchNumber")}
+              onKeyDown={(e) => handleTableKeyDown(e, "product")}
               value={productSearch}
               type="text"
               placeholder="Type or Press Space"
-              className="h-8 w-full border-[1px] border-gray-300 px-2 rounded-sm  "
+              className="h-8 w-full border-[1px] border-gray-300 px-2 rounded-sm"
             />
           </div>
           <div>
@@ -482,14 +541,14 @@ export default function PurchaseTable({
               onSuggestionSelect={handleBatchSelect}
               inventoryId={newProduct?.inventoryId}
               ref={(el) => (inputRef.current["batchNumber"] = el)}
-              onKeyDown={(e) => handleKeyDown(e, "HSN")}
+              onKeyDown={(e) => handleTableKeyDown(e, "batchNumber")}
             />
           </div>
           <div>
             <Input
               id="HSN"
               ref={(el) => (inputRef.current["HSN"] = el)}
-              onKeyDown={(e) => handleKeyDown(e, "expiry")}
+              onKeyDown={(e) => handleTableKeyDown(e, "HSN")}
               onChange={(e) => handleInputChange("HSN", e.target.value)}
               value={newProduct.HSN || ""}
               type="text"
@@ -503,7 +562,7 @@ export default function PurchaseTable({
                 const formattedValue = formatExpiryInput(e.target.value);
                 handleInputChange("expiry", formattedValue);
               }}
-              onKeyDown={(e) => handleKeyDown(e, "pack")}
+              onKeyDown={(e) => handleTableKeyDown(e, "expiry")}
               value={newProduct.expiry || ""}
               type="text"
               placeholder="MM/YY"
@@ -517,7 +576,7 @@ export default function PurchaseTable({
               </span>
               <Input
                 ref={(el) => (inputRef.current["pack"] = el)}
-                onKeyDown={(e) => handleKeyDown(e, "quantity")}
+                onKeyDown={(e) => handleTableKeyDown(e, "pack")}
                 onChange={(e) => handleInputChange("pack", e.target.value)}
                 value={newProduct.pack || ""}
                 type="text"
@@ -528,7 +587,7 @@ export default function PurchaseTable({
           <div>
             <Input
               ref={(el) => (inputRef.current["quantity"] = el)}
-              onKeyDown={(e) => handleKeyDown(e, "free")}
+              onKeyDown={(e) => handleTableKeyDown(e, "quantity")}
               onChange={(e) => handleInputChange("quantity", e.target.value)}
               value={newProduct.quantity || ""}
               type="text"
@@ -538,7 +597,7 @@ export default function PurchaseTable({
           <div>
             <Input
               ref={(el) => (inputRef.current["free"] = el)}
-              onKeyDown={(e) => handleKeyDown(e, "mrp")}
+              onKeyDown={(e) => handleTableKeyDown(e, "free")}
               onChange={(e) => handleInputChange("free", e.target.value)}
               value={newProduct.free || ""}
               type="text"
@@ -552,7 +611,7 @@ export default function PurchaseTable({
               </span>
               <Input
                 ref={(el) => (inputRef.current["mrp"] = el)}
-                onKeyDown={(e) => handleKeyDown(e, "purchaseRate")}
+                onKeyDown={(e) => handleTableKeyDown(e, "mrp")}
                 onChange={(e) => handleInputChange("mrp", e.target.value)}
                 value={newProduct.mrp || ""}
                 type="text"
@@ -567,7 +626,7 @@ export default function PurchaseTable({
               </span>
               <Input
                 ref={(el) => (inputRef.current["purchaseRate"] = el)}
-                onKeyDown={(e) => handleKeyDown(e, "schemeInput1")}
+                onKeyDown={(e) => handleTableKeyDown(e, "purchaseRate")}
                 onChange={(e) =>
                   handleInputChange("purchaseRate", e.target.value)
                 }
@@ -581,7 +640,7 @@ export default function PurchaseTable({
             <div className="flex gap-1">
               <Input
                 ref={(el) => (inputRef.current["schemeInput1"] = el)}
-                onKeyDown={(e) => handleKeyDown(e, "schemeInput2")}
+                onKeyDown={(e) => handleTableKeyDown(e, "schemeInput1")}
                 value={newProduct.schemeInput1 || ""}
                 onChange={(e) =>
                   handleInputChange("schemeInput1", e.target.value)
@@ -592,7 +651,7 @@ export default function PurchaseTable({
               +
               <Input
                 ref={(el) => (inputRef.current["schemeInput2"] = el)}
-                onKeyDown={(e) => handleKeyDown(e, "discount")}
+                onKeyDown={(e) => handleTableKeyDown(e, "schemeInput2")}
                 value={newProduct.schemeInput2 || ""}
                 onChange={(e) =>
                   handleInputChange("schemeInput2", e.target.value)
@@ -619,7 +678,7 @@ export default function PurchaseTable({
             <div className="relative">
               <Input
                 ref={(el) => (inputRef.current["discount"] = el)}
-                onKeyDown={(e) => handleKeyDown(e, "gstPer")}
+                onKeyDown={(e) => handleTableKeyDown(e, "discount")}
                 onChange={(e) => handleInputChange("discount", e.target.value)}
                 value={newProduct.discount || ""}
                 type="text"
@@ -634,7 +693,7 @@ export default function PurchaseTable({
             <div className="relative">
               <Input
                 ref={(el) => (inputRef.current["gstPer"] = el)}
-                onKeyDown={(e) => handleKeyDown(e, "addButton")}
+                onKeyDown={(e) => handleTableKeyDown(e, "gstPer")}
                 onChange={(e) => handleInputChange("gstPer", e.target.value)}
                 value={newProduct.gstPer || ""}
                 type="text"
@@ -660,6 +719,7 @@ export default function PurchaseTable({
               ref={(el) => (inputRef.current["addButton"] = el)}
               className="bg-primary p-1 rounded-sm"
               title="Add Item"
+              onKeyDown={(e) => handleTableKeyDown(e, "addButton")}
             >
               <Plus className="h-5 w-5 text-white" />
             </button>

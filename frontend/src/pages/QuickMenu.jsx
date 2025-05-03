@@ -133,12 +133,11 @@ const QuickMenu = () => {
 
   return (
     <div className="p-4 space-y-6">
-      <h1 className="text-2xl  mb-6">Quick Menu</h1>
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-4">
         {quickActions.map((action, index) => (
           <Card
             key={index}
-            className={`cursor-pointer transition-all duration-300 hover:shadow-lg ${action.color}`}
+            className={`cursor-pointer transition-all duration-300 rounded-xl hover:shadow-lg ${action.color}`}
             onClick={action.action}
           >
             <div className="p-6">
@@ -147,7 +146,7 @@ const QuickMenu = () => {
                   <action.icon className="h-6 w-6" />
                 </div>
                 <div>
-                  <h2 className="text-lg  tracking-wide ">{action.title}</h2>
+                  <h2 className="text-lg  font-semibold">{action.title}</h2>
                   <p className="text-sm opacity-90">{action.description}</p>
                 </div>
               </div>

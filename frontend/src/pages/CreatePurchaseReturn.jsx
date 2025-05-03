@@ -13,11 +13,19 @@ import { useToast } from "../hooks/use-toast";
 const PurchaseReturn = () => {
   const [items, setItems] = useState([]);
   const navigate = useNavigate();
-  const [products, setProducts] = useState([]);
   const { toast } = useToast();
   const [returnDate, setReturnDate] = useState(
-    new Date().toISOString().split("T")[0]
+    new Date()
+      .toLocaleDateString("en-IN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      })
+      .split("/")
+      .reverse()
+      .join("-")
   );
+  console.log(returnDate);
   const [claimGSTInReturn, setClaimGSTInReturn] = useState(true);
   const [adjustRateForDisc, setAdjustRateForDisc] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -28,7 +36,6 @@ const PurchaseReturn = () => {
     distributorName: "",
     distributorId: "",
     invoiceNumber: "",
-    invoiceDate: "",
   });
 
   // Handle distributor name input change
@@ -57,45 +64,52 @@ const PurchaseReturn = () => {
     });
     setdistributorSelectDialog(false);
   };
-  const tableCalculations = (products) => {
-    const formattedProducts = products.map((product, index) => {
-      // Calculate effective purchase rate (after discount)
-      const effectivePurRate = adjustRateForDisc
-        ? product.purchaseRate -
-          (product.purchaseRate * (product.discount || 0)) / 100
-        : product.purchaseRate;
 
-      // Calculate adjusted quantity (quantity/pack)
-      const adjustedQty = product.quantity / product.pack;
+  // Update handleInputChange to include calculations
+  const handleInputChange = (id, field, value) => {
+    setItems((prevItems) =>
+      prevItems.map((item) => {
+        if (item.id === id) {
+          const updatedItem = { ...item, [field]: value };
 
-      // Calculate amount based on effective rate and adjusted quantity
-      const calculatedAmount = effectivePurRate * adjustedQty;
+          // Recalculate effective purchase rate
+          if (field === "pricePerItem" || field === "discount") {
+            const purchaseRate =
+              parseFloat(
+                field === "pricePerItem" ? value : item.pricePerItem
+              ) || 0;
+            const discount =
+              parseFloat(field === "discount" ? value : item.discount) || 0;
+            updatedItem.effPurRate = adjustRateForDisc
+              ? purchaseRate - (purchaseRate * discount) / 100
+              : purchaseRate;
+          }
 
-      return {
-        id: index + 1,
-        inventoryId: product.inventoryId._id,
-        itemName: product.productName,
-        batchId: product.batchId,
-        batchNo: product.batchNumber,
-        pack: product.pack,
-        expiry: product.expiry,
-        mrp: product.mrp,
-        qty: adjustedQty,
-        pricePerItem: product.purchaseRate,
-        effPurRate: effectivePurRate,
-        gst: product.gstPer,
-        amount: calculatedAmount.toFixed(2),
-      };
-    });
-    return formattedProducts;
+          // Recalculate amount when qty, price, or effective rate changes
+          if (
+            field === "qty" ||
+            field === "pricePerItem" ||
+            field === "effPurRate" ||
+            field === "pack"
+          ) {
+            const qty = parseFloat(field === "qty" ? value : item.qty) || 0;
+            const pack = parseFloat(field === "pack" ? value : item.pack) || 1;
+            const adjustedQty = qty;
+            const effRate = parseFloat(updatedItem.effPurRate) || 0;
+            const amount = effRate * adjustedQty;
+            const gst = parseFloat(item.gst) || 0;
+            const gstAmount = claimGSTInReturn ? (amount * gst) / 100 : 0;
+            updatedItem.amount = amount.toFixed(2);
+          }
+
+          return updatedItem;
+        }
+        return item;
+      })
+    );
   };
 
-  useEffect(() => {
-    const formattedProducts = tableCalculations(products);
-    setItems(formattedProducts);
-  }, [adjustRateForDisc]);
-
-  // Handle search functionality
+  // Update handleSearch to directly set items
   const handleSearch = async () => {
     if (!formData.distributorId || !formData.invoiceNumber) {
       toast({
@@ -118,7 +132,6 @@ const PurchaseReturn = () => {
           body: JSON.stringify({
             distributorId: formData.distributorId,
             invoiceNumber: formData.invoiceNumber,
-            invoiceDate: formData.invoiceDate,
           }),
         }
       );
@@ -130,7 +143,7 @@ const PurchaseReturn = () => {
 
       const data = await response.json();
       const { invoiceDetails, products } = data;
-      setProducts(products);
+
       // Update form data with invoice details
       setFormData((prev) => ({
         ...prev,
@@ -138,16 +151,40 @@ const PurchaseReturn = () => {
         distributorName: invoiceDetails.distributorName,
         distributorId: invoiceDetails.distributorId,
         invoiceNumber: invoiceDetails.invoiceNumber,
-        invoiceDate: new Date(invoiceDetails.invoiceDate)
-          .toISOString()
-          .split("T")[0],
       }));
 
-      const formattedProducts = tableCalculations(products);
-      // Map the products to match the table structure with calculated values
+      // Directly format products into items structure
+      const formattedItems = products.map((product, index) => {
+        const effectivePurRate = adjustRateForDisc
+          ? product.purchaseRate -
+            (product.purchaseRate * (product.discount || 0)) / 100
+          : product.purchaseRate;
 
-      // Update items with formatted products
-      setItems(formattedProducts);
+        const adjustedQty = product.quantity / product.pack;
+        const calculatedAmount = effectivePurRate * adjustedQty;
+        const gstAmount = claimGSTInReturn
+          ? (calculatedAmount * product.gstPer) / 100
+          : 0;
+
+        return {
+          id: index + 1,
+          inventoryId: product.inventoryId._id,
+          itemName: product.productName,
+          batchId: product.batchId,
+          batchNo: product.batchNumber,
+          pack: product.pack,
+          expiry: product.expiry,
+          mrp: product.mrp,
+          qty: adjustedQty,
+          pricePerItem: product.purchaseRate,
+          discount: product.discount || 0,
+          effPurRate: effectivePurRate,
+          gst: product.gstPer,
+          amount: calculatedAmount.toFixed(2),
+        };
+      });
+
+      setItems(formattedItems);
     } catch (error) {
       toast({
         title: "Failed to search invoice",
@@ -157,6 +194,32 @@ const PurchaseReturn = () => {
       setSearchLoading(false);
     }
   };
+
+  // Update useEffect to recalculate when adjustRateForDisc changes
+  useEffect(() => {
+    setItems((prevItems) =>
+      prevItems.map((item) => {
+        const purchaseRate = parseFloat(item.pricePerItem) || 0;
+        const discount = parseFloat(item.discount) || 0;
+        const effPurRate = adjustRateForDisc
+          ? purchaseRate - (purchaseRate * discount) / 100
+          : purchaseRate;
+
+        const qty = parseFloat(item.qty) || 0;
+        const pack = parseFloat(item.pack) || 1;
+        const adjustedQty = qty / pack;
+        const amount = effPurRate * adjustedQty;
+        const gst = parseFloat(item.gst) || 0;
+        const gstAmount = claimGSTInReturn ? (amount * gst) / 100 : 0;
+
+        return {
+          ...item,
+          effPurRate,
+          amount: (amount + gstAmount).toFixed(2),
+        };
+      })
+    );
+  }, [adjustRateForDisc, claimGSTInReturn]);
 
   const calculateTotals = () => {
     return items.reduce(
@@ -212,31 +275,6 @@ const PurchaseReturn = () => {
         amount: "0",
       },
     ]);
-  };
-
-  const handleInputChange = (id, field, value) => {
-    setItems((prevItems) =>
-      prevItems.map((item) => {
-        if (item.id === id) {
-          const updatedItem = { ...item, [field]: value };
-
-          if (field === "qty" || field === "pricePerItem") {
-            const qty = parseFloat(field === "qty" ? value : item.qty) || 0;
-            const price =
-              parseFloat(
-                field === "pricePerItem" ? value : item.pricePerItem
-              ) || 0;
-            const gst = parseFloat(item.gst) || 0;
-            const amount = qty * price;
-            const gstAmount = (amount * gst) / 100;
-            updatedItem.amount = (amount + gstAmount).toFixed(2);
-          }
-
-          return updatedItem;
-        }
-        return item;
-      })
-    );
   };
 
   const handleDeleteItem = (id) => {
@@ -375,10 +413,7 @@ const PurchaseReturn = () => {
           <h1 className="text-xl font-medium">Create Purchase Return</h1>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            onClick={handleSave}
-            disabled={loading}
-          >
+          <Button onClick={handleSave} disabled={loading}>
             {loading ? (
               <>
                 <span className="animate-spin">⏳</span>
@@ -400,7 +435,7 @@ const PurchaseReturn = () => {
           {/* Left Section - Distributor */}
           <div className="col-span-3 border rounded-lg p-4">
             <div className="grid grid-cols-12 gap-4">
-              <div className="col-span-5">
+              <div className="col-span-7">
                 <Label className="text-sm font-medium mb-2 block">
                   DISTRIBUTOR
                 </Label>
@@ -422,18 +457,6 @@ const PurchaseReturn = () => {
                   value={formData.invoiceNumber}
                   onChange={(e) =>
                     setFormData({ ...formData, invoiceNumber: e.target.value })
-                  }
-                />
-              </div>
-              <div className="col-span-2">
-                <Label className="text-sm font-medium mb-2 block">
-                  INVOICE DATE
-                </Label>
-                <Input
-                  type="date"
-                  value={formData.invoiceDate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, invoiceDate: e.target.value })
                   }
                 />
               </div>
@@ -517,6 +540,9 @@ const PurchaseReturn = () => {
             </div>
             <div>
               <p className="text-xs font-semibold">PUR RATE</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold">DISC %</p>
             </div>
             <div>
               <p className="text-xs font-semibold">EFF PUR RATE</p>
@@ -620,6 +646,21 @@ const PurchaseReturn = () => {
                       }
                       className="h-8 w-full border-[1px] border-gray-300 px-1 pl-5"
                     />
+                  </div>
+                </div>
+                <div>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={item.discount}
+                      onChange={(e) =>
+                        handleInputChange(item.id, "discount", e.target.value)
+                      }
+                      className="h-8 w-16 border-[1px] border-gray-300 px-1 pr-5"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2">
+                      %
+                    </span>
                   </div>
                 </div>
                 <div>

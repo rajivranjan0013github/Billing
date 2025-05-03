@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "../components/ui/card";
 import {
   Tabs,
@@ -90,6 +90,22 @@ const Reports = () => {
   const localSingleDate = singleDate ? new Date(singleDate) : null;
   const localSelectedMonth = selectedMonth ? new Date(selectedMonth) : null;
 
+  // Initialize date range with weekly range on component mount
+  useEffect(() => {
+    if (!dateRange.from && !dateRange.to) {
+      const today = new Date();
+      const sevenDaysAgo = new Date(today);
+      sevenDaysAgo.setDate(today.getDate() - 7);
+
+      dispatch(
+        setReduxDateRange({
+          from: sevenDaysAgo,
+          to: today,
+        })
+      );
+    }
+  }, []);
+
   // Add error state
   const [localError, setLocalError] = useState(null);
 
@@ -115,10 +131,9 @@ const Reports = () => {
     customer: "all",
     product: "",
     expiryRange: {
-      preset: "1month",
-      custom: false,
       selectedMonth: null,
     },
+    threshold: "10",
   });
 
   // Get data from Redux store
@@ -133,7 +148,7 @@ const Reports = () => {
 
   // Add state for selected product
   const [selectedProduct, setSelectedProduct] = useState(null);
-  console.log(selectedProduct);
+
   // Replace product dialog state with search state
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [productSearch, setProductSearch] = useState("");
@@ -192,7 +207,6 @@ const Reports = () => {
       },
     ],
     inventory: [
-      { id: "stock-status", name: "Current Stock", icon: Package, filters: [] },
       { id: "low-stock", name: "Low Stock Items", icon: Package, filters: [] },
       {
         id: "expiry-alert",
@@ -230,10 +244,9 @@ const Reports = () => {
       customer: "all",
       product: "",
       expiryRange: {
-        preset: "1month",
-        custom: false,
         selectedMonth: null,
       },
+      threshold: "10",
     });
     // Reset selected product state as well
     setSelectedProduct(null);
@@ -272,7 +285,7 @@ const Reports = () => {
     setIsProductDialogOpen(false);
     // Set the selected product
     setSelectedProduct(product);
-    // Update filters with the product name - use productName instead of name
+    // Update filters with the product name
     handleFilterChange("product", product?.name || "");
   };
 
@@ -310,8 +323,11 @@ const Reports = () => {
     setManufacturerSearch("");
   };
 
-  // Add function to handle manufacturer selection
+  // Function to handle manufacturer selection
   const handleManufacturerSelect = (manufacturer) => {
+    // Close the dialog
+    setIsManufacturerDialogOpen(false);
+    // Update filters with the manufacturer
     handleFilterChange("manufacturer", manufacturer);
     setManufacturerSearch(manufacturer);
   };
@@ -358,16 +374,33 @@ const Reports = () => {
         }
       }
 
+      // Validate threshold for low-stock report
+      if (selectedReportType[activeTab] === "low-stock") {
+        const thresholdValue = parseInt(filters.threshold);
+        if (isNaN(thresholdValue) || thresholdValue <= 0) {
+          setLocalError("Please enter a valid threshold value greater than 0");
+          return;
+        }
+      }
+
       // Validate expiry range if custom is selected
-      if (filters.expiryRange.custom && !filters.expiryRange.selectedMonth) {
-        setLocalError("Please select an expiry month for custom range");
-        return;
+      if (filters.expiryRange.selectedMonth) {
+        // Format the selected month as mm/yy
+        const selectedDate = new Date(filters.expiryRange.selectedMonth);
+        filters.expiryRange.preset = "custom";
+        filters.expiryRange.custom = true;
+        filters.expiryRange.selectedMonth = selectedDate;
       }
 
       // Prepare filter parameters - ensure all values are serializable
       let params = {
         reportType: selectedReportType[activeTab],
       };
+
+      // Add threshold parameter for low-stock report
+      if (selectedReportType[activeTab] === "low-stock") {
+        params.threshold = filters.threshold;
+      }
 
       // Add date range filters - convert dates to ISO strings from Redux state
       if (isFilterRequired("dateRange") && dateRange.from && dateRange.to) {
@@ -387,15 +420,13 @@ const Reports = () => {
 
       // Add expiry range filter
       if (filters.expiryRange) {
-        if (filters.expiryRange.custom && filters.expiryRange.selectedMonth) {
-          params.expiryRange = "custom";
-          // Format the date to ensure it will be interpreted correctly for mm/yy format
-          params.selectedMonth = format(
-            filters.expiryRange.selectedMonth,
-            "yyyy-MM-01"
-          );
-        } else {
-          params.expiryRange = filters.expiryRange.preset;
+        if (filters.expiryRange.selectedMonth) {
+          // Format the selected month as mm/yy
+          const selectedDate = new Date(filters.expiryRange.selectedMonth);
+          params.targetExpiry = `${String(selectedDate.getMonth() + 1).padStart(
+            2,
+            "0"
+          )}/${String(selectedDate.getFullYear()).slice(-2)}`;
         }
       }
 
@@ -436,8 +467,9 @@ const Reports = () => {
     const needsManufacturerFilter = isFilterRequired("manufacturer");
     const needsProductFilter = isFilterRequired("product");
     const needsExpiryDurationFilter = isFilterRequired("expiryRange");
+    const needsThresholdFilter = selectedReportType[activeTab] === "low-stock";
+    console.log(needsExpiryDurationFilter);
 
-    // If no filters are required, don't render the filter section
     if (
       !needsDateRange &&
       !needsSingleDate &&
@@ -446,509 +478,275 @@ const Reports = () => {
       !needsDistributorFilter &&
       !needsManufacturerFilter &&
       !needsProductFilter &&
-      !needsExpiryDurationFilter
+      !needsExpiryDurationFilter &&
+      !needsThresholdFilter
     ) {
       return null;
     }
 
     return (
-      <div className="bg-white rounded-lg border border-gray-200 mb-4 p-3">
-        <p className="text-sm font-medium text-gray-700 mb-2">Filters</p>
-        <div className="flex flex-wrap gap-x-2 gap-y-2">
+      <div className="bg-white rounded-xl border border-gray-200 p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <FilterIcon className="h-4 w-4 text-gray-500" />
+          <h3 className="text-sm font-medium text-gray-700">Filters</h3>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {/* Date Range Filter - Compact Version */}
           {needsDateRange && (
-            <div className="flex items-center space-x-1">
-              <div className="relative">
-                <Input
-                  type="date"
-                  value={
-                    localDateRange.from
-                      ? format(localDateRange.from, "yyyy-MM-dd")
-                      : ""
-                  }
-                  onChange={(e) =>
-                    handleDateRangeChange("from", e.target.value)
-                  }
-                  className="h-8 text-sm py-0 px-2 pr-8" // Added pr-8 for potential icon space
-                  placeholder="From Date"
-                  aria-label="From Date"
-                />
-              </div>
-              <span className="text-gray-500">-</span>
-              <div className="relative">
-                <Input
-                  type="date"
-                  value={
-                    localDateRange.to
-                      ? format(localDateRange.to, "yyyy-MM-dd")
-                      : ""
-                  }
-                  onChange={(e) => handleDateRangeChange("to", e.target.value)}
-                  min={
-                    localDateRange.from
-                      ? format(localDateRange.from, "yyyy-MM-dd")
-                      : undefined
-                  } // Prevent selecting 'to' date before 'from' date
-                  className="h-8 text-sm py-0 px-2 pr-8" // Added pr-8 for potential icon space
-                  placeholder="To Date"
-                  aria-label="To Date"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Single date picker for daily reports */}
-          {needsSingleDate && (
-            <div
-              className="flex items-center"
-              style={{
-                boxSizing: "border-box",
-                display: "flex",
-                fontFamily: "__Poppins_059fbd, __Poppins_Fallback_059fbd",
-                fontStyle: "normal",
-                height: "30px",
-                maxWidth: "calc(100% - 100px)",
-                unicodeBidi: "isolate",
-                width: "160px",
-              }}
-            >
-              <Popover>
-                {({ setOpen }) => (
-                  <>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-sm py-0 px-2 w-full"
-                      >
-                        <CalendarIcon className="mr-1 h-3.5 w-3.5 opacity-70" />
-                        {localSingleDate
-                          ? format(localSingleDate, "PP")
-                          : "Select Date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={localSingleDate}
-                        onSelect={(date) => {
-                          dispatch(setReduxSingleDate(date));
-                          setOpen(false);
-                        }}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </>
-                )}
-              </Popover>
-            </div>
-          )}
-
-          {needsMonth && (
-            <div
-              style={{
-                boxSizing: "border-box",
-                display: "flex",
-                fontFamily: "__Poppins_059fbd, __Poppins_Fallback_059fbd",
-                fontStyle: "normal",
-                height: "30px",
-                maxWidth: "calc(100% - 100px)",
-                unicodeBidi: "isolate",
-                width: "160px",
-              }}
-            >
-              <Popover>
-                {({ setOpen }) => (
-                  <>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-sm py-0 px-2 w-full"
-                      >
-                        <CalendarIcon className="mr-1 h-3.5 w-3.5 opacity-70" />
-                        {localSelectedMonth
-                          ? format(localSelectedMonth, "MMMM yyyy")
-                          : "Select Month"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <MonthPicker
-                        currentMonth={
-                          localSelectedMonth || startOfMonth(new Date())
-                        }
-                        onMonthChange={(value) => {
-                          dispatch(setReduxSelectedMonth(value));
-                          setOpen(false);
-                        }}
-                      />
-                    </PopoverContent>
-                  </>
-                )}
-              </Popover>
-            </div>
-          )}
-
-          {/* Distributor filter for purchase reports */}
-          {needsDistributorFilter && (
-            <div
-              style={{
-                boxSizing: "border-box",
-                columnGap: "8px",
-                display: "flex",
-                flexDirection: "row",
-                flexWrap: "wrap",
-                fontFamily: "__Poppins_059fbd, __Poppins_Fallback_059fbd",
-                fontStyle: "normal",
-                height: "30px",
-                maxWidth: "calc(100% - 100px)",
-                rowGap: "8px",
-                unicodeBidi: "isolate",
-                width: "160px",
-              }}
-            >
-              <Select
-                value={filters.distributor}
-                onValueChange={(value) =>
-                  handleFilterChange("distributor", value)
+            <div className="flex items-center gap-2 min-w-[320px]">
+              <Input
+                type="date"
+                value={
+                  localDateRange.from
+                    ? format(localDateRange.from, "yyyy-MM-dd")
+                    : ""
                 }
-              >
-                <SelectTrigger className="h-8 text-sm py-0 px-2 w-full">
-                  <SelectValue placeholder="Distributor" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Distributors</SelectItem>
-                  {distributors?.map((distributor) => (
-                    <SelectItem key={distributor._id} value={distributor._id}>
-                      {distributor.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Customer filter for sales reports */}
-          {needsCustomerFilter && (
-            <div
-              style={{
-                boxSizing: "border-box",
-                columnGap: "8px",
-                display: "flex",
-                flexDirection: "row",
-                flexWrap: "wrap",
-                fontFamily: "__Poppins_059fbd, __Poppins_Fallback_059fbd",
-                fontStyle: "normal",
-                height: "30px",
-                maxWidth: "calc(100% - 100px)",
-                rowGap: "8px",
-                unicodeBidi: "isolate",
-                width: "160px",
-              }}
-            >
-              <Select
-                value={filters.customer}
-                onValueChange={(value) => handleFilterChange("customer", value)}
-              >
-                <SelectTrigger className="h-8 text-sm py-0 px-2 w-full">
-                  <SelectValue placeholder="Customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Customers</SelectItem>
-                  {customers?.map((customer) => (
-                    <SelectItem key={customer._id} value={customer._id}>
-                      {customer.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Product filter */}
-          {needsProductFilter && (
-            <div
-              style={{
-                boxSizing: "border-box",
-                columnGap: "8px",
-                display: "flex",
-                flexDirection: "row",
-                flexWrap: "wrap",
-                fontFamily: "__Poppins_059fbd, __Poppins_Fallback_059fbd",
-                fontStyle: "normal",
-                height: "30px",
-                maxWidth: "calc(100% - 100px)",
-                rowGap: "8px",
-                unicodeBidi: "isolate",
-                width: "160px",
-              }}
-            >
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-sm py-0 px-2 w-full flex justify-between items-center"
-                onClick={() => setIsProductDialogOpen(true)}
-              >
-                <span className="flex items-center truncate">
-                  <Package className="mr-2 h-3.5 w-3.5 opacity-70" />
-                  {filters.product || "Select Product"}
-                </span>
-                {filters.product && (
-                  <X
-                    className="h-3.5 w-3.5 opacity-70 hover:opacity-100"
-                    onClick={clearProductSelection}
-                  />
-                )}
-              </Button>
-
-              <SelectInventory
-                open={isProductDialogOpen}
-                onOpenChange={setIsProductDialogOpen}
-                onSelect={handleProductSelect}
-                search={productSearch}
-                setSearch={setProductSearch}
+                onChange={(e) => handleDateRangeChange("from", e.target.value)}
+                className="h-8 text-sm flex-1"
+                placeholder="From"
+              />
+              <span className="text-gray-400">to</span>
+              <Input
+                type="date"
+                value={
+                  localDateRange.to
+                    ? format(localDateRange.to, "yyyy-MM-dd")
+                    : ""
+                }
+                onChange={(e) => handleDateRangeChange("to", e.target.value)}
+                className="h-8 text-sm flex-1"
+                placeholder="To"
               />
             </div>
           )}
 
-          {/* Manufacturer filter */}
-          {needsManufacturerFilter && (
-            <div
-              style={{
-                boxSizing: "border-box",
-                columnGap: "8px",
-                display: "flex",
-                flexDirection: "row",
-                flexWrap: "wrap",
-                fontFamily: "__Poppins_059fbd, __Poppins_Fallback_059fbd",
-                fontStyle: "normal",
-                height: "30px",
-                maxWidth: "calc(100% - 100px)",
-                rowGap: "8px",
-                unicodeBidi: "isolate",
-                width: "160px",
-              }}
-            >
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-sm py-0 px-2 w-full flex justify-between items-center"
-                onClick={() => setIsManufacturerDialogOpen(true)}
-              >
-                <span className="flex items-center truncate">
-                  <Store className="mr-2 h-3.5 w-3.5 opacity-70" />
-                  {filters.manufacturer || "Select Manufacturer"}
-                </span>
-                {filters.manufacturer && (
-                  <X
-                    className="h-3.5 w-3.5 opacity-70 hover:opacity-100"
-                    onClick={clearManufacturerSelection}
-                  />
-                )}
-              </Button>
-
-              <SelectManufacturer
-                open={isManufacturerDialogOpen}
-                onOpenChange={setIsManufacturerDialogOpen}
-                onSelect={handleManufacturerSelect}
-                search={manufacturerSearch}
-                setSearch={setManufacturerSearch}
-              />
-            </div>
-          )}
-
-          {/* Expiry Duration filter */}
-          {needsExpiryDurationFilter && (
-            <div
-              className="space-y-2"
-              style={{ width: "100%", maxWidth: "600px" }}
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-700">
-                  Expiry:
-                </span>
-                <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg flex-1">
-                  <Button
-                    type="button"
-                    variant={
-                      filters.expiryRange.preset === "1month" &&
-                      !filters.expiryRange.custom
-                        ? "default"
-                        : "ghost"
-                    }
-                    className={`flex-1 h-7 text-xs ${
-                      filters.expiryRange.preset === "1month" &&
-                      !filters.expiryRange.custom
-                        ? "bg-white shadow-sm text-black"
-                        : ""
-                    }`}
-                    onClick={() =>
-                      handleFilterChange("expiryRange", {
-                        preset: "1month",
-                        custom: false,
-                        months: 1,
-                        years: 0,
-                      })
-                    }
-                  >
-                    1 Month
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={
-                      filters.expiryRange.preset === "3months" &&
-                      !filters.expiryRange.custom
-                        ? "default"
-                        : "ghost"
-                    }
-                    className={`flex-1 h-7 text-xs ${
-                      filters.expiryRange.preset === "3months" &&
-                      !filters.expiryRange.custom
-                        ? "bg-white shadow-sm text-black"
-                        : ""
-                    }`}
-                    onClick={() =>
-                      handleFilterChange("expiryRange", {
-                        preset: "3months",
-                        custom: false,
-                        months: 3,
-                        years: 0,
-                      })
-                    }
-                  >
-                    3 Months
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={
-                      filters.expiryRange.preset === "6months" &&
-                      !filters.expiryRange.custom
-                        ? "default"
-                        : "ghost"
-                    }
-                    className={`flex-1 h-7 text-xs ${
-                      filters.expiryRange.preset === "6months" &&
-                      !filters.expiryRange.custom
-                        ? "bg-white shadow-sm text-black"
-                        : ""
-                    }`}
-                    onClick={() =>
-                      handleFilterChange("expiryRange", {
-                        preset: "6months",
-                        custom: false,
-                        months: 6,
-                        years: 0,
-                      })
-                    }
-                  >
-                    6 Months
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={
-                      filters.expiryRange.preset === "1year" &&
-                      !filters.expiryRange.custom
-                        ? "default"
-                        : "ghost"
-                    }
-                    className={`flex-1 h-7 text-xs ${
-                      filters.expiryRange.preset === "1year" &&
-                      !filters.expiryRange.custom
-                        ? "bg-white shadow-sm text-black"
-                        : ""
-                    }`}
-                    onClick={() =>
-                      handleFilterChange("expiryRange", {
-                        preset: "1year",
-                        custom: false,
-                        months: 0,
-                        years: 1,
-                      })
-                    }
-                  >
-                    1 Year
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={filters.expiryRange.custom ? "default" : "ghost"}
-                    className={`flex-1 h-7 text-xs ${
-                      filters.expiryRange.custom ? "bg-white shadow-sm" : ""
-                    }`}
-                    onClick={() =>
-                      handleFilterChange("expiryRange", {
-                        ...filters.expiryRange,
-                        custom: true,
-                      })
-                    }
-                  >
-                    Custom
-                  </Button>
-                </div>
-              </div>
-
-              {filters.expiryRange.custom && (
-                <div className="flex items-center gap-2 p-2 bg-white border rounded-md">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-sm py-0 px-2 w-[200px] justify-start"
-                      >
-                        <CalendarIcon className="mr-2 h-3.5 w-3.5 opacity-70" />
-                        {filters.expiryRange.selectedMonth
-                          ? format(
-                              filters.expiryRange.selectedMonth,
-                              "MMMM yyyy"
-                            )
-                          : "Select Expiry Month"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <MonthPicker
-                        currentMonth={
-                          filters.expiryRange.selectedMonth || new Date()
-                        }
-                        onMonthChange={(date) => {
-                          handleFilterChange("expiryRange", {
-                            ...filters.expiryRange,
-                            selectedMonth: date,
-                            custom: true,
-                          });
-                        }}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+          {/* Single Date Filter - Compact */}
+          {needsSingleDate && (
+            <Popover>
+              {({ open, setOpen }) => (
+                <>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-3 text-sm"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {localSingleDate
+                        ? format(localSingleDate, "PP")
+                        : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={localSingleDate}
+                      onSelect={(date) => {
+                        dispatch(setReduxSingleDate(date));
+                        setOpen(false);
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </>
               )}
-            </div>
+            </Popover>
           )}
 
-          <div
-            style={{
-              boxSizing: "border-box",
-              height: "30px",
-              width: "auto",
-            }}
-          >
-            <Button
-              onClick={generateReport}
-              size="sm"
-              className="h-8 py-0 px-4 text-sm bg-gray-900 hover:bg-black"
-              disabled={reportStatus === "loading"}
+          {/* Month Filter - Compact */}
+          {needsMonth && (
+            <Popover>
+              {({ open, setOpen }) => (
+                <>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-3 text-sm"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {localSelectedMonth
+                        ? format(localSelectedMonth, "MMM yyyy")
+                        : "Select month"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <MonthPicker
+                      currentMonth={
+                        localSelectedMonth || startOfMonth(new Date())
+                      }
+                      onMonthChange={(value) => {
+                        dispatch(setReduxSelectedMonth(value));
+                        setOpen(false);
+                      }}
+                    />
+                  </PopoverContent>
+                </>
+              )}
+            </Popover>
+          )}
+
+          {/* Distributor Filter - Compact */}
+          {needsDistributorFilter && (
+            <Select
+              value={filters.distributor}
+              onValueChange={(value) =>
+                handleFilterChange("distributor", value)
+              }
             >
-              {reportStatus === "loading" ? (
-                <>
-                  <span className="mr-1 h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <FilterIcon className="mr-1 h-3.5 w-3.5" />
-                  Generate
-                </>
+              <SelectTrigger className="h-8 text-sm w-[200px]">
+                <SelectValue placeholder="Select distributor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Distributors</SelectItem>
+                {distributors?.map((distributor) => (
+                  <SelectItem key={distributor._id} value={distributor._id}>
+                    {distributor.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Customer Filter - Compact */}
+          {needsCustomerFilter && (
+            <Select
+              value={filters.customer}
+              onValueChange={(value) => handleFilterChange("customer", value)}
+            >
+              <SelectTrigger className="h-8 text-sm w-[200px]">
+                <SelectValue placeholder="Select customer" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Customers</SelectItem>
+                {customers?.map((customer) => (
+                  <SelectItem key={customer._id} value={customer._id}>
+                    {customer.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Product Filter - Compact */}
+          {needsProductFilter && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-3 text-sm w-[200px] justify-between"
+              onClick={() => setIsProductDialogOpen(true)}
+            >
+              <span className="flex items-center truncate">
+                <Package className="mr-2 h-4 w-4" />
+                {filters.product || "Select product"}
+              </span>
+              {filters.product && (
+                <X
+                  className="h-4 w-4 opacity-70 hover:opacity-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    clearProductSelection(e);
+                  }}
+                />
               )}
             </Button>
-          </div>
+          )}
+
+          {/* Manufacturer Filter - Compact */}
+          {needsManufacturerFilter && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-3 text-sm w-[200px] justify-between"
+              onClick={() => setIsManufacturerDialogOpen(true)}
+            >
+              <span className="flex items-center truncate">
+                <Store className="mr-2 h-4 w-4" />
+                {filters.manufacturer || "Select manufacturer"}
+              </span>
+              {filters.manufacturer && (
+                <X
+                  className="h-4 w-4 opacity-70 hover:opacity-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    clearManufacturerSelection(e);
+                  }}
+                />
+              )}
+            </Button>
+          )}
+
+          {/* Expiry Range Filter - Compact */}
+          {needsExpiryDurationFilter && (
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3 text-sm flex items-center gap-2"
+                  >
+                    <CalendarIcon className="h-4 w-4" />
+                    {filters.expiryRange.selectedMonth
+                      ? format(
+                          new Date(filters.expiryRange.selectedMonth),
+                          "MMM yyyy"
+                        )
+                      : "Select expiry month"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <MonthPicker
+                    currentMonth={
+                      filters.expiryRange.selectedMonth || new Date()
+                    }
+                    onMonthChange={(date) => {
+                      handleFilterChange("expiryRange", {
+                        selectedMonth: date,
+                      });
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+
+          {/* Threshold Filter - Compact */}
+          {needsThresholdFilter && (
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min="1"
+                value={filters.threshold}
+                onChange={(e) =>
+                  handleFilterChange("threshold", e.target.value)
+                }
+                className="h-8 text-sm w-20"
+                placeholder="Threshold"
+              />
+              <span className="text-sm text-gray-500">packs</span>
+            </div>
+          )}
+
+          {/* Generate Button - Always at the end */}
+          <Button
+            onClick={generateReport}
+            className="h-8 px-4 bg-gray-900 hover:bg-black text-white ml-auto"
+            disabled={reportStatus === "loading"}
+          >
+            {reportStatus === "loading" ? (
+              <>
+                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                <span>Generating...</span>
+              </>
+            ) : (
+              <>
+                <FilterIcon className="mr-2 h-4 w-4" />
+                <span>Generate Report</span>
+              </>
+            )}
+          </Button>
         </div>
       </div>
     );
@@ -959,22 +757,29 @@ const Reports = () => {
     const reports = reportTypes[activeTab] || [];
 
     return (
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {reports.map((report) => {
           const ReportIcon = report.icon;
+          const isSelected = selectedReportType[activeTab] === report.id;
           return (
             <Card
               key={report.id}
-              className={`cursor-pointer transition-all duration-200 overflow-hidden p-0 ${
-                selectedReportType[activeTab] === report.id
-                  ? `ring-1 ring-gray-900 bg-gray-50`
+              className={cn(
+                "cursor-pointer transition-all duration-200 overflow-hidden hover:scale-[1.02] hover:shadow-md",
+                isSelected
+                  ? "ring-2 ring-gray-900 bg-gray-900 text-white"
                   : "border border-gray-200 hover:border-gray-300"
-              }`}
+              )}
               onClick={() => handleReportTypeChange(report.id)}
             >
               <div className="flex flex-col items-center text-center p-2">
-                <ReportIcon className="h-4.5 w-4.5 mb-1 text-gray-800" />
-                <h3 className="text-sm font-medium text-gray-800 whitespace-nowrap overflow-hidden text-ellipsis max-w-full px-1">
+                <ReportIcon
+                  className={cn(
+                    "h-5 w-5 mb-2",
+                    isSelected ? "text-white" : "text-gray-800"
+                  )}
+                />
+                <h3 className="text-sm font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-full">
                   {report.name}
                 </h3>
               </div>
@@ -1063,11 +868,10 @@ const Reports = () => {
     };
 
     return (
-      <div className="bg-white p-4 rounded-lg border border-gray-200">
-        <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
-          {/* Header Section (Icon, Title, Date Range, Export Button) */}
-          <div className="flex items-center">
-            <div className="p-1.5 rounded-md bg-gray-100 mr-3">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="flex justify-between items-center p-5 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-gray-100">
               <selectedReport.icon className="h-5 w-5 text-gray-800" />
             </div>
             <div>
@@ -1082,16 +886,6 @@ const Reports = () => {
                     {format(new Date(dateRange.to), "MMM d, yyyy")}
                   </p>
                 )}
-              {isFilterRequired("singleDate") && singleDate && (
-                <p className="text-sm text-gray-500">
-                  {format(new Date(singleDate), "MMMM d, yyyy")}
-                </p>
-              )}
-              {isFilterRequired("month") && selectedMonth && (
-                <p className="text-sm text-gray-500">
-                  {format(new Date(selectedMonth), "MMMM yyyy")}
-                </p>
-              )}
             </div>
           </div>
           <Button
@@ -1101,73 +895,75 @@ const Reports = () => {
               reportStatus === "loading" ||
               !reportData ||
               isDataEmpty(reportData, activeTab, selectedReportType)
-            } // Disable export if no data
-            className="h-8 text-sm"
+            }
+            className="h-9 px-4"
           >
-            <DownloadIcon className="mr-1 h-3.5 w-3.5" />
-            Export
+            <DownloadIcon className="mr-2 h-4 w-4" />
+            Export Report
           </Button>
         </div>
 
-        {/* Content Section (Error, Loading, No Data Yet, No Data Found, Results) */}
-        {localError || reportError ? (
-          <div className="flex flex-col items-center justify-center py-12 text-red-600">
-            <p className="text-base font-medium">{localError || reportError}</p>
-          </div>
-        ) : reportStatus === "loading" ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="h-10 w-10 rounded-full border-2 border-t-black border-r-black border-b-gray-300 border-l-gray-300 animate-spin mb-4"></div>
-            <p className="text-base font-medium text-gray-800">
-              Generating report...
-            </p>
-            <p className="text-sm text-gray-600 mt-1">This may take a moment</p>
-          </div>
-        ) : !reportData ? (
-          // Initial state: No report generated yet
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="p-3 rounded-full bg-gray-100 mb-3">
-              <selectedReport.icon className="h-6 w-6 text-gray-800" />
+        <div className="p-5">
+          {localError || reportError ? (
+            <div className="flex flex-col items-center justify-center py-12 text-red-600">
+              <p className="text-base font-medium">
+                {localError || reportError}
+              </p>
             </div>
-            <p className="text-base font-medium text-gray-800 mb-1">
-              Your {selectedReport.name} will appear here
-            </p>
-            <p className="text-sm text-gray-600 mb-3 text-center max-w-sm">
-              {selectedReport.filters?.length > 0
-                ? "Select your filters and click Generate to create your report"
-                : "Click Generate to create your report"}
-            </p>
-            <Button
-              onClick={generateReport}
-              size="sm"
-              className="bg-gray-900 hover:bg-black text-sm"
-            >
-              <FilterIcon className="mr-1 h-3.5 w-3.5" />
-              Generate Report
-            </Button>
-          </div>
-        ) : isDataEmpty(reportData, activeTab, selectedReportType) ? (
-          // Report generated, but no data found for the criteria
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="p-3 rounded-full bg-gray-100 mb-3">
-              <selectedReport.icon className="h-6 w-6 text-gray-600" />
+          ) : reportStatus === "loading" ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="h-10 w-10 rounded-full border-2 border-t-black border-r-black border-b-gray-300 border-l-gray-300 animate-spin mb-4"></div>
+              <p className="text-base font-medium text-gray-800">
+                Generating report...
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                This may take a moment
+              </p>
             </div>
-            <p className="text-base font-medium text-gray-700 mb-1">
-              No data found for the selected criteria.
-            </p>
-            <p className="text-sm text-gray-500 text-center max-w-sm">
-              Try adjusting the filters or changing the date range.
-            </p>
-          </div>
-        ) : (
-          // Report generated and data exists
-          <div className="space-y-4">
-            <div className="overflow-x-auto">
-              {activeTab === "sales" && renderSalesTable()}
-              {activeTab === "purchase" && renderPurchaseTable()}
-              {/* TODO: Add rendering for inventory tab */}
+          ) : !reportData ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="p-3 rounded-full bg-gray-100 mb-3">
+                <selectedReport.icon className="h-6 w-6 text-gray-800" />
+              </div>
+              <p className="text-base font-medium text-gray-800 mb-1">
+                Your {selectedReport.name} will appear here
+              </p>
+              <p className="text-sm text-gray-600 mb-3 text-center max-w-sm">
+                {selectedReport.filters?.length > 0
+                  ? "Select your filters and click Generate to create your report"
+                  : "Click Generate to create your report"}
+              </p>
+              <Button
+                onClick={generateReport}
+                size="sm"
+                className="bg-gray-900 hover:bg-black text-sm"
+              >
+                <FilterIcon className="mr-1 h-3.5 w-3.5" />
+                Generate Report
+              </Button>
             </div>
-          </div>
-        )}
+          ) : isDataEmpty(reportData, activeTab, selectedReportType) ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="p-3 rounded-full bg-gray-100 mb-3">
+                <selectedReport.icon className="h-6 w-6 text-gray-600" />
+              </div>
+              <p className="text-base font-medium text-gray-700 mb-1">
+                No data found for the selected criteria.
+              </p>
+              <p className="text-sm text-gray-500 text-center max-w-sm">
+                Try adjusting the filters or changing the date range.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="overflow-x-auto">
+                {activeTab === "sales" && renderSalesTable()}
+                {activeTab === "purchase" && renderPurchaseTable()}
+                {activeTab === "inventory" && renderInventoryTable()}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     );
   };
@@ -1816,6 +1612,112 @@ const Reports = () => {
     }
   };
 
+  const renderInventoryTable = () => {
+    if (!reportData) return null;
+
+    switch (selectedReportType[activeTab]) {
+      case "stock-status":
+        return (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>PRODUCT</TableHead>
+                <TableHead>MANUFACTURER</TableHead>
+                <TableHead>BATCH</TableHead>
+                <TableHead>QUANTITY</TableHead>
+                <TableHead>MRP</TableHead>
+                <TableHead>EXPIRY</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reportData.items?.map((item) => (
+                <TableRow key={`${item.productName}-${item.batchNumber}`}>
+                  <TableCell>{item.productName}</TableCell>
+                  <TableCell>{item.manufacturer}</TableCell>
+                  <TableCell>{item.batchNumber}</TableCell>
+                  <TableCell>{item.quantity}</TableCell>
+                  <TableCell>₹{item.mrp?.toFixed(2)}</TableCell>
+                  <TableCell>{item.expiry}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        );
+
+      case "low-stock":
+        return (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>PRODUCT</TableHead>
+                <TableHead>MANUFACTURER</TableHead>
+                <TableHead>BATCH</TableHead>
+                <TableHead>CURRENT STOCK</TableHead>
+                <TableHead>EXPIRY</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reportData.lowStockItems?.map((item) => {
+                // Calculate packs and units
+                const packs = Math.floor(item.currentStock / (item.pack || 1));
+                const units = item.currentStock % (item.pack || 1);
+
+                return (
+                  <TableRow key={`${item.productName}-${item.batchNumber}`}>
+                    <TableCell>{item.productName}</TableCell>
+                    <TableCell>{item.manufacturer}</TableCell>
+                    <TableCell>{item.batchNumber}</TableCell>
+                    <TableCell>
+                      {packs > 0 && `${packs} pack${packs > 1 ? "s" : ""}`}
+                      {packs > 0 && units > 0 && " and "}
+                      {units > 0 && `${units} unit${units > 1 ? "s" : ""}`}
+                      {packs === 0 && units === 0 && "0 units"}
+                      <span className="text-xs text-gray-500 block">
+                        Total: {item.currentStock} units (Pack size:{" "}
+                        {item.pack || 1})
+                      </span>
+                    </TableCell>
+                    <TableCell>{item.expiry}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        );
+
+      case "expiry-alert":
+        return (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>PRODUCT</TableHead>
+                <TableHead>MANUFACTURER</TableHead>
+                <TableHead>BATCH</TableHead>
+                <TableHead>QUANTITY</TableHead>
+                <TableHead>EXPIRY</TableHead>
+                <TableHead>MRP</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reportData.expiryAlerts?.map((item) => (
+                <TableRow key={`${item.productName}-${item.batchNumber}`}>
+                  <TableCell>{item.productName}</TableCell>
+                  <TableCell>{item.manufacturer}</TableCell>
+                  <TableCell>{item.batchNumber}</TableCell>
+                  <TableCell>{item.quantity}</TableCell>
+                  <TableCell>{item.expiry}</TableCell>
+                  <TableCell>₹{item.mrp?.toFixed(2)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   // Handle tab change
   const handleTabChange = (newTab) => {
     setActiveTab(newTab);
@@ -1826,66 +1728,106 @@ const Reports = () => {
   };
 
   return (
-    <div className="p-4 space-y-3 bg-gray-50">
-      <div className="flex justify-between items-center mb-2">
-        <h1 className="text-xl font-medium text-gray-800">Reports</h1>
-        <Button variant="outline" size="sm" className="h-8 text-sm">
-          <RefreshCcw className="mr-1 h-3.5 w-3.5" />
-          Refresh Data
-        </Button>
-      </div>
-
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <Tabs
-          defaultValue="sales"
-          value={activeTab}
-          onValueChange={handleTabChange}
-          className="w-full"
-        >
-          <TabsList className="w-full border-b border-gray-200 rounded-none p-0 h-10 bg-gray-50">
-            <TabsTrigger
-              value="sales"
-              className="rounded-none data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-gray-900 data-[state=active]:shadow-none h-10 text-sm font-medium"
-              onClick={() => handleTabChange("sales")}
-            >
-              Sales
-            </TabsTrigger>
-            <TabsTrigger
-              value="purchase"
-              className="rounded-none data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-gray-900 data-[state=active]:shadow-none h-10 text-sm font-medium"
-              onClick={() => handleTabChange("purchase")}
-            >
-              Purchase
-            </TabsTrigger>
-            <TabsTrigger
-              value="inventory"
-              className="rounded-none data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-gray-900 data-[state=active]:shadow-none h-10 text-sm font-medium"
-              onClick={() => handleTabChange("inventory")}
-            >
-              Inventory
-            </TabsTrigger>
-          </TabsList>
-
-          <div className="p-3">
-            <TabsContent value="sales" className="mt-0">
-              {renderReportSelection()}
-              {renderFilters()}
-              {renderReportResults()}
-            </TabsContent>
-
-            <TabsContent value="purchase" className="mt-0">
-              {renderReportSelection()}
-              {renderFilters()}
-              {renderReportResults()}
-            </TabsContent>
-
-            <TabsContent value="inventory" className="mt-0">
-              {renderReportSelection()}
-              {renderFilters()}
-              {renderReportResults()}
-            </TabsContent>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white p-6">
+      <div className="max-w-[1600px] mx-auto space-y-2">
+        {/* Header Section */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">Reports</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              View and analyze your business data
+            </p>
           </div>
-        </Tabs>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 px-4 hover:bg-gray-50 transition-colors"
+          >
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            Refresh Data
+          </Button>
+        </div>
+
+        {/* Main Content */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <Tabs
+            defaultValue="sales"
+            value={activeTab}
+            onValueChange={handleTabChange}
+            className="w-full"
+          >
+            <TabsList className="w-full border-b border-gray-200 rounded-none p-0 h-12 bg-gray-50/50">
+              <TabsTrigger
+                value="sales"
+                className="rounded-none data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-gray-900 data-[state=active]:shadow-none h-12 px-6 text-sm font-medium transition-all"
+                onClick={() => handleTabChange("sales")}
+              >
+                <BarChart className="w-4 h-4 mr-2" />
+                Sales
+              </TabsTrigger>
+              <TabsTrigger
+                value="purchase"
+                className="rounded-none data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-gray-900 data-[state=active]:shadow-none h-12 px-6 text-sm font-medium transition-all"
+                onClick={() => handleTabChange("purchase")}
+              >
+                <Package className="w-4 h-4 mr-2" />
+                Purchase
+              </TabsTrigger>
+              <TabsTrigger
+                value="inventory"
+                className="rounded-none data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-gray-900 data-[state=active]:shadow-none h-12 px-6 text-sm font-medium transition-all"
+                onClick={() => handleTabChange("inventory")}
+              >
+                <Store className="w-4 h-4 mr-2" />
+                Inventory
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="p-2">
+              <TabsContent value="sales" className="mt-0 space-y-2">
+                <div className="bg-gray-50/50 rounded-lg p-2">
+                  {renderReportSelection()}
+                </div>
+                {renderFilters()}
+                {renderReportResults()}
+              </TabsContent>
+
+              <TabsContent value="purchase" className="mt-0 space-y-2">
+                <div className="bg-gray-50/50 rounded-lg p-2">
+                  {renderReportSelection()}
+                </div>
+                {renderFilters()}
+                {renderReportResults()}
+              </TabsContent>
+
+              <TabsContent value="inventory" className="mt-0 space-y-2">
+                <div className="bg-gray-50/50 rounded-lg p-2">
+                  {renderReportSelection()}
+                </div>
+                {renderFilters()}
+                {renderReportResults()}
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
+
+        {/* Product Selection Dialog */}
+        <SelectInventory
+          open={isProductDialogOpen}
+          onOpenChange={setIsProductDialogOpen}
+          onSelect={handleProductSelect}
+          search={productSearch}
+          setSearch={setProductSearch}
+        />
+
+        {/* Manufacturer Selection Dialog */}
+        <SelectManufacturer
+          open={isManufacturerDialogOpen}
+          onOpenChange={setIsManufacturerDialogOpen}
+          onSelect={handleManufacturerSelect}
+          search={manufacturerSearch}
+          setSearch={setManufacturerSearch}
+        />
       </div>
     </div>
   );

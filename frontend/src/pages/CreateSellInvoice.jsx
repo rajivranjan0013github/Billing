@@ -23,11 +23,11 @@ import { useNavigate } from "react-router-dom";
 import PaymentDialog from "../components/custom/payment/PaymentDialog";
 import { formatCurrency } from "../utils/Helper";
 import SearchSuggestion from "../components/custom/custom-fields/CustomSearchSuggestion";
-import { fetchSettings } from '../redux/slices/settingsSlice'
+import { fetchSettings } from "../redux/slices/settingsSlice";
 
 // for sale only
-export const calculateTotals = (products, adjustment=false) => {
-  const total =  products.reduce(
+export const calculateTotals = (products, adjustment = false) => {
+  const total = products.reduce(
     (total, product) => {
       const quantity = Number(product?.quantity || 0);
       const pack = Number(product?.pack || 1);
@@ -48,7 +48,7 @@ export const calculateTotals = (products, adjustment=false) => {
       const discount = roundToTwo(
         (((product?.quantity * product?.mrp) / pack) * discountPercent) / 100
       );
-      const taxable =roundToTwo(
+      const taxable = roundToTwo(
         ((subtotal - discount) * 100) / (100 + gstPer)
       );
       const gstAmount = roundToTwo((taxable * gstPer) / 100);
@@ -73,10 +73,10 @@ export const calculateTotals = (products, adjustment=false) => {
       returnAmount: 0,
     }
   );
-  if(adjustment) {
+  if (adjustment) {
     const grandTotal = total?.grandTotal;
     total.grandTotal = Math.round(grandTotal);
-    total.adjustment = total.grandTotal - grandTotal
+    total.adjustment = total.grandTotal - grandTotal;
   }
   return total;
 };
@@ -106,16 +106,29 @@ export default function CreateSellInvoice() {
   const navigate = useNavigate();
   const inputRef = useRef({});
   const dispatch = useDispatch();
-  const {createBillStatus} = useSelector(state=>state.bill);
-  const {settings, status } = useSelector(state => state.settings)
-  const { isCollapsed } = useSelector(state=>state.loader);
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "2-digit", year: "numeric",}).split("/").reverse().join("-"));
+  const { createBillStatus } = useSelector((state) => state.bill);
+  const { settings, status } = useSelector((state) => state.settings);
+  const { isCollapsed } = useSelector((state) => state.loader);
+  const [invoiceDate, setInvoiceDate] = useState(
+    new Date()
+      .toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+      .split("/")
+      .reverse()
+      .join("-")
+  );
   const [products, setProducts] = useState([]);
   const [customerName, setCustomerName] = useState("");
   const { toast } = useToast();
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [invoiceForPayment, setInvoiceForPayment] = useState(null);
-  const [additionalDiscount, setAdditionalDiscount] = useState({per : '', value : ''}); // in percentage
+  const [additionalDiscount, setAdditionalDiscount] = useState({
+    per: "",
+    value: "",
+  }); // in percentage
 
   // Add useEffect to focus on customer name input when component mounts
   useEffect(() => {
@@ -130,16 +143,16 @@ export default function CreateSellInvoice() {
   }, []);
 
   // fetching setting config
-  useEffect(()=> {
-    if(status === 'idle') {
+  useEffect(() => {
+    if (status === "idle") {
       dispatch(fetchSettings());
     }
-  }, [status, settings])
+  }, [status, settings]);
 
-   // Convert doctors array to the format expected by CustomSearchSuggestion
+  // Convert doctors array to the format expected by CustomSearchSuggestion
   const doctorSuggestions = settings?.doctors.map((name, index) => ({
     _id: index + 1,
-    name: name
+    name: name,
   }));
 
   const [formData, setFormData] = useState({
@@ -149,12 +162,15 @@ export default function CreateSellInvoice() {
     invoiceNumber: "",
     invoiceDate: new Date(),
     doctorName: "",
-    returnInvoiceNumber : '',
+    returnInvoiceNumber: "",
   });
   const [isCashCounter, setIsCashCounter] = useState(true);
 
   // caculating total of the product
-  const amountData = useMemo(() => calculateTotals(products, settings?.adjustment), [products, settings]);
+  const amountData = useMemo(
+    () => calculateTotals(products, settings?.adjustment),
+    [products, settings]
+  );
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -175,7 +191,7 @@ export default function CreateSellInvoice() {
     return () => window.removeEventListener("keydown", handleKeyPress);
   }, [products, formData, invoiceDate, isCashCounter, customerName]); // Add dependencies that handleSaveInvoice uses
 
-  useEffect(() => {
+   useEffect(() => {
     fetch(`${Backend_URL}/api/sales/invoice-number`, {
       credentials: "include",
       headers: {
@@ -263,7 +279,7 @@ export default function CreateSellInvoice() {
         productCount: amountData.productCount,
         grandTotal: roundToTwo(amountData.grandTotal),
         returnAmount: roundToTwo(amountData.returnAmount),
-        adjustment : roundToTwo(amountData?.adjustment),
+        adjustment: roundToTwo(amountData?.adjustment),
         gstSummary: {
           0: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
           5: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
@@ -320,8 +336,8 @@ export default function CreateSellInvoice() {
         products: formattedProducts,
         grandTotal: roundToTwo(amountData.grandTotal),
         is_cash_customer: isCashCounter,
-        doctorName : formData?.doctorName,
-        returnInvoiceNumber : formData?.returnInvoiceNumber,
+        doctorName: formData?.doctorName,
+        returnInvoiceNumber: formData?.returnInvoiceNumber,
         billSummary,
         // Payment details
         paymentStatus: paymentStatus,
@@ -385,7 +401,6 @@ export default function CreateSellInvoice() {
           });
         });
       console.log(finalData);
-      
     } catch (error) {
       toast({
         title: "Error",
@@ -406,8 +421,8 @@ export default function CreateSellInvoice() {
       customerName: customer.name,
     });
     setIsCashCounter(false); // Uncheck cash/counter when customer is selected
-    if(inputRef && inputRef.current['doctorName']) {
-      inputRef.current['doctorName'].focus();
+    if (inputRef && inputRef.current["doctorName"]) {
+      inputRef.current["doctorName"].focus();
     }
   };
 
@@ -435,27 +450,32 @@ export default function CreateSellInvoice() {
   };
 
   const onAdditionalDiscountChange = (key, num) => {
-    if(!amountData?.subtotal) {
-      toast({variant : 'destructive', message : 'Please add alteast on product'}); return;
+    if (!amountData?.subtotal) {
+      toast({
+        variant: "destructive",
+        message: "Please add alteast on product",
+      });
+      return;
     }
     const tempNum = Number(num);
     const tempSubtotal = amountData?.subtotal;
-    if(key === 'per') {
-      const value = roundToTwo(tempSubtotal*tempNum/100)
-      setAdditionalDiscount({per : tempNum,   value})
+    if (key === "per") {
+      const value = roundToTwo((tempSubtotal * tempNum) / 100);
+      setAdditionalDiscount({ per: tempNum, value });
     } else {
-      const per = roundToTwo(tempNum/tempSubtotal*100);
-      setAdditionalDiscount({per, value : tempNum});
+      const per = roundToTwo((tempNum / tempSubtotal) * 100);
+      setAdditionalDiscount({ per, value: tempNum });
     }
-  }
+  };
 
   const handleAdditionalDiscountApply = () => {
     const additionalDiscountTemp = Number(additionalDiscount?.per || 0);
     if (additionalDiscountTemp <= 0) return;
 
-    setProducts(prevProducts => 
-      prevProducts.map(product => {
-        const newDiscount = Number(product.discount || 0) + additionalDiscountTemp;
+    setProducts((prevProducts) =>
+      prevProducts.map((product) => {
+        const newDiscount =
+          Number(product.discount || 0) + additionalDiscountTemp;
         const mrp = Number(product.mrp || 0);
         const newSaleRate = (mrp * (1 - newDiscount / 100)).toFixed(2);
 
@@ -466,15 +486,15 @@ export default function CreateSellInvoice() {
           amount: calculateProductAmount({
             ...product,
             discount: newDiscount,
-            saleRate: newSaleRate
-          })
+            saleRate: newSaleRate,
+          }),
         };
       })
     );
 
     // Reset additional discount after applying
-    setAdditionalDiscount({ per: '', value: '' });
-  }
+    setAdditionalDiscount({ per: "", value: "" });
+  };
 
   // Helper function to calculate product amount with updated discount
   const calculateProductAmount = (product) => {
@@ -490,7 +510,7 @@ export default function CreateSellInvoice() {
     const gstAmount = roundToTwo((taxable * gstPer) / 100);
 
     return roundToTwo(taxable + gstAmount);
-  }
+  };
 
   return (
     <div className="relative rounded-lg h-[100vh] pt-4">
@@ -527,7 +547,7 @@ export default function CreateSellInvoice() {
       </div>
 
       {/* extra information */}
-      <div className="grid gap-2">
+      <div className="grid gap-2 text-[12px]">
         <div className="grid gap-4 grid-cols-5 w-full">
           <div>
             <Label className="text-sm font-medium">SALE TYPE</Label>
@@ -601,7 +621,7 @@ export default function CreateSellInvoice() {
               </div>
             </RadioGroup>
           </div>
-          <div className="col-span-4 grid-cols-4 grid gap-4">
+          <div className="col-span-4 grid-cols-4 grid gap-4 font-semibold">
             <div>
               <Label className="text-sm font-medium">
                 CUSTOMER NAME<span className="text-rose-500">*REQUIRED</span>
@@ -648,8 +668,14 @@ export default function CreateSellInvoice() {
                 setValue={(value) => handleInputChange("doctorName", value)}
                 onSuggestionSelect={(selected) => {
                   handleInputChange("doctorName", selected.name);
+                  // Focus on the product input after selecting a doctor, using requestAnimationFrame
+                  requestAnimationFrame(() => {
+                    if (inputRef.current["product"]) {
+                      inputRef.current["product"].focus();
+                    }
+                  });
                 }}
-                onKeyDown={(e) => handleKeyDown(e, 'doctorName')}
+                onKeyDown={(e) => handleKeyDown(e, "doctorName")}
                 ref={(el) => (inputRef.current["doctorName"] = el)}
               />
             </div>
@@ -676,18 +702,24 @@ export default function CreateSellInvoice() {
                 className="w-full"
               />
             </div>
-            {formData?.saleType === 'return' && <div>
-              <Label className="text-sm font-medium">OLD INVOICE NUMBER</Label>
-              <Input
-                type="text"
-                ref={(el) => (inputRef.current["returnInvoiceNumber"] = el)}
-                value={formData.returnInvoiceNumber}
-                onChange={(e) => handleInputChange("returnInvoiceNumber", e.target.value)}
-                className="w-full"
-                placeholder="Enter Old Invoice number"
-                onKeyDown={(e)=>handleKeyDown(e,'returnInvoiceNumber')}
-              />
-            </div>}
+            {formData?.saleType === "return" && (
+              <div>
+                <Label className="text-sm font-medium">
+                  OLD INVOICE NUMBER
+                </Label>
+                <Input
+                  type="text"
+                  ref={(el) => (inputRef.current["returnInvoiceNumber"] = el)}
+                  value={formData.returnInvoiceNumber}
+                  onChange={(e) =>
+                    handleInputChange("returnInvoiceNumber", e.target.value)
+                  }
+                  className="w-full "
+                  placeholder="Enter Old Invoice number"
+                  onKeyDown={(e) => handleKeyDown(e, "returnInvoiceNumber")}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -707,7 +739,13 @@ export default function CreateSellInvoice() {
         <div className="p-4 border rounded-lg ">
           <div className="flex justify-between">
             <h3 className="mb-4 text-sm font-medium">OVERALL BILL DISCOUNT</h3>
-            <Button size='sm' onClick={handleAdditionalDiscountApply}  className='h-5'>Apply</Button>
+            <Button
+              size="sm"
+              onClick={handleAdditionalDiscountApply}
+              className="h-5"
+            >
+              Apply
+            </Button>
           </div>
           <div className="flex gap-4">
             <div className="relative">
@@ -715,14 +753,27 @@ export default function CreateSellInvoice() {
                 placeholder="Value"
                 className="w-24 pr-5"
                 value={additionalDiscount?.per}
-                onChange={(e)=>onAdditionalDiscountChange('per', e.target.value)}
+                onChange={(e) =>
+                  onAdditionalDiscountChange("per", e.target.value)
+                }
               />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2">%</span>
+              <span className="absolute right-2 top-1/2 -translate-y-1/2">
+                %
+              </span>
             </div>
             <span className="px-2 py-1">OR</span>
             <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-0">₹</span>
-              <Input placeholder="Value" className="flex-1 pl-5" value={additionalDiscount?.value}  onChange={(e)=>onAdditionalDiscountChange('value', e.target.value)} />
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-0">
+                ₹
+              </span>
+              <Input
+                placeholder="Value"
+                className="flex-1 pl-5"
+                value={additionalDiscount?.value}
+                onChange={(e) =>
+                  onAdditionalDiscountChange("value", e.target.value)
+                }
+              />
             </div>
           </div>
         </div>
@@ -781,7 +832,9 @@ export default function CreateSellInvoice() {
         </div>
         <div className="py-2">
           <div className="">(-) Adjustment</div>
-          <div className='text-lg'>{formatCurrency(amountData?.adjustment || 0)}</div>
+          <div className="text-lg">
+            {formatCurrency(amountData?.adjustment || 0)}
+          </div>
         </div>
         <div className="bg-rose-500 py-2">
           <div className="">Total Amount</div>

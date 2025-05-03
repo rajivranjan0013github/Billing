@@ -542,9 +542,6 @@ router.get("/inventory", async (req, res) => {
       {
         $unwind: "$inventory",
       },
-      {
-        $match: { status: "active" },
-      },
     ];
 
     let response = {};
@@ -576,20 +573,26 @@ router.get("/inventory", async (req, res) => {
 
       case "low-stock":
         // Get items with low stock (quantity less than minimum stock level)
+        const { threshold = 10 } = req.query; // Default to 10 if not provided
         const lowStockPipeline = [
           ...basePipeline,
           {
             $match: {
-              quantity: { $lt: 10 }, // Assuming 10 is the minimum stock level
+              $expr: {
+                $lt: [
+                  "$quantity",
+                  { $multiply: [parseInt(threshold), "$pack"] },
+                ],
+              },
             },
           },
           {
             $project: {
-              productName: "$inventory.productName",
+              productName: "$inventory.name",
               manufacturer: "$inventory.mfcName",
               batchNumber: 1,
               currentStock: "$quantity",
-              minimumStock: 10, // This could be configurable
+              pack: 1,
               expiry: 1,
               mrp: 1,
             },
@@ -602,66 +605,38 @@ router.get("/inventory", async (req, res) => {
         break;
 
       case "expiry-alert":
-        // Get items near expiry based on the expiry range
-        const { expiryRange } = req.query;
-        const currentDate = new Date();
+        // Get items near expiry based on target expiry date
+        const { targetExpiry } = req.query;
 
-        // Function to convert mm/yy to comparable number (YYMM)
-        const getComparableDate = (mmyy) => {
-          const [month, year] = mmyy.split("/").map(Number);
-          return year * 12 + month;
-        };
-
-        // Get current date in mm/yy format
-        const currentMMYY = `${String(currentDate.getMonth() + 1).padStart(
-          2,
-          "0"
-        )}/${String(currentDate.getFullYear()).slice(-2)}`;
-        const currentComparable = getComparableDate(currentMMYY);
-
-        // Calculate target date based on range
-        let targetComparable;
-        if (expiryRange === "1month") {
-          targetComparable = currentComparable;
-        } else if (expiryRange === "3months") {
-          targetComparable = currentComparable + 2; // Current + 2 more months
-        } else if (expiryRange === "6months") {
-          targetComparable = currentComparable + 5; // Current + 5 more months
-        } else if (expiryRange === "1year") {
-          targetComparable = currentComparable + 11; // Current + 11 more months
-        } else if (expiryRange === "custom" && req.query.selectedMonth) {
-          const selectedDate = new Date(req.query.selectedMonth);
-          const selectedMMYY = `${String(selectedDate.getMonth() + 1).padStart(
-            2,
-            "0"
-          )}/${String(selectedDate.getFullYear()).slice(-2)}`;
-          targetComparable = getComparableDate(selectedMMYY);
+        if (!targetExpiry) {
+          throw new Error("Target expiry date is required");
         }
+
+        // Convert target expiry (mm/yy) to a comparable format
+        const [targetMonth, targetYear] = targetExpiry.split("/");
+        const targetDate = new Date(
+          2000 + parseInt(targetYear),
+          parseInt(targetMonth)
+        );
+        console.log(targetDate);
 
         const expiryPipeline = [
           ...basePipeline,
           {
-            $match: {
-              quantity: { $gt: 0 }, // Only include items with stock
-            },
-          },
-          {
             $addFields: {
-              comparableExpiry: {
+              // Convert expiry string to Date for comparison
+              expiryDate: {
                 $let: {
                   vars: {
-                    monthYear: { $split: ["$expiry", "/"] },
+                    month: { $toInt: { $substr: ["$expiry", 0, 2] } },
+                    year: { $toInt: { $substr: ["$expiry", 3, 2] } },
                   },
                   in: {
-                    $add: [
-                      {
-                        $multiply: [
-                          { $toInt: { $arrayElemAt: ["$$monthYear", 1] } },
-                          12,
-                        ],
-                      },
-                      { $toInt: { $arrayElemAt: ["$$monthYear", 0] } },
-                    ],
+                    $dateFromParts: {
+                      year: { $add: [2000, "$$year"] },
+                      month: "$$month",
+                      day: 1,
+                    },
                   },
                 },
               },
@@ -669,37 +644,31 @@ router.get("/inventory", async (req, res) => {
           },
           {
             $match: {
-              comparableExpiry: {
-                $gte: currentComparable,
-                $lte: targetComparable,
-              },
+              quantity: { $gt: 0 }, // Only include items with stock
+              expiryDate: { $lte: targetDate }, // Get items expiring on or before target date
             },
           },
           {
             $project: {
-              productName: "$inventory.productName",
+              productName: "$inventory.name",
               manufacturer: "$inventory.mfcName",
               batchNumber: 1,
               quantity: 1,
               expiry: 1,
               mrp: 1,
-              comparableExpiry: 1,
+              expiryDate: 1,
             },
           },
           {
             $sort: {
-              comparableExpiry: 1,
+              expiryDate: 1,
+              productName: 1,
+              batchNumber: 1,
             },
           },
         ];
 
-        let expiryAlerts = await InventoryBatch.aggregate(expiryPipeline);
-
-        // Remove the comparable field from final results
-        expiryAlerts = expiryAlerts.map(
-          ({ comparableExpiry, ...rest }) => rest
-        );
-
+        const expiryAlerts = await InventoryBatch.aggregate(expiryPipeline);
         response.expiryAlerts = expiryAlerts;
         break;
     }
