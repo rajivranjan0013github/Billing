@@ -14,7 +14,15 @@ import { Badge } from "../../ui/badge";
 
 const BatchSuggestion = forwardRef(
   (
-    { value, setValue, onSuggestionSelect, inventoryId, inputRef, disabled },
+    {
+      value,
+      setValue,
+      onSuggestionSelect,
+      inventoryId,
+      inputRef,
+      disabled,
+      onKeyDown,
+    },
     ref
   ) => {
     const [filteredSuggestions, setFilteredSuggestions] = useState([]);
@@ -88,14 +96,14 @@ const BatchSuggestion = forwardRef(
       if (onSuggestionSelect) {
         onSuggestionSelect(suggestion);
       }
-      if (inputRef?.current?.["packs"]) {
-        inputRef.current["packs"].focus();
-      } else if (inputRef?.current?.["HSN"]) {
-        inputRef.current["HSN"].focus();
-      }
     };
 
     const handleKeyDown = (e) => {
+      // First handle any custom keydown handler passed as prop
+      if (onKeyDown) {
+        onKeyDown(e);
+      }
+
       if (e.key === "ArrowDown") {
         e.preventDefault();
         setSelectedIndex((prev) =>
@@ -113,19 +121,11 @@ const BatchSuggestion = forwardRef(
           return;
         }
         if (selectedIndex >= 0) {
+          e.preventDefault();
           setValue(filteredSuggestions[selectedIndex]?.batchNumber);
           setShowSuggestions(false);
           if (onSuggestionSelect) {
             onSuggestionSelect(filteredSuggestions[selectedIndex]);
-          }
-          if (inputRef?.current?.["packs"]) {
-            inputRef.current["packs"].focus();
-          } else if (inputRef?.current?.["HSN"]) {
-            inputRef.current["HSN"].focus();
-          }
-        } else {
-          if (inputRef?.current?.["HSN"]) {
-            inputRef.current["HSN"].focus();
           }
         }
       }

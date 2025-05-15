@@ -15,8 +15,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Search, Users, X, ArrowLeft, Plus, FileInput } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  Search,
+  Users,
+  X,
+  ArrowLeft,
+  Plus,
+  FileInput,
+  ChevronDown,
+} from "lucide-react";
+import { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchDistributors } from "../redux/slices/distributorSlice";
 import { useNavigate } from "react-router-dom";
@@ -26,17 +34,36 @@ import * as XLSX from "xlsx";
 
 export default function Distributors() {
   const dispatch = useDispatch();
-  const { distributors, fetchStatus } = useSelector((state) => state.distributor);
+  const { distributors, fetchStatus } = useSelector(
+    (state) => state.distributor
+  );
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState("name");
+  const [balanceFilter, setBalanceFilter] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isBalanceDropdownOpen, setIsBalanceDropdownOpen] = useState(false);
+  const balanceDropdownRef = useRef(null);
 
   useEffect(() => {
     if (fetchStatus === "idle") {
       dispatch(fetchDistributors());
     }
   }, [dispatch, fetchStatus]);
+
+  // Add click outside handler
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        balanceDropdownRef.current &&
+        !balanceDropdownRef.current.contains(event.target)
+      ) {
+        setIsBalanceDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Calculate totals for the summary
   const summary = {
@@ -46,22 +73,51 @@ export default function Distributors() {
       .reduce((sum, distributor) => sum + distributor.currentBalance, 0),
     toPay: distributors
       .filter((distributor) => distributor.currentBalance < 0)
-      .reduce((sum, distributor) => sum + Math.abs(distributor.currentBalance), 0),
-    totalBalance: distributors.reduce((sum, distributor) => sum + (distributor.currentBalance || 0), 0)
+      .reduce(
+        (sum, distributor) => sum + Math.abs(distributor.currentBalance),
+        0
+      ),
+    totalBalance: distributors.reduce(
+      (sum, distributor) => sum + (distributor.currentBalance || 0),
+      0
+    ),
   };
 
-  // Filter distributors based on search
+  // Filter distributors based on search and balance
   const getFilteredDistributors = () => {
-    if (!searchQuery) return distributors;
+    let filtered = distributors;
 
-    return distributors.filter((distributor) => {
-      if (searchType === "name") {
-        return distributor.name.toLowerCase().includes(searchQuery.toLowerCase());
-      } else if (searchType === "mobile") {
-        return distributor.mob?.toLowerCase().includes(searchQuery.toLowerCase());
-      }
-      return true;
-    });
+    // Apply balance filter
+    if (balanceFilter !== "all") {
+      filtered = filtered.filter((distributor) => {
+        if (balanceFilter === "due") {
+          return distributor.currentBalance > 0;
+        } else if (balanceFilter === "pay") {
+          return distributor.currentBalance < 0;
+        } else if (balanceFilter === "zero") {
+          return distributor.currentBalance === 0;
+        }
+        return true;
+      });
+    }
+
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter((distributor) => {
+        if (searchType === "name") {
+          return distributor.name
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase());
+        } else if (searchType === "mobile") {
+          return distributor.mob
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase());
+        }
+        return true;
+      });
+    }
+
+    return filtered;
   };
 
   // Function to handle exporting data to Excel
@@ -69,10 +125,10 @@ export default function Distributors() {
     const dataToExport = getFilteredDistributors().map((distributor) => ({
       "Distributor Name": distributor.name,
       "Mobile Number": distributor.mob || "-",
-      "Address": distributor.address || "-",
+      Address: distributor.address || "-",
       "Account Number": distributor.bankDetails?.accountNumber || "-",
       "IFSC Code": distributor.bankDetails?.ifsc || "-",
-      "Balance": distributor.currentBalance || 0,
+      Balance: distributor.currentBalance || 0,
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -100,6 +156,14 @@ export default function Distributors() {
     XLSX.writeFile(workbook, "distributors.xlsx");
   };
 
+  // Replace the Select component with this dropdown menu
+  const balanceFilterOptions = [
+    { value: "all", label: "All Distributors" },
+    { value: "due", label: "To Collect" },
+    { value: "pay", label: "To Pay" },
+    { value: "zero", label: "Zero Balance" },
+  ];
+
   return (
     <div className="relative p-4 space-y-4">
       <div className="flex justify-between items-center">
@@ -112,7 +176,9 @@ export default function Distributors() {
         <div className="grid grid-cols-4 gap-4 text-right">
           <div>
             <div className="font-semibold">{summary.count}</div>
-            <div className="text-sm text-muted-foreground">Total Distributors</div>
+            <div className="text-sm text-muted-foreground">
+              Total Distributors
+            </div>
           </div>
           <div>
             <div className="font-semibold text-green-600">
@@ -163,7 +229,9 @@ export default function Distributors() {
               </div>
               <Input
                 className="w-[200px] h-9 pl-10 pr-10 border-0 focus-visible:ring-0 placeholder:text-slate-400"
-                placeholder={`Search by ${searchType === "name" ? "distributor name" : "mobile number"}...`}
+                placeholder={`Search by ${
+                  searchType === "name" ? "distributor name" : "mobile number"
+                }...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -183,11 +251,38 @@ export default function Distributors() {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="relative" ref={balanceDropdownRef}>
           <Button
             variant="outline"
-            onClick={() => setIsCreateDialogOpen(true)}
+            className="w-[150px] justify-between"
+            onClick={() => setIsBalanceDropdownOpen(!isBalanceDropdownOpen)}
           >
+            {balanceFilterOptions.find((opt) => opt.value === balanceFilter)
+              ?.label || "Filter by balance"}
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+          {isBalanceDropdownOpen && (
+            <div className="absolute z-10 mt-1 w-[150px] bg-white rounded-md shadow-lg border border-slate-200">
+              {balanceFilterOptions.map((option) => (
+                <button
+                  key={option.value}
+                  className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-100 ${
+                    balanceFilter === option.value ? "bg-slate-100" : ""
+                  }`}
+                  onClick={() => {
+                    setBalanceFilter(option.value);
+                    setIsBalanceDropdownOpen(false);
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsCreateDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Create Distributor
           </Button>
@@ -245,7 +340,7 @@ export default function Distributors() {
                   <TableCell>{distributor.address || "-"}</TableCell>
                   {/* <TableCell>{distributor.bankDetails?.accountNumber || "-"}</TableCell>
                   <TableCell>{distributor.bankDetails?.ifsc || "-"}</TableCell> */}
-                  <TableCell className="text-right">
+                  <TableCell className="text-right font-bold">
                     <span
                       className={
                         distributor.currentBalance > 0
@@ -255,8 +350,14 @@ export default function Distributors() {
                           : ""
                       }
                     >
-                      {distributor.currentBalance > 0 ? "↓ " : distributor.currentBalance < 0 ? "↑ " : ""}
-                      {formatCurrency(Math.abs(distributor.currentBalance || 0))}
+                      {distributor.currentBalance > 0
+                        ? "↓ "
+                        : distributor.currentBalance < 0
+                        ? "↑ "
+                        : ""}
+                      {formatCurrency(
+                        Math.abs(distributor.currentBalance || 0)
+                      )}
                     </span>
                   </TableCell>
                 </TableRow>
@@ -265,8 +366,8 @@ export default function Distributors() {
           </Table>
         )}
       </div>
-      
-      <CreateDistributorDlg 
+
+      <CreateDistributorDlg
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
       />

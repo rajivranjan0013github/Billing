@@ -594,7 +594,7 @@ export default function PurchaseForm() {
               onChange={handleDistributorNameChange}
               onKeyDown={(e) => handleKeyDown(e, "invoiceNo")}
               placeholder="Type or Press space"
-              className="appearance-none h-8 w-full border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
+              className="appearance-none h-8 w-full font-semibold border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
             />
           </div>
           <div>
@@ -609,7 +609,7 @@ export default function PurchaseForm() {
               }
               onKeyDown={(e) => handleKeyDown(e, "invoiceDate")}
               placeholder="Invoice No"
-              className="appearance-none h-8 w-full border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
+              className="appearance-none font-semibold h-8 w-full border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
             />
           </div>
           <div>
@@ -624,7 +624,7 @@ export default function PurchaseForm() {
                 setInvoiceDate(e.target.value);
               }}
               onKeyDown={(e) => handleKeyDown(e, "product")}
-              className="appearance-none h-8 w-full border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
+              className="appearance-none font-semibold h-8 w-full border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
             />
           </div>
         </div>

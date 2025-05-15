@@ -173,7 +173,7 @@ export default function VerticalNav() {
                     <Button
                       variant="ghost"
                       className={cn(
-                        "w-full justify-start",
+                        "w-full justify-start rounded-[6px]",
                         isActive(item.path)
                           ? "bg-blue-300 text-blue-900"
                           : "text-gray-600 hover:bg-blue-100 hover:text-blue-900",

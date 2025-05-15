@@ -174,7 +174,7 @@ const Expenses = () => {
         <div className="flex justify-between items-center">
           <div>
             <CardTitle className="font-semibold">Expenses List</CardTitle>
-            <CardDescription>Manage and view hospital expenses</CardDescription>
+            <CardDescription>Manage and view pharmacy expenses</CardDescription>
           </div>
           {isSmallScreen && (
             <Button

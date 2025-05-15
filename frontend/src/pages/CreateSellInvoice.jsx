@@ -124,6 +124,7 @@ export default function CreateSellInvoice() {
   const [customerName, setCustomerName] = useState("");
   const { toast } = useToast();
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const doctors = useSelector((state) => state.staff?.doctors);
   const [invoiceForPayment, setInvoiceForPayment] = useState(null);
   const [additionalDiscount, setAdditionalDiscount] = useState({
     per: "",
@@ -150,9 +151,9 @@ export default function CreateSellInvoice() {
   }, [status, settings]);
 
   // Convert doctors array to the format expected by CustomSearchSuggestion
-  const doctorSuggestions = settings?.doctors.map((name, index) => ({
+  const doctorSuggestions = doctors.map((doctor, index) => ({
     _id: index + 1,
-    name: name,
+    name: doctor.name?.includes("Dr") ? doctor.name : `Dr. ${doctor.name}`,
   }));
 
   const [formData, setFormData] = useState({
@@ -230,8 +231,8 @@ export default function CreateSellInvoice() {
         invoiceNumber: formData.invoiceNumber,
         invoiceDate: invoiceDate,
         grandTotal: amountData.grandTotal,
-        alreadyPaid: 0, // Add this for new invoices
-        isNewInvoice: true, // Add this to indicate it's a new invoice
+        alreadyPaid: 0, 
+        isNewInvoice: true, 
       });
       setPaymentDialogOpen(true);
     } catch (error) {
@@ -400,7 +401,6 @@ export default function CreateSellInvoice() {
             variant: "destructive",
           });
         });
-      console.log(finalData);
     } catch (error) {
       toast({
         title: "Error",
@@ -624,7 +624,8 @@ export default function CreateSellInvoice() {
           <div className="col-span-4 grid-cols-4 grid gap-4 font-semibold">
             <div>
               <Label className="text-sm font-medium">
-                CUSTOMER NAME<span className="text-rose-500">*REQUIRED</span>
+                CUSTOMER NAME
+                <span className="text-rose-500 pl-2 text-xs">*REQUIRED</span>
               </Label>
               <CustomerSuggestionWithDialog
                 inputRef={inputRef}
@@ -681,7 +682,8 @@ export default function CreateSellInvoice() {
             </div>
             <div>
               <Label className="text-sm font-medium">
-                INVOICE NO<span className="text-rose-500">*REQUIRED</span>
+                INVOICE NO
+                <span className="text-rose-500 pl-2 text-xs">*REQUIRED</span>
               </Label>
               <Input
                 value={formData?.invoiceNumber}
@@ -693,7 +695,8 @@ export default function CreateSellInvoice() {
             </div>
             <div>
               <Label className="text-sm font-medium">
-                INVOICE DATE<span className="text-rose-500">*REQUIRED</span>
+                INVOICE DATE
+                <span className="text-rose-500 pl-2 text-xs">*REQUIRED</span>
               </Label>
               <Input
                 type="date"

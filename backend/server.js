@@ -5,12 +5,12 @@ import path from "path";
 import cors from "cors";
 import { fileURLToPath } from "url";
 import inventoryRoutes from "./routes/inventoryRoutes.js";
-import reportRoutes from "./routes/reportRoutes.js"
+import reportRoutes from "./routes/reportRoutes.js";
 import staffRoutes from "./routes/staffRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import salesRoutes from "./routes/salesRoutes.js";
-import { identifyHospital } from "./middleware/hospitalMiddleware.js";
-import hospitalRoutes from "./routes/hospitalRoutes.js";
+import { identifyPharmacy } from "./middleware/pharmacyMiddleware.js";
+import pharmacyRoutes from "./routes/pharmacyRoutes.js";
 import superAdminRoutes from "./routes/superAdmin.js";
 import accountRoutes from "./routes/accountRoutes.js";
 import distributorRoutes from "./routes/distributorRouter.js";
@@ -18,7 +18,7 @@ import purchaseRoutes from "./routes/purchaseRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import customerRoutes from "./routes/customerRoutes.js";
-import settingsRoutes from './routes/settingsRoutes.js'
+import settingsRoutes from "./routes/settingsRoutes.js";
 dotenv.config({ path: "./config/config.env" });
 
 const app = express();
@@ -38,20 +38,18 @@ app.options("*", cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 // Connect to MongoDB
 mongoose
   .connect(process.env.MONGODB_URI)
-  .then(() => {
-    console.log("Connected to MongoDB");
-  })
+  .then(() => {})
   .catch((err) => {
-    console.log("Error connecting to MongoDB", err);
+    console.error("Error connecting to MongoDB", err);
   });
 
 // Apply tenant plugin to all schemas
 
 // API routes
-app.use("/api/hospitals", hospitalRoutes);
+app.use("/api/pharmacies", pharmacyRoutes);
 app.use("/api/superadmin", superAdminRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api", identifyHospital);
+app.use("/api", identifyPharmacy);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/distributor", distributorRoutes);
@@ -60,7 +58,7 @@ app.use("/api/purchase", purchaseRoutes);
 app.use("/api/accounts", accountRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/dashboard", dashboardRoutes);
-app.use("/api/reports",reportRoutes)
+app.use("/api/reports", reportRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/settings", settingsRoutes);

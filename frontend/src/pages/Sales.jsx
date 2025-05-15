@@ -1,6 +1,16 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Search, Users, X, ArrowLeft, Calendar, Plus, Loader2, Filter } from "lucide-react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import {
+  Search,
+  Users,
+  X,
+  ArrowLeft,
+  Calendar,
+  Plus,
+  Loader2,
+  Filter,
+} from "lucide-react";
 import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,26 +48,29 @@ export default function SalesTransactions() {
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
+  const isInitialDebounceEffectRun = useRef(true);
 
   // Get data from Redux
-  const { bills, fetchStatus, searchStatus, error } = useSelector((state) => state.bill);
-  
+  const { bills, fetchStatus, searchStatus, error } = useSelector(
+    (state) => state.bill
+  );
+
   // Local state for filters
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [searchType, setSearchType] = useState("invoice");
-  
-  // Get params from URL or use defaults
-  const urlFilter = searchParams.get('filter') || 'all';
-  const urlDateFilter = searchParams.get('dateFilter') || 'today';
-  const urlFromDate = searchParams.get('from');
-  const urlToDate = searchParams.get('to');
 
-  const [saleTypeFilter, setSaleTypeFilter] = useState('all');
+  // Get params from URL or use defaults
+  const urlFilter = searchParams.get("filter") || "all";
+  const urlDateFilter = searchParams.get("dateFilter") || "today";
+  const urlFromDate = searchParams.get("from");
+  const urlToDate = searchParams.get("to");
+
+  const [saleTypeFilter, setSaleTypeFilter] = useState("all");
   const [dateFilterType, setDateFilterType] = useState(urlDateFilter);
   const [dateRange, setDateRange] = useState({
     from: urlFromDate ? new Date(urlFromDate) : new Date(),
-    to: urlToDate ? new Date(urlToDate) : new Date()
+    to: urlToDate ? new Date(urlToDate) : new Date(),
   });
 
   // Debounce search query
@@ -72,6 +85,13 @@ export default function SalesTransactions() {
   // Handle debounced search
   useEffect(() => {
     const handleDebouncedSearch = async () => {
+      if (isInitialDebounceEffectRun.current) {
+        isInitialDebounceEffectRun.current = false;
+        if (!debouncedSearchQuery.trim()) {
+          return;
+        }
+      }
+
       if (!debouncedSearchQuery.trim()) {
         await fetchBillsData({
           startDate: dateRange.from,
@@ -81,9 +101,11 @@ export default function SalesTransactions() {
       }
 
       try {
-        await dispatch(searchBills({
-          query: debouncedSearchQuery
-        })).unwrap();
+        await dispatch(
+          searchBills({
+            query: debouncedSearchQuery,
+          })
+        ).unwrap();
       } catch (err) {
         toast({
           title: "Error",
@@ -98,11 +120,13 @@ export default function SalesTransactions() {
 
   const fetchBillsData = async (params) => {
     try {
-      await dispatch(fetchBills({
-        startDate: format(params.startDate, 'yyyy-MM-dd'),
-        endDate: format(params.endDate, 'yyyy-MM-dd'),
-        filter: saleTypeFilter !== 'all' ? saleTypeFilter : undefined
-      })).unwrap();
+      await dispatch(
+        fetchBills({
+          startDate: format(params.startDate, "yyyy-MM-dd"),
+          endDate: format(params.endDate, "yyyy-MM-dd"),
+          filter: saleTypeFilter !== "all" ? saleTypeFilter : undefined,
+        })
+      ).unwrap();
     } catch (err) {
       toast({
         title: "Error fetching bills",
@@ -122,21 +146,21 @@ export default function SalesTransactions() {
           throw new Error("Invalid date selection");
         }
 
-        const newFromDate = format(fromDate, 'yyyy-MM-dd');
-        const newToDate = format(toDate, 'yyyy-MM-dd');
-        
+        const newFromDate = format(fromDate, "yyyy-MM-dd");
+        const newToDate = format(toDate, "yyyy-MM-dd");
+
         setDateRange({ from: fromDate, to: toDate });
         setDateFilterType("custom");
-        
+
         // Update URL with date range and filter
-        setSearchParams(prev => {
-          prev.set('from', newFromDate);
-          prev.set('to', newToDate);
-          prev.set('dateFilter', 'custom');
-          if (saleTypeFilter !== 'all') {
-            prev.set('filter', saleTypeFilter);
+        setSearchParams((prev) => {
+          prev.set("from", newFromDate);
+          prev.set("to", newToDate);
+          prev.set("dateFilter", "custom");
+          if (saleTypeFilter !== "all") {
+            prev.set("filter", saleTypeFilter);
           } else {
-            prev.delete('filter');
+            prev.delete("filter");
           }
           return prev;
         });
@@ -160,8 +184,8 @@ export default function SalesTransactions() {
 
     if (value === "custom") {
       // For custom, we keep existing from/to dates if they exist
-      setSearchParams(prev => {
-        prev.set('dateFilter', 'custom');
+      setSearchParams((prev) => {
+        prev.set("dateFilter", "custom");
         return prev;
       });
       return;
@@ -195,23 +219,23 @@ export default function SalesTransactions() {
           break;
       }
 
-      const newFromDate = format(newRange.from, 'yyyy-MM-dd');
-      const newToDate = format(newRange.to, 'yyyy-MM-dd');
-      
+      const newFromDate = format(newRange.from, "yyyy-MM-dd");
+      const newToDate = format(newRange.to, "yyyy-MM-dd");
+
       setDateRange(newRange);
 
       // Update URL parameters
-      setSearchParams(prev => {
+      setSearchParams((prev) => {
         // Set new date parameters
-        prev.set('from', newFromDate);
-        prev.set('to', newToDate);
-        prev.set('dateFilter', value);
-        
+        prev.set("from", newFromDate);
+        prev.set("to", newToDate);
+        prev.set("dateFilter", value);
+
         // Keep sale type filter if it exists and isn't 'all'
-        if (saleTypeFilter === 'all') {
-          prev.delete('filter');
+        if (saleTypeFilter === "all") {
+          prev.delete("filter");
         }
-        
+
         return prev;
       });
 
@@ -230,29 +254,29 @@ export default function SalesTransactions() {
 
   // Initialize with URL params or defaults
   useEffect(() => {
-    const fromParam = searchParams.get('from');
-    const toParam = searchParams.get('to');
-    const dateFilterParam = searchParams.get('dateFilter');
+    const fromParam = searchParams.get("from");
+    const toParam = searchParams.get("to");
+    const dateFilterParam = searchParams.get("dateFilter");
 
     // If no params, set to today's date
     if (!fromParam || !toParam) {
       const today = new Date();
-      const todayFormatted = format(today, 'yyyy-MM-dd');
-      
+      const todayFormatted = format(today, "yyyy-MM-dd");
+
       // Update URL with today's date
-      setSearchParams(prev => {
-        prev.set('from', todayFormatted);
-        prev.set('to', todayFormatted);
-        prev.set('dateFilter', 'today');
+      setSearchParams((prev) => {
+        prev.set("from", todayFormatted);
+        prev.set("to", todayFormatted);
+        prev.set("dateFilter", "today");
         return prev;
       });
 
       setDateRange({ from: today, to: today });
-      setDateFilterType('today');
-      
+      setDateFilterType("today");
+
       fetchBillsData({
         startDate: today,
-        endDate: today
+        endDate: today,
       });
       return;
     }
@@ -268,37 +292,37 @@ export default function SalesTransactions() {
 
       const paramRange = {
         from: fromDate,
-        to: toDate
+        to: toDate,
       };
 
       setDateRange(paramRange);
-      
+
       if (dateFilterParam) {
         setDateFilterType(dateFilterParam);
       }
 
       fetchBillsData({
         startDate: fromDate,
-        endDate: toDate
+        endDate: toDate,
       });
     } catch (err) {
       // If dates are invalid, reset to today
       const today = new Date();
-      const todayFormatted = format(today, 'yyyy-MM-dd');
-      
-      setSearchParams(prev => {
-        prev.set('from', todayFormatted);
-        prev.set('to', todayFormatted);
-        prev.set('dateFilter', 'today');
+      const todayFormatted = format(today, "yyyy-MM-dd");
+
+      setSearchParams((prev) => {
+        prev.set("from", todayFormatted);
+        prev.set("to", todayFormatted);
+        prev.set("dateFilter", "today");
         return prev;
       });
 
       setDateRange({ from: today, to: today });
-      setDateFilterType('today');
-      
+      setDateFilterType("today");
+
       fetchBillsData({
         startDate: today,
-        endDate: today
+        endDate: today,
       });
 
       toast({
@@ -316,9 +340,11 @@ export default function SalesTransactions() {
   // Filter bills based on sale type
   const filteredBills = useMemo(() => {
     if (!bills) return [];
-    if (saleTypeFilter === 'all') return bills;
-    return bills.filter(bill => 
-      saleTypeFilter === 'sales' ? bill.saleType !== 'return' : bill.saleType === 'return'
+    if (saleTypeFilter === "all") return bills;
+    return bills.filter((bill) =>
+      saleTypeFilter === "sales"
+        ? bill.saleType !== "return"
+        : bill.saleType === "return"
     );
   }, [bills, saleTypeFilter]);
 
@@ -340,13 +366,11 @@ export default function SalesTransactions() {
     );
   }, [filteredBills]);
 
-
-
   return (
     <div className="relative p-4 space-y-2">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-2xl font-bold">Sales Transactions</h1>
@@ -383,9 +407,7 @@ export default function SalesTransactions() {
                     variant="ghost"
                     className="h-9 w-[120px] border-0 bg-transparent hover:bg-slate-100 focus:ring-0 focus:ring-offset-0 justify-start px-3"
                   >
-                    {searchType === "invoice"
-                      ? "Invoice No"
-                      : "Customer"}
+                    {searchType === "invoice" ? "Invoice No" : "Customer"}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-[120px]">
@@ -406,9 +428,7 @@ export default function SalesTransactions() {
               <Input
                 className="w-full h-9 pl-10 pr-10 border-0 focus-visible:ring-0 placeholder:text-slate-400"
                 placeholder={`Search by ${
-                  searchType === "invoice"
-                    ? "invoice number"
-                    : "customer name"
+                  searchType === "invoice" ? "invoice number" : "customer name"
                 }...`}
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
@@ -485,11 +505,11 @@ export default function SalesTransactions() {
               onCancel={() => {
                 setDateRange({ from: new Date(), to: new Date() });
                 setDateFilterType("today");
-                setSearchParams(prev => {
-                  prev.delete('from');
-                  prev.delete('to');
-                  prev.delete('dateFilter');
-                  prev.delete('filter');
+                setSearchParams((prev) => {
+                  prev.delete("from");
+                  prev.delete("to");
+                  prev.delete("dateFilter");
+                  prev.delete("filter");
                   return prev;
                 });
               }}
@@ -546,14 +566,20 @@ export default function SalesTransactions() {
             {searchQuery ? (
               <>
                 <Search className="h-12 w-12 mb-4 text-gray-400" />
-                <p className="text-lg">No sales bills found for "{searchQuery}"</p>
-                <p className="text-sm">Try searching with a different invoice number or customer name</p>
+                <p className="text-lg">
+                  No sales bills found for "{searchQuery}"
+                </p>
+                <p className="text-sm">
+                  Try searching with a different invoice number or customer name
+                </p>
               </>
             ) : (
               <>
                 <Users className="h-12 w-12 mb-4 text-gray-400" />
                 <p className="text-lg">No sales bills found</p>
-                <p className="text-sm">Create a new sales invoice to get started</p>
+                <p className="text-sm">
+                  Create a new sales invoice to get started
+                </p>
               </>
             )}
           </div>
@@ -643,19 +669,15 @@ export default function SalesTransactions() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "inline-flex items-center  px-2 py-1 text-xs font-medium",
-                          {
-                            "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20":
-                              bill.paymentStatus === "paid",
-                            "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20":
-                              bill.paymentStatus === "due",
-                          }
-                        )}
+                      <Badge
+                        variant={
+                          bill.paymentStatus === "paid"
+                            ? "success"
+                            : "destructive"
+                        }
                       >
                         {bill.paymentStatus === "paid" ? "Paid" : "Due"}
-                      </span>
+                      </Badge>
                     </div>
                   </TableCell>
                 </TableRow>

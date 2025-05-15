@@ -6,15 +6,18 @@ import { ScrollArea } from "../../ui/scroll-area";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchItems } from "../../../redux/slices/inventorySlice";
 import { convertQuantity } from "../../../assets/Data";
+import AddNewInventory from "../inventory/AddNewInventory";
 
 const SearchSuggestion = forwardRef(
   ({ value, setValue, onSuggestionSelect, inputRef }, ref) => {
     const [filteredSuggestions, setFilteredSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(-1);
+    const [showAddNewInventoryDialog, setShowAddNewInventoryDialog] =
+      useState(false);
     const suggestionListRef = useRef(null);
-    const suggestionContainerRef = useRef(null); // Ref for the suggestions' container
-    const searchInputRef = useRef(null); // Ref for the input itself
+    const suggestionContainerRef = useRef(null);
+    const searchInputRef = useRef(null);
 
     const { items: suggestions, itemsStatus } = useSelector(
       (state) => state.inventory
@@ -115,6 +118,16 @@ const SearchSuggestion = forwardRef(
       });
     };
 
+    const handleNewProductCreated = (newProduct) => {
+      if (onSuggestionSelect) {
+        onSuggestionSelect(newProduct);
+      }
+      setValue(newProduct.name);
+      setShowSuggestions(false);
+      setShowAddNewInventoryDialog(false);
+      dispatch(fetchItems());
+    };
+
     return (
       <div className="relative w-full" onBlur={handleBlur}>
         <div className="relative ">
@@ -126,7 +139,6 @@ const SearchSuggestion = forwardRef(
             onKeyDown={handleKeyDown}
             onFocus={handleFocus}
             autoComplete="off"
-            // onBlur removed from here
             placeholder={"Search product"}
             className="h-8 w-full border-[1px] border-gray-300 px-2"
             role="combobox"
@@ -225,9 +237,26 @@ const SearchSuggestion = forwardRef(
                   </div>
                 )
               )}
+              {itemsStatus !== "loading" &&
+                filteredSuggestions.length === 0 && (
+                  <div className="p-4 text-center">
+                    <button
+                      onClick={() => setShowAddNewInventoryDialog(true)}
+                      className="text-blue-600 hover:underline"
+                    >
+                      Create New Product
+                    </button>
+                  </div>
+                )}
             </ScrollArea>
           </div>
         )}
+        <AddNewInventory
+          open={showAddNewInventoryDialog}
+          onOpenChange={setShowAddNewInventoryDialog}
+          onProductCreated={handleNewProductCreated}
+          initialProductName={value}
+        />
       </div>
     );
   }

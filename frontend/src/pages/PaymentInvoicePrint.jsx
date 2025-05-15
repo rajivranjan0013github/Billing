@@ -15,7 +15,6 @@ const PaymentInvoicePrint = () => {
   const paymentData = location.state?.paymentData;
   const hospitalInfo = useSelector((state) => state.hospital.hospitalInfo);
 
-  console.log(paymentData);
   
 
   // Add useEffect for keyboard shortcut

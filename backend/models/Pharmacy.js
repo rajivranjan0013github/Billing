@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const HospitalSchema = new mongoose.Schema({
+const PharmacySchema = new mongoose.Schema({
   name: String,
   logo: String,
   address: String,
@@ -9,7 +9,7 @@ const HospitalSchema = new mongoose.Schema({
   website: String,
   gstNumber: String,
   drugLicenceNumber: String,
-  hospitalId: {
+  pharmacyId: {
     type: String,
     required: true,
     unique: true,
@@ -25,4 +25,4 @@ const HospitalSchema = new mongoose.Schema({
   },
 });
 
-export const Hospital = mongoose.model("Hospital", HospitalSchema);
+export const Pharmacy = mongoose.model("Pharmacy", PharmacySchema);

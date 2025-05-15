@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/table";
+import { Badge } from "../../ui/badge";
 import drugsPic from "../../../assets/drugspic.png";
 import { Button } from "../../ui/button";
 import { Card, CardContent } from "../../ui/card";
@@ -61,7 +62,7 @@ export default function InventoryDetails({ inventoryId }) {
         const data = await response.json();
         setItemDetails(data);
       } catch (error) {
-        toast({ title: "Something went wrong", variant: "destructive" });
+        toast({ title: error.message, variant: "destructive" });
       } finally {
         setIsLoading(false);
       }
@@ -208,13 +209,11 @@ export default function InventoryDetails({ inventoryId }) {
                     <TableCell>{batch.pack}</TableCell>
                     <TableCell>{batch.expiry}</TableCell>
                     <TableCell className='text-center'>
-                      <span
-                        className={`${
-                          batch.quantity > 0 ? "bg-green-500" : "bg-red-500"
-                        } text-white px-2 py-1 text-xs`}
+                      <Badge
+                        variant={batch.quantity > 0 ? "success" : "destructive"}
                       >
                         {batch.quantity > 0 ? "In Stock" : "Out of Stock"}
-                      </span>
+                      </Badge>
                     </TableCell>
                     <TableCell className='text-center'>{formatCurrency(batch?.mrp)}</TableCell>
                     <TableCell className='text-center'>{formatCurrency(batch?.purchaseRate)}</TableCell>

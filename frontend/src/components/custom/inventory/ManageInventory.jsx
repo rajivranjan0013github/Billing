@@ -162,7 +162,6 @@ export default function ManageInventory({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(formData);
     
     if(!formData.batchNumber) {
       toast({title : 'Enter batch number', variant : 'destructive'});

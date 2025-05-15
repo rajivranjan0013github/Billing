@@ -1,11 +1,11 @@
-import { AsyncLocalStorage } from 'async_hooks';
+import { AsyncLocalStorage } from "async_hooks";
 
-const hospitalContext = new AsyncLocalStorage();
+const pharmacyContext = new AsyncLocalStorage();
 
-export const getHospitalId = () => {
-  return hospitalContext.getStore();
+export const getPharmacyId = () => {
+  return pharmacyContext.getStore();
 };
 
-export const runWithHospitalContext = (hospitalId, callback) => {
-  return hospitalContext.run(hospitalId, callback);
+export const runWithPharmacyContext = (pharmacyId, callback) => {
+  return pharmacyContext.run(pharmacyId, callback);
 };

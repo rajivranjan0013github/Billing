@@ -56,8 +56,7 @@ export default function SaleTable({
         })
       );
     }
-  }, [saleType, setProducts]); // Rerun when saleType or setProducts changes
-  // --- Effect to update product types when saleType changes --- END
+  }, [saleType, setProducts]);
 
   // Input changes handler
   const handleInputChange = (field, value) => {
@@ -118,10 +117,9 @@ export default function SaleTable({
     setNewProduct(updatedProduct);
   };
 
-  // --- Refactored handleKeyDown for focus management ---
-  const handleInputKeyDown = (e, currentField) => {
-    // Define the full order of fields for navigation
-    const fullFieldOrder = [
+  // --- Handle keydown for input fields ---
+  const handleInputKeyDown = (e, field) => {
+    const fieldOrder = [
       "product",
       "batchNumber",
       "HSN",
@@ -135,100 +133,53 @@ export default function SaleTable({
       "gstPer",
       "add",
     ];
-
-    // Handle Shift+Enter first - Go back to the previous input
-    if (e.key === "Enter" && e.shiftKey) {
+    if (e.key === "Enter") {
       e.preventDefault();
-      const currentIndex = fullFieldOrder.indexOf(currentField);
-      if (currentIndex > 0) {
-        // Find the *previous* field regardless of its value
-        const previousField = fullFieldOrder[currentIndex - 1];
-        if (inputRef.current[previousField]) {
-          // Check if the previous field is 'batchNumber' or 'product' and handle refs correctly
-          if (previousField === "batchNumber") {
-            // BatchSuggestion forwards its ref to the input
-            if (inputRef.current["batchNumber"]) {
-              inputRef.current["batchNumber"].focus();
-            }
-          } else if (previousField === "product") {
-            // InventorySuggestion manages its own internal input ref
-            if (inputRef.current["product"]?.focus) {
-              // Access the actual input ref inside InventorySuggestion
-              inputRef.current["product"].focus();
-            }
-          } else if (inputRef.current[previousField]) {
-            inputRef.current[previousField].focus();
+
+      if (e.shiftKey) {
+        // Move backwards
+        const currentIndex = fieldOrder.indexOf(field);
+        if (currentIndex > 0) {
+          const prevField = fieldOrder[currentIndex - 1];
+          if (inputRef.current[prevField]) {
+            inputRef.current[prevField].focus();
+          }
+        }
+        return;
+      }
+
+      // Move forwards
+      const currentIndex = fieldOrder.indexOf(field);
+      if (currentIndex === -1) return;
+
+      // If we're on the last field (add button), trigger add
+      if (field === "add") {
+        handleAdd();
+        return;
+      }
+      // Find next empty field
+      for (let i = currentIndex + 1; i < fieldOrder.length; i++) {
+        const nextField = fieldOrder[i];
+
+        // Check if the field is empty
+      
+        const isEmpty =
+          !newProduct[nextField] || String(newProduct[nextField]).trim() === "";
+
+        if (isEmpty || nextField === "add") {
+          if (inputRef.current[nextField]) {
+            inputRef.current[nextField].focus();
+            return;
           }
         }
       }
-    }
-    // Handle Enter (without Shift) - Move to next *empty* field or 'add' button
-    else if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault(); // Prevent default form submission
 
-      const currentIndex = fullFieldOrder.indexOf(currentField);
-
-      if (currentIndex !== -1) {
-        let nextIndex = currentIndex + 1;
-        let nextField = null;
-
-        // Find the next focusable field (either empty input or the 'add' button)
-        while (nextIndex < fullFieldOrder.length) {
-          const potentialNextField = fullFieldOrder[nextIndex];
-
-          // Special handling for 'product' and 'batchNumber' suggestions
-          if (potentialNextField === "product") {
-            if (!productSearch && inputRef.current[potentialNextField]) {
-              nextField = potentialNextField;
-              break;
-            }
-          } else if (potentialNextField === "batchNumber") {
-            if (!batchNumber && inputRef.current[potentialNextField]) {
-              nextField = potentialNextField;
-              break;
-            }
-          }
-          // Check normal inputs in newProduct state
-          else if (
-            potentialNextField !== "add" &&
-            !newProduct[potentialNextField] && // Check if the field in state is empty
-            inputRef.current[potentialNextField] // Check if the ref exists
-          ) {
-            nextField = potentialNextField;
-            break; // Found the next empty field
-          }
-          // Always allow focusing the 'add' button
-          else if (potentialNextField === "add" && inputRef.current["add"]) {
-            nextField = "add";
-            break;
-          }
-
-          nextIndex++;
-        }
-
-        // Focus the determined next field or the add button
-        if (nextField) {
-          if (nextField === "product" && inputRef.current["product"]) {
-            inputRef.current["product"].focus(); // Focus the input inside InventorySuggestion
-          } else if (
-            nextField === "batchNumber" &&
-            inputRef.current["batchNumber"]
-          ) {
-            inputRef.current["batchNumber"].focus(); // Focus the input inside BatchSuggestion
-          } else if (inputRef.current[nextField]) {
-            inputRef.current[nextField].focus();
-          }
-        } else if (inputRef.current["add"]) {
-          // If no other empty field is found, default to the 'add' button
-          inputRef.current["add"].focus();
-        }
-      } else if (currentField === "add") {
-        // If Enter is pressed on the 'Add' button itself, trigger the add action
-        handleAdd();
+      // If no empty field found, focus the add button
+      if (inputRef.current["add"]) {
+        inputRef.current["add"].focus();
       }
     }
   };
-  // --- End of Refactored handleKeyDown ---
 
   // handle add product to list
   const handleAdd = () => {
@@ -318,7 +269,9 @@ export default function SaleTable({
     setNewProduct({ types: saleType === "return" ? "return" : "sale" });
     setProductSearch("");
     setBatchNumber("");
-    inputRef.current["product"].focus();
+    if (inputRef.current["product"]) {
+      inputRef.current["product"].focus();
+    }
   };
   // edit all product togather
   const handleInputChangeEditMode = (index, field, value) => {};
@@ -339,45 +292,56 @@ export default function SaleTable({
   };
 
   const handleProductSelect = (product) => {
-    console.log(product);
     setNewProduct((pre) => ({
       ...pre,
       productName: product.name,
       mfcName: product.mfcName,
       inventoryId: product._id,
+      HSN: product.HSN || "",
+      pack: product.pack || 1,
+      location: product.location || "",
+      types: saleType === "return" ? "return" : "sale",
     }));
+    setProductSearch(product.name);
     if (inputRef?.current["batchNumber"]) {
       inputRef.current["batchNumber"].focus();
     }
   };
 
   const handleBatchSelect = (batch) => {
-    let tempDiscount = 0,
-      tempSaleRate;
-    if (batch?.saleRate) {
-      tempDiscount = ((batch.mrp - batch.saleRate) / batch.mrp) * 100;
-      tempSaleRate = batch.saleRate;
-    } else {
-      tempSaleRate = batch.mrp;
+    // Calculate discount and sale rate
+    let tempDiscount = 0;
+    let tempSaleRate = batch.saleRate || batch.mrp;
+
+    if (batch.mrp && batch.saleRate) {
+      tempDiscount = roundToTwo(
+        ((batch.mrp - batch.saleRate) / batch.mrp) * 100
+      );
     }
-    setNewProduct({
-      ...newProduct,
+
+    setNewProduct((prev) => ({
+      ...prev,
       batchNumber: batch.batchNumber,
       batchId: batch._id,
-      mrp: batch.mrp,
-      saleRate: batch.mrp,
-      expiry: batch.expiry,
+      mrp: batch.mrp || prev.mrp,
+      expiry: batch.expiry || prev.expiry,
       saleRate: tempSaleRate,
-      gstPer: batch.gstPer,
-      HSN: batch.HSN,
-      pack: batch.pack,
+      gstPer: batch.gstPer || prev.gstPer,
+      HSN: batch.HSN || prev.HSN, // Keep existing HSN if batch doesn't have one
+      pack: batch.pack || prev.pack, // Keep existing pack if batch doesn't have one
       currentStocks: batch.quantity,
-      discount: roundToTwo(tempDiscount),
-    });
-    if (inputRef?.current["packs"]) {
-      inputRef?.current["packs"].focus();
-    }
+      discount: tempDiscount,
+      types: prev.types || (saleType === "return" ? "return" : "sale"), // Maintain sale/return type
+    }));
   };
+
+  // Add useEffect to handle focus change after batch selection
+  useEffect(() => {
+    if (newProduct.batchNumber && newProduct.batchId) {
+      const syntheticEvent = new KeyboardEvent("keydown", { key: "Enter" });
+      handleInputKeyDown(syntheticEvent, "batchNumber");
+    }
+  }, [newProduct.batchNumber, newProduct.batchId]);
 
   return (
     <div className="w-full border-[1px] border-inherit py-4 rounded-sm space-y-2">
@@ -506,7 +470,7 @@ export default function SaleTable({
                 onChange={(e) => handleInputChange("mrp", e.target.value)}
                 value={newProduct.mrp || ""}
                 type="text"
-                className="h-8 w-full border-[1px] border-gray-300 pl-5 rounded-sm"
+                className="h-8 w-full border-[1px] border-gray-300 pl-5"
                 onKeyDown={(e) => handleInputKeyDown(e, "mrp")}
               />
             </div>
@@ -541,7 +505,7 @@ export default function SaleTable({
                 onChange={(e) => handleInputChange("saleRate", e.target.value)}
                 value={newProduct.saleRate || ""}
                 type="text"
-                className="h-8 w-full border-[1px] border-gray-300 pl-5 rounded-sm"
+                className="h-8 w-full border-[1px] border-gray-300 pl-5"
                 onKeyDown={(e) => handleInputKeyDown(e, "saleRate")}
               />
             </div>
@@ -602,7 +566,7 @@ export default function SaleTable({
         {products.length !== 0 &&
           products.map((product, index) => (
             <div
-              className="grid grid-cols-16 w-full space-x-1"
+              className="grid grid-cols-16 w-full space-x-1 font-semibold"
               key={product?.inventoryId}
             >
               <div className="col-span-3 grid grid-cols-6">

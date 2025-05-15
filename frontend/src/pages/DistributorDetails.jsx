@@ -1,16 +1,48 @@
-import { ArrowLeft, FileText, Plus, Printer, Trash2, ArrowUpDown, Calendar, FileX, Pen} from "lucide-react";
+import {
+  ArrowLeft,
+  FileText,
+  Plus,
+  Printer,
+  Trash2,
+  ArrowUpDown,
+  Calendar,
+  FileX,
+  Pen,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle} from "../components/ui/card";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "../components/ui/dropdown-menu";
-import { Tabs, TabsContent, TabsList, TabsTrigger} from "../components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
 import { useNavigate, useParams } from "react-router-dom";
 import { Badge } from "../components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "../components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchDistributorDetails,
-  setTabName
+  setTabName,
 } from "../redux/slices/distributorSlice";
 import CreateDistributorDlg from "../components/custom/distributor/CreateDistributorDlg";
 import LedgerTabContent from "../components/custom/distributor/LedgerTabContent";
@@ -20,19 +52,19 @@ export default function DistributorDetails() {
   const { distributorId } = useParams();
   const dispatch = useDispatch();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const { 
-    details: distributorDetails, 
+  const {
+    details: distributorDetails,
     status,
     tabName,
     invoices,
-    payments
+    payments,
   } = useSelector((state) => state.distributor.currentDistributor);
 
   useEffect(() => {
     if (distributorId) {
-        if(status === 'idle' || distributorDetails?._id !== distributorId) {
-            dispatch(fetchDistributorDetails(distributorId));
-        }
+      if (status === "idle" || distributorDetails?._id !== distributorId) {
+        dispatch(fetchDistributorDetails(distributorId));
+      }
     }
   }, [distributorId, dispatch]);
 
@@ -40,15 +72,15 @@ export default function DistributorDetails() {
     dispatch(fetchDistributorDetails(distributorId));
   };
 
-  if (!distributorDetails || status === 'loading') {
+  if (!distributorDetails || status === "loading") {
     return (
-        <div className="flex items-center justify-center h-screen">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
-        </div>
-      );
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      </div>
+    );
   }
 
-  if (status === 'failed') {
+  if (status === "failed") {
     return (
       <div className="h-screen flex items-center justify-center">
         <p className="text-lg text-red-700">Failed to load distributor data.</p>
@@ -58,32 +90,42 @@ export default function DistributorDetails() {
 
   const formatInvoices = (invoices) => {
     if (!invoices) return [];
-    
-    return invoices.map(invoice => {
+
+    return invoices
+      .map((invoice) => {
         if (!invoice) return null;
-        
+
         const grandTotal = invoice?.billSummary?.grandTotal || 0;
         const amountPaid = invoice.amountPaid || 0;
         const productCount = invoice?.billSummary?.productCount || 0;
         const totalQuantity = invoice?.billSummary?.totalQuantity || 0;
         const dueAmount = Math.max(0, grandTotal - amountPaid);
-        
+
         return {
-            date: invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString() : '-',
-            type: invoice.invoiceType === "SALE" ? "Sales Invoice" : "Purchase Invoice",
-            number: invoice.invoiceNumber || '-',
-            items: `${productCount} (${totalQuantity} units)`,
-            grandTotal: `₹ ${grandTotal.toLocaleString()}`,
-            dueAmount: dueAmount > 0 ? `₹ ${dueAmount.toLocaleString()}` : '-',
-            status: amountPaid >= grandTotal 
-                ? "Paid" 
-                : amountPaid > 0 
-                    ? "Partial Paid" 
-                    : "Unpaid",
-            paymentDue: invoice.paymentDueDate ? new Date(invoice.paymentDueDate).toLocaleDateString() : '-',
-            id: invoice._id,
+          date: invoice.invoiceDate
+            ? new Date(invoice.invoiceDate).toLocaleDateString()
+            : "-",
+          type:
+            invoice.invoiceType === "SALE"
+              ? "Sales Invoice"
+              : "Purchase Invoice",
+          number: invoice.invoiceNumber || "-",
+          items: `${productCount} (${totalQuantity} units)`,
+          grandTotal: `₹ ${grandTotal.toLocaleString()}`,
+          dueAmount: dueAmount > 0 ? `₹ ${dueAmount.toLocaleString()}` : "-",
+          status:
+            amountPaid >= grandTotal
+              ? "Paid"
+              : amountPaid > 0
+              ? "Partial Paid"
+              : "Unpaid",
+          paymentDue: invoice.paymentDueDate
+            ? new Date(invoice.paymentDueDate).toLocaleDateString()
+            : "-",
+          id: invoice._id,
         };
-    }).filter(Boolean);
+      })
+      .filter(Boolean);
   };
 
   const handleInvoiceClick = (invoice) => {
@@ -95,7 +137,7 @@ export default function DistributorDetails() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen font-semibold">
       <header className="flex items-center justify-between px-6 py-3 border-b">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
@@ -104,18 +146,29 @@ export default function DistributorDetails() {
           <h1 className="text-xl font-semibold">{distributorDetails.name}</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => navigate("/payment/create-payment")}>
+          <Button
+            variant="outline"
+            onClick={() => navigate("/payment/create-payment")}
+          >
             <Plus className="h-4 w-4" /> Add Payment
           </Button>
           <Button variant="outline" size="icon">
             <Trash2 className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="icon" onClick={() => setIsEditDialogOpen(true)}>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsEditDialogOpen(true)}
+          >
             <Pen className="h-4 w-4" />
           </Button>
         </div>
       </header>
-      <Tabs defaultValue={tabName} className="flex-1" onValueChange={(value) => dispatch(setTabName(value))}>
+      <Tabs
+        defaultValue={tabName}
+        className="flex-1"
+        onValueChange={(value) => dispatch(setTabName(value))}
+      >
         <div className="border-b">
           <div className="px-6">
             <TabsList className="h-12 p-0 bg-transparent border-b-0">
@@ -256,13 +309,17 @@ export default function DistributorDetails() {
                       <div className="text-sm text-muted-foreground">
                         Bank Account Number
                       </div>
-                      <div>{distributorDetails?.bankDetails?.accountNumber || "-"}</div>
+                      <div>
+                        {distributorDetails?.bankDetails?.accountNumber || "-"}
+                      </div>
                     </div>
                     <div>
                       <div className="text-sm text-muted-foreground">
                         IFSC Code
                       </div>
-                      <div className="uppercase">{distributorDetails?.bankDetails?.ifsc || "-"}</div>
+                      <div className="uppercase">
+                        {distributorDetails?.bankDetails?.ifsc || "-"}
+                      </div>
                     </div>
                   </div>
                   <div>
@@ -303,7 +360,6 @@ export default function DistributorDetails() {
             </div>
           </TabsContent>
           <TabsContent value="invoices" className="m-0">
-
             <div className="border rounded-lg">
               <Table>
                 <TableHeader>
@@ -318,10 +374,18 @@ export default function DistributorDetails() {
                       </Button>
                     </TableHead>
                     <TableHead className="font-medium">Invoice Type</TableHead>
-                    <TableHead className="font-medium">Invoice Number</TableHead>
-                    <TableHead className="font-medium text-right">Items</TableHead>
-                    <TableHead className="font-medium text-right">Grand Total</TableHead>
-                    <TableHead className="font-medium text-right">Due Amount</TableHead>
+                    <TableHead className="font-medium">
+                      Invoice Number
+                    </TableHead>
+                    <TableHead className="font-medium text-right">
+                      Items
+                    </TableHead>
+                    <TableHead className="font-medium text-right">
+                      Grand Total
+                    </TableHead>
+                    <TableHead className="font-medium text-right">
+                      Due Amount
+                    </TableHead>
                     <TableHead className="font-medium">Due Date</TableHead>
                     <TableHead className="font-medium">Status</TableHead>
                   </TableRow>
@@ -339,23 +403,30 @@ export default function DistributorDetails() {
                           <span className="text-blue-600">{invoice.type}</span>
                         </TableCell>
                         <TableCell>{invoice.number}</TableCell>
-                        <TableCell className="text-right">{invoice.items}</TableCell>
-                        <TableCell className="text-right font-medium">{invoice.grandTotal}</TableCell>
                         <TableCell className="text-right">
-                          <span className={invoice.dueAmount !== '-' ? "text-red-600" : ""}>
+                          {invoice.items}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {invoice.grandTotal}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span
+                            className={
+                              invoice.dueAmount !== "-" ? "text-red-600" : ""
+                            }
+                          >
                             {invoice.dueAmount}
                           </span>
                         </TableCell>
                         <TableCell>{invoice.paymentDue}</TableCell>
                         <TableCell>
                           <Badge
-                            variant="secondary"
-                            className={
+                            variant={
                               invoice.status === "Paid"
-                                ? "bg-green-100 text-green-700 hover:bg-green-100"
+                                ? "success"
                                 : invoice.status === "Unpaid"
-                                ? "bg-red-100 text-red-700 hover:bg-red-100"
-                                : "bg-yellow-100 text-yellow-700 hover:bg-yellow-100"
+                                ? "destructive"
+                                : "warning"
                             }
                           >
                             {invoice.status}
@@ -368,8 +439,13 @@ export default function DistributorDetails() {
                       <TableCell colSpan={8}>
                         <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                           <FileX className="h-12 w-12 mb-3 text-gray-400" />
-                          <p className="text-lg font-medium mb-1">No Invoices Found</p>
-                          <p className="text-sm">There are no invoices available for this distributor.</p>
+                          <p className="text-lg font-medium mb-1">
+                            No Invoices Found
+                          </p>
+                          <p className="text-sm">
+                            There are no invoices available for this
+                            distributor.
+                          </p>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -379,7 +455,6 @@ export default function DistributorDetails() {
             </div>
           </TabsContent>
           <TabsContent value="payments" className="m-0">
-
             <div className="border rounded-lg">
               <Table>
                 <TableHeader>
@@ -394,9 +469,15 @@ export default function DistributorDetails() {
                       </Button>
                     </TableHead>
                     <TableHead className="font-medium">Payment Type</TableHead>
-                    <TableHead className="font-medium">Payment Number</TableHead>
-                    <TableHead className="font-medium">Payment Method</TableHead>
-                    <TableHead className="font-medium text-right">Amount</TableHead>
+                    <TableHead className="font-medium">
+                      Payment Number
+                    </TableHead>
+                    <TableHead className="font-medium">
+                      Payment Method
+                    </TableHead>
+                    <TableHead className="font-medium text-right">
+                      Amount
+                    </TableHead>
                     <TableHead className="font-medium">Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -405,33 +486,45 @@ export default function DistributorDetails() {
                     payments.map((payment) => (
                       <TableRow
                         key={payment._id}
-                        onClick={() => {navigate(`/payment/${payment._id}`)}}
+                        onClick={() => {
+                          navigate(`/payment/${payment._id}`);
+                        }}
                         className="cursor-pointer hover:bg-muted/50"
                       >
                         <TableCell>
-                          {new Date(payment.paymentDate).toLocaleDateString('en-IN', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric'
-                          })}
+                          {new Date(payment.paymentDate).toLocaleDateString(
+                            "en-IN",
+                            {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            }
+                          )}
                         </TableCell>
                         <TableCell>
-                          <span className={payment.paymentType === "Payment In" ? "text-green-600" : "text-red-600"}>
+                          <span
+                            className={
+                              payment.paymentType === "Payment In"
+                                ? "text-green-600"
+                                : "text-red-600"
+                            }
+                          >
                             {payment.paymentType}
                           </span>
                         </TableCell>
-                        <TableCell>{payment.paymentNumber || '-'}</TableCell>
+                        <TableCell>{payment.paymentNumber || "-"}</TableCell>
                         <TableCell>{payment.paymentMethod}</TableCell>
-                        <TableCell className="text-right">₹ {payment.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">
+                          ₹ {payment.amount.toLocaleString()}
+                        </TableCell>
                         <TableCell>
                           <Badge
-                            variant="secondary"
-                            className={
+                            variant={
                               payment.status === "COMPLETED"
-                                ? "bg-green-100 text-green-700 hover:bg-green-100"
+                                ? "success"
                                 : payment.status === "PENDING"
-                                ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-100"
-                                : "bg-red-100 text-red-700 hover:bg-red-100"
+                                ? "warning"
+                                : "destructive"
                             }
                           >
                             {payment.status}
@@ -444,8 +537,13 @@ export default function DistributorDetails() {
                       <TableCell colSpan={6}>
                         <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                           <FileX className="h-12 w-12 mb-3 text-gray-400" />
-                          <p className="text-lg font-medium mb-1">No Payments Found</p>
-                          <p className="text-sm">There are no payment records available for this distributor.</p>
+                          <p className="text-lg font-medium mb-1">
+                            No Payments Found
+                          </p>
+                          <p className="text-sm">
+                            There are no payment records available for this
+                            distributor.
+                          </p>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -455,17 +553,19 @@ export default function DistributorDetails() {
             </div>
           </TabsContent>
           <TabsContent value="ledger" className="m-0">
-            <LedgerTabContent isActive={tabName === 'ledger'} distributorId={distributorId} />
+            <LedgerTabContent
+              isActive={tabName === "ledger"}
+              distributorId={distributorId}
+            />
           </TabsContent>
         </div>
       </Tabs>
-      <CreateDistributorDlg 
-        open={isEditDialogOpen} 
-        onOpenChange={setIsEditDialogOpen} 
+      <CreateDistributorDlg
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
         onSuccess={handleEditSuccess}
         distributorToEdit={distributorDetails}
       />
     </div>
   );
 }
-

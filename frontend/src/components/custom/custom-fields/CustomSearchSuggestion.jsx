@@ -40,7 +40,7 @@ export const SearchSuggestion = forwardRef(
       );
       setFilteredSuggestions(filtered);
       setSelectedIndex(-1);
-    }, [value, suggestions]);
+    }, [value]);
 
     const handleInputChange = (e) => {
       setValue(e.target.value);
@@ -134,7 +134,7 @@ export const SearchSuggestion = forwardRef(
             onKeyDown={handleKeyDown}
             onFocus={handleFocus} // Keep onFocus
             placeholder={placeholder || "Search or type"}
-            className="pr-8 hover:cursor-pointer"
+            className="pr-8 hover:cursor-pointer font-semibold"
             role="combobox"
             aria-autocomplete="list"
             aria-expanded={showSuggestions}
@@ -166,7 +166,7 @@ export const SearchSuggestion = forwardRef(
                   aria-selected={index === selectedIndex} // Add aria-selected
                   onClick={() => handleSuggestionClick(suggestion)}
                   onMouseEnter={() => setSelectedIndex(index)} // Add mouse enter to highlight
-                  className={`px-4 py-2 cursor-pointer hover:bg-blue-100 focus:bg-blue-100 focus:outline-none ${
+                  className={`px-4 py-2 font-semibold cursor-pointer hover:bg-blue-100 focus:bg-blue-100 focus:outline-none ${
                     // Update styles
                     index === selectedIndex ? "bg-blue-200" : ""
                   }`}

@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { hospitalPlugin } from "../plugins/hospitalPlugin.js";
+import { pharmacyPlugin } from "../plugins/pharmacyPlugin.js";
 
 const SalesBillCounterSchema = new mongoose.Schema({
   year: {
@@ -11,6 +11,7 @@ const SalesBillCounterSchema = new mongoose.Schema({
   },
 });
 
+SalesBillCounterSchema.plugin(pharmacyPlugin);
 const SalesBillCounter = mongoose.model(
   "SalesBillCounter",
   SalesBillCounterSchema
@@ -78,6 +79,10 @@ const salesBillSchema = new mongoose.Schema(
         gstPer: Number,
         mfcName: String,
         amount: Number,
+        timeline: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "StockTimeline",
+        },
       },
     ],
     grandTotal: Number,
@@ -185,7 +190,7 @@ salesBillSchema.statics.getCurrentInvoiceNumber = async function (session) {
   );
   return `INV/${yearSuffix}/${counter.invoice_number + 1}`;
 };
-// Apply hospital plugin
-salesBillSchema.plugin(hospitalPlugin);
+// Apply pharmacy plugin
+salesBillSchema.plugin(pharmacyPlugin);
 
 export const SalesBill = mongoose.model("SalesBill", salesBillSchema);

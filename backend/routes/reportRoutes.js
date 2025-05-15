@@ -36,7 +36,6 @@ router.get("/sales", async (req, res) => {
   try {
     const { reportType, customerId, manufacturer, product } = req.query;
     const dateRange = getDateRange(req.query);
-    console.log(dateRange);
 
     // Base query
     let query = { status: "active" };
@@ -105,7 +104,7 @@ router.get("/sales", async (req, res) => {
       { $sort: { invoiceDate: -1 } },
     ];
 
-    const sales = await SalesBill.aggregate(pipeline);
+    const sales = await SalesBill.pharmacyAwareAggregate(pipeline);
 
     // Prepare response based on report type
     let response = {
@@ -387,7 +386,7 @@ router.get("/purchase", async (req, res) => {
       { $sort: { invoiceDate: -1 } },
     ];
 
-    const purchases = await InvoiceSchema.aggregate(pipeline);
+    const purchases = await InvoiceSchema.pharmacyAwareAggregate(pipeline);
 
     // Prepare response based on report type
     let response = {
@@ -567,7 +566,7 @@ router.get("/inventory", async (req, res) => {
           { $sort: { productName: 1, batchNumber: 1 } },
         ];
 
-        const stockStatus = await InventoryBatch.aggregate(stockStatusPipeline);
+        const stockStatus = await InventoryBatch.pharmacyAwareAggregate(stockStatusPipeline);
         response.items = stockStatus;
         break;
 
@@ -600,7 +599,7 @@ router.get("/inventory", async (req, res) => {
           { $sort: { currentStock: 1 } },
         ];
 
-        const lowStockItems = await InventoryBatch.aggregate(lowStockPipeline);
+        const lowStockItems = await InventoryBatch.pharmacyAwareAggregate(lowStockPipeline);
         response.lowStockItems = lowStockItems;
         break;
 
@@ -618,7 +617,6 @@ router.get("/inventory", async (req, res) => {
           2000 + parseInt(targetYear),
           parseInt(targetMonth)
         );
-        console.log(targetDate);
 
         const expiryPipeline = [
           ...basePipeline,
@@ -668,7 +666,7 @@ router.get("/inventory", async (req, res) => {
           },
         ];
 
-        const expiryAlerts = await InventoryBatch.aggregate(expiryPipeline);
+        const expiryAlerts = await InventoryBatch.pharmacyAwareAggregate(expiryPipeline);
         response.expiryAlerts = expiryAlerts;
         break;
     }

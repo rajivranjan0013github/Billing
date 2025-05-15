@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Trash2,
   X,
+  ArrowLeftRight,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -145,11 +146,11 @@ export default function EditPurchaseInvoice() {
           paymentStatus,
           payments = [],
         } = data;
-        console.log(data);
         // Transform products data
         const tempData = products.map((p) => ({
           ...p,
           quantity: p.quantity / (p.pack || 1),
+          free: p.free / (p.pack || 1),
         }));
 
         setProducts(tempData);
@@ -313,7 +314,7 @@ export default function EditPurchaseInvoice() {
         HSN: product.HSN || "",
         mrp: roundToTwo(Number(product.mrp)),
         quantity: Number(product.quantity) * (Number(product.pack) || 1),
-        free: Number(product.free || 0),
+        free: Number(product.free) * (Number(product.pack) || 1),
         pack: Number(product.pack),
         purchaseRate: roundToTwo(Number(product.purchaseRate)),
         schemeInput1: Number(product.schemeInput1 || 0),
@@ -434,11 +435,35 @@ export default function EditPurchaseInvoice() {
           <Button
             size="sm"
             variant="outline"
-            className='px-4'
+            className="px-4"
             onClick={() => setSettingsOpen(true)}
           >
             <Settings2 className="w-4 h-4 mr-2" />
             Column Settings
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="px-4"
+            onClick={() =>
+              navigate(
+                `/purchase/return/create?distributorId=${
+                  formData.distributorId
+                }&invoiceNumber=${
+                  formData.invoiceNumber
+                }&distributorName=${encodeURIComponent(
+                  formData.distributorName
+                )}`
+              )
+            }
+            disabled={
+              !formData.distributorId ||
+              !formData.invoiceNumber ||
+              !formData.distributorName
+            }
+          >
+            <ArrowLeftRight className="w-4 h-4 mr-2" />
+            Purchase Return
           </Button>
           {viewMode ? (
             <>
@@ -652,7 +677,7 @@ export default function EditPurchaseInvoice() {
               <Button
                 variant="outline"
                 size="sm"
-                className='px-4'
+                className="px-4"
                 disabled={amountPaid >= amountData?.grandTotal}
                 onClick={() => {
                   setPaymentOutData({
@@ -757,9 +782,7 @@ export default function EditPurchaseInvoice() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() =>
-                              navigate(`/payment/${payment._id}`)
-                            }
+                            onClick={() => navigate(`/payment/${payment._id}`)}
                             className="h-6 w-6"
                           >
                             <ChevronRight className="h-4 w-4" />
@@ -811,7 +834,7 @@ export default function EditPurchaseInvoice() {
         </div>
         <div className="py-2">
           <div className="">(-) Adjustment</div>
-          <div className="text-lg">{formatCurrency(0)}</div>
+          <div className="text-lg">{formatCurrency(billSummary?.adjustment)}</div>
         </div>
         <div className="py-2">
           <div className="">(+) Custom Charge</div>

@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { hospitalPlugin } from "../plugins/hospitalPlugin.js";
+import { pharmacyPlugin } from "../plugins/pharmacyPlugin.js";
 
 const invoiceShema = new mongoose.Schema(
   {
@@ -34,6 +34,10 @@ const invoiceShema = new mongoose.Schema(
         discount: Number,
         gstPer: Number,
         amount: Number,
+        timeline: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "StockTimeline",
+        },
       },
     ],
     grandTotal: Number,
@@ -43,9 +47,12 @@ const invoiceShema = new mongoose.Schema(
     amountPaid: { type: Number, default: 0 },
     payments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Payment" }],
 
-    status: { type: String, enum: ["active", "cancelled", "returned", "draft"] },
+    status: {
+      type: String,
+      enum: ["active", "cancelled", "returned", "draft"],
+    },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "Staff" },
-    createdByName : String,
+    createdByName: String,
     billSummary: {
       subtotal: { type: Number, required: true },
       discountAmount: { type: Number, required: true },
@@ -53,11 +60,41 @@ const invoiceShema = new mongoose.Schema(
       gstAmount: { type: Number, required: true },
       adjustment: { type: Number, default: 0 },
       gstSummary: {
-        0: { taxable: Number, cgst: Number, sgst: Number, igst: Number, total: Number },
-        5: { taxable: Number, cgst: Number, sgst: Number, igst: Number, total: Number },
-        12: { taxable: Number, cgst: Number, sgst: Number, igst: Number, total: Number },
-        18: { taxable: Number, cgst: Number, sgst: Number, igst: Number, total: Number },
-        28: { taxable: Number, cgst: Number, sgst: Number, igst: Number, total: Number },
+        0: {
+          taxable: Number,
+          cgst: Number,
+          sgst: Number,
+          igst: Number,
+          total: Number,
+        },
+        5: {
+          taxable: Number,
+          cgst: Number,
+          sgst: Number,
+          igst: Number,
+          total: Number,
+        },
+        12: {
+          taxable: Number,
+          cgst: Number,
+          sgst: Number,
+          igst: Number,
+          total: Number,
+        },
+        18: {
+          taxable: Number,
+          cgst: Number,
+          sgst: Number,
+          igst: Number,
+          total: Number,
+        },
+        28: {
+          taxable: Number,
+          cgst: Number,
+          sgst: Number,
+          igst: Number,
+          total: Number,
+        },
       },
       totalQuantity: { type: Number, required: true },
       productCount: { type: Number, required: true },
@@ -72,6 +109,6 @@ const invoiceShema = new mongoose.Schema(
   { timestamps: true }
 );
 
-invoiceShema.plugin(hospitalPlugin);
+invoiceShema.plugin(pharmacyPlugin);
 
 export const InvoiceSchema = mongoose.model("Invoice", invoiceShema);

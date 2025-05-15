@@ -91,7 +91,7 @@ const staffSlice = createSlice({
         state.status = 'succeeded';
         state.staffMembers = action.payload;
         state.doctors = state.staffMembers?.filter(
-          (staff) => staff.roles.includes('doctor')
+          (staff) => staff.role === 'doctor'
         );
       })
       .addCase(fetchStaffMembers.rejected, (state, action) => {
@@ -120,7 +120,7 @@ const staffSlice = createSlice({
         }
         // Update doctors array if necessary
         state.doctors = state.staffMembers.filter(
-          (staff) => staff.roles.includes('doctor')
+          (staff) => staff.role === 'doctor'
         );
       })
       .addCase(updateStaffMember.rejected, (state, action) => {

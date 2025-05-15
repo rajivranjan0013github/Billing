@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { hospitalPlugin } from "../plugins/hospitalPlugin.js";
+import { pharmacyPlugin } from "../plugins/pharmacyPlugin.js";
 
 const debitNoteCounterSchema = new mongoose.Schema({
   year: {
@@ -34,11 +34,9 @@ const purchaseReturnSchema = new mongoose.Schema(
     distributorId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "distributor",
-      required: true,
     },
     distributorName: {
       type: String,
-      required: true,
     },
     mob: String,
 
@@ -46,15 +44,12 @@ const purchaseReturnSchema = new mongoose.Schema(
     originalInvoice: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Invoice",
-      required: true,
     },
     originalInvoiceNumber: {
       type: String,
-      required: true,
     },
     originalInvoiceDate: {
       type: Date,
-      required: true,
     },
 
     // Return Items
@@ -179,8 +174,8 @@ const purchaseReturnSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Apply hospital plugin
-purchaseReturnSchema.plugin(hospitalPlugin);
+// Apply pharmacy plugin
+purchaseReturnSchema.plugin(pharmacyPlugin);
 
 purchaseReturnSchema.statics.getNextDebitNoteNumber = async function (session) {
   const currentYear = new Date().getFullYear();
