@@ -65,6 +65,8 @@ export default function PurchaseTab({ inventoryId }) {
     if (inventoryId) fetchPurchases();
   }, [inventoryId, currentPage]);
 
+  console.log(purchases);
+
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage);

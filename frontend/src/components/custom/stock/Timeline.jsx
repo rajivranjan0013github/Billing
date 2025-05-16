@@ -64,6 +64,8 @@ export default function Timeline({ inventoryId }) {
     }
   };
 
+  console.log(timeline);
+
   return (
     <div className="w-full" ref={timelineRef}>
       <div className="border rounded-lg min-h-[400px] relative">

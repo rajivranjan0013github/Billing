@@ -108,7 +108,7 @@ router.post("/", verifyToken, async (req, res) => {
     if (!mongoose.isValidObjectId(distributorId)) {
       throw Error("distributor Id is not valid");
     }
-
+ 
     // Fetching distributor to update current balance of distributor
     const distributorDetails = await Distributor.findById(
       distributorId
@@ -1207,7 +1207,7 @@ router.get("/inventory/:inventoryId", verifyToken, async (req, res) => {
     const { inventoryId } = req.params;
     const { page = 1, limit = 10 } = req.query;
     const skip = (page - 1) * limit;
-
+    
     // Validate inventory ID
     if (!mongoose.isValidObjectId(inventoryId)) {
       throw new Error("Invalid inventory ID");
@@ -1231,7 +1231,7 @@ router.get("/inventory/:inventoryId", verifyToken, async (req, res) => {
         path: "products",
         match: { inventoryId: inventoryId },
         select:
-          "batchNumber expiry mrp purchaseRate gstPer discount quantity free pack batchId",
+          "inventoryId batchNumber expiry mrp purchaseRate gstPer discount quantity free pack batchId",
       },
     });
 
@@ -1246,12 +1246,13 @@ router.get("/inventory/:inventoryId", verifyToken, async (req, res) => {
     // Format the response data
     const purchaseHistory = inventory.purchases
       .map((purchase) => {
-        const product = purchase.products[0]; // Since we filtered for specific inventory
+        // const product = purchase.products[0]; // Since we filtered for specific inventory
+        const product = purchase.products.find(p => p.inventoryId && p.inventoryId.toString() === inventoryId.toString());
         if (!product) return null;
 
         // Calculate the total quantity including free items
         const totalQuantity = (product.quantity || 0) + (product.free || 0);
-
+        
         // Calculate net purchase rate (after GST and discount)
         const baseRate = product.purchaseRate || 0;
         const discount = product.discount || 0;
