@@ -1,14 +1,49 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback, useState, useRef } from "react";
 import { ArrowLeft, Save, CirclePlus, Trash2 } from "lucide-react";
 import { Button } from "../components/ui/button";
-import { useState } from "react";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Checkbox } from "../components/ui/checkbox";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import { fetchAccounts } from "../redux/slices/accountSlice";
 import SelectDistributorDlg from "../components/custom/distributor/SelectDistributorDlg";
+import ProductSelector from "../components/custom/inventory/SelectInventory";
+import BatchSuggestion from "../components/custom/sales/BatchSuggestion";
 import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../components/ui/alert-dialog";
+import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import { format } from "date-fns";
+import RefundDialog from "../components/custom/refund/RefundDialog";
+
+// Helper function for expiry validation (MM/YY)
+const validateExpiry = (value) => {
+  if (!value) return { valid: true, message: "" }; // Allow empty
+  const regex = /^(0[1-9]|1[0-2])\/([0-9]{2})$/;
+  if (!regex.test(value)) {
+    return { valid: false, message: "Use MM/YY format" };
+  }
+  // Optional: Add checks for valid month/year range if needed
+  return { valid: true, message: "" };
+};
 
 const PurchaseReturn = () => {
   const [items, setItems] = useState([]);
@@ -25,18 +60,115 @@ const PurchaseReturn = () => {
       .reverse()
       .join("-")
   );
-  console.log(returnDate);
   const [claimGSTInReturn, setClaimGSTInReturn] = useState(true);
   const [adjustRateForDisc, setAdjustRateForDisc] = useState(true);
   const [loading, setLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [distributorSelectDialog, setdistributorSelectDialog] = useState(false);
   const [distributorName, setdistributorName] = useState("");
+  const [itemErrors, setItemErrors] = useState({});
   const [formData, setFormData] = useState({
     distributorName: "",
     distributorId: "",
     invoiceNumber: "",
+    invoiceId: "",
+    invoiceDate: "",
   });
+  const dispatch = useDispatch();
+  const { accounts, fetchStatus: accountFetchStatus } = useSelector(
+    (state) => state.accounts
+  );
+  const [refundMethod, setRefundMethod] = useState("CASH");
+  const [refundAccountId, setRefundAccountId] = useState("");
+  const [refundChequeDetails, setRefundChequeDetails] = useState({
+    number: "",
+    date: null,
+  });
+  const [refundError, setRefundError] = useState("");
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [confirmDialogContent, setConfirmDialogContent] = useState({
+    title: "",
+    description: "",
+  });
+  const [isRefundDialogOpen, setIsRefundDialogOpen] = useState(false);
+  const [refundDialogData, setRefundDialogData] = useState(null);
+
+  // State for product selection
+  const [productSelectorOpen, setProductSelectorOpen] = useState(false);
+  const [productSelectorTargetId, setProductSelectorTargetId] = useState(null); // ID of the item being edited
+  const [productSearchTerm, setProductSearchTerm] = useState("");
+
+  const inputRefs = useRef({}); // To manage focus on inputs
+
+  const location = useLocation();
+
+  // Define the order of focusable fields in a row
+  const focusableFields = [
+    "itemName",
+    "batchNo",
+    "pack",
+    "expiry",
+    "mrp",
+    "qty",
+    "pricePerItem",
+    "discount",
+    "effPurRate",
+    "gst",
+  ];
+
+  // Handle key down for input navigation
+  const handleKeyDown = useCallback(
+    (event, rowIndex, fieldName) => {
+      if (event.key !== "Enter" || items.length === 0) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const currentFieldIndex = focusableFields.indexOf(fieldName);
+      let targetRowIndex = rowIndex;
+      let targetFieldIndex = currentFieldIndex;
+
+      if (event.shiftKey) {
+        // Shift + Enter: Move to previous input
+        targetFieldIndex--;
+        if (targetFieldIndex < 0) {
+          // Move to the last field of the previous row
+          targetFieldIndex = focusableFields.length - 1;
+          targetRowIndex--;
+          if (targetRowIndex < 0) {
+            // Wrap around to the last field of the last row
+            targetRowIndex = items.length - 1;
+          }
+        }
+      } else {
+        // Enter: Move to next input
+        targetFieldIndex++;
+        if (targetFieldIndex >= focusableFields.length) {
+          // Move to the first field of the next row
+          targetFieldIndex = 0;
+          targetRowIndex++;
+          if (targetRowIndex >= items.length) {
+            // Wrap around to the first field of the first row
+            targetRowIndex = 0;
+          }
+        }
+      }
+
+      // Use data-row-id and data-field for targeting
+      const targetItemId = items[targetRowIndex]?.id;
+      if (targetItemId === undefined) return; // Check if target row exists
+
+      const targetFieldName = focusableFields[targetFieldIndex];
+      // Adjusted querySelector to use data-row-id and data-field
+      const targetInput = document.querySelector(
+        `[data-row-id="${targetItemId}"] [data-field="${targetFieldName}"]` // Select within the row container
+      );
+
+      targetInput?.focus();
+    },
+    [items, focusableFields] // Add dependencies
+  );
 
   // Handle distributor name input change
   const handleDistributorNameChange = (e) => {
@@ -65,15 +197,90 @@ const PurchaseReturn = () => {
     setdistributorSelectDialog(false);
   };
 
-  // Update handleInputChange to include calculations
+  // Update handleInputChange to include calculations and validation
+  // Update handleInputChange to handle batch/product selection updates
   const handleInputChange = (id, field, value) => {
     setItems((prevItems) =>
       prevItems.map((item) => {
         if (item.id === id) {
-          const updatedItem = { ...item, [field]: value };
+          let updatedItem = { ...item, [field]: value };
 
-          // Recalculate effective purchase rate
-          if (field === "pricePerItem" || field === "discount") {
+          // If product is selected
+          if (field === "productSelection") {
+            updatedItem = {
+              ...updatedItem,
+              itemName: value.name, // 'value' is the selected product object
+              inventoryId: value._id,
+              // Reset batch info when product changes
+              batchNo: "",
+              batchId: "",
+              expiry: "",
+              mrp: "",
+              pack: "",
+              pricePerItem: "",
+              gst: "",
+              effPurRate: "",
+              amount: "0",
+            };
+            delete updatedItem.productSelection; // Remove temporary field
+          }
+
+          // If batch is selected
+          if (field === "batchSelection") {
+            const selectedBatch = value; // 'value' is the selected batch object
+            updatedItem = {
+              ...updatedItem,
+              batchNo: selectedBatch.batchNumber,
+              batchId: selectedBatch._id,
+              expiry: selectedBatch.expiry,
+              mrp: selectedBatch.mrp || "",
+              pack: selectedBatch.pack || "",
+              discount: selectedBatch.discount || "",
+              pricePerItem: selectedBatch.purchaseRate || "", // Use purchase rate from batch
+              gst: selectedBatch.gstPer || "", // Use GST from batch if available
+              // Reset qty maybe? Or keep existing? Let's keep it for now.
+            };
+            delete updatedItem.batchSelection; // Remove temporary field
+            // Recalculate effPurRate and amount after batch selection updates price/gst
+            const purchaseRate = parseFloat(updatedItem.pricePerItem) || 0;
+            const discount = parseFloat(updatedItem.discount) || 0;
+            updatedItem.effPurRate = adjustRateForDisc
+              ? purchaseRate - (purchaseRate * discount) / 100
+              : purchaseRate;
+
+            const qty = parseFloat(updatedItem.qty) || 0;
+            const effRate = parseFloat(updatedItem.effPurRate) || 0;
+            const amount = effRate * qty; // Note: Qty is not per pack here, needs check
+            updatedItem.amount = amount.toFixed(2);
+          }
+
+          // --- Expiry Validation Start ---
+          if (field === "expiry") {
+            const expiryValidation = validateExpiry(value);
+            setItemErrors((prevErrors) => {
+              const newItemErrors = { ...prevErrors };
+              if (!expiryValidation.valid) {
+                newItemErrors[id] = {
+                  ...newItemErrors[id],
+                  expiry: expiryValidation.message,
+                };
+              } else {
+                // Clear error if valid
+                delete newItemErrors[id]?.expiry;
+                if (Object.keys(newItemErrors[id] || {}).length === 0) {
+                  delete newItemErrors[id];
+                }
+              }
+              return newItemErrors;
+            });
+          }
+          // --- Expiry Validation End ---
+
+          // Recalculate effective purchase rate if price or discount changes manually
+          if (
+            (field === "pricePerItem" || field === "discount") &&
+            field !== "batchSelection"
+          ) {
             const purchaseRate =
               parseFloat(
                 field === "pricePerItem" ? value : item.pricePerItem
@@ -85,21 +292,64 @@ const PurchaseReturn = () => {
               : purchaseRate;
           }
 
-          // Recalculate amount when qty, price, or effective rate changes
+          // Recalculate amount when qty, price, effective rate, pack, or gst changes manually
           if (
-            field === "qty" ||
-            field === "pricePerItem" ||
-            field === "effPurRate" ||
-            field === "pack"
+            (field === "qty" ||
+              field === "pricePerItem" ||
+              field === "effPurRate" ||
+              field === "pack" ||
+              field === "gst") &&
+            field !== "batchSelection" // Avoid double calc after batch selection
           ) {
-            const qty = parseFloat(field === "qty" ? value : item.qty) || 0;
-            const pack = parseFloat(field === "pack" ? value : item.pack) || 1;
-            const adjustedQty = qty;
+            const qty =
+              parseFloat(field === "qty" ? value : updatedItem.qty) || 0;
+            // const pack = parseFloat(field === "pack" ? value : updatedItem.pack) || 1; // Pack seems less relevant for return amount calc?
             const effRate = parseFloat(updatedItem.effPurRate) || 0;
-            const amount = effRate * adjustedQty;
-            const gst = parseFloat(item.gst) || 0;
-            const gstAmount = claimGSTInReturn ? (amount * gst) / 100 : 0;
+            const amount = effRate * qty; // Amount = effRate * Qty (base units)
+            // const gst = parseFloat(field === 'gst' ? value : updatedItem.gst) || 0;
+            // const gstAmount = claimGSTInReturn ? (amount * gst) / 100 : 0; // GST amount isn't directly stored in item.amount
             updatedItem.amount = amount.toFixed(2);
+          }
+
+          // If manual itemName change, reset inventoryId and batch info
+          if (
+            field === "itemName" &&
+            !updatedItem.inventoryId &&
+            updatedItem.isManual
+          ) {
+            updatedItem = {
+              ...updatedItem,
+              inventoryId: "",
+              batchNo: "",
+              batchId: "",
+              // Also clear derived fields if product name is manually cleared/changed
+              expiry: "",
+              mrp: "",
+              pack: "",
+              pricePerItem: "",
+              gst: "",
+              effPurRate: "",
+              amount: "0",
+            };
+          }
+          // If manual batchNo change, reset batchId
+          if (
+            field === "batchNo" &&
+            !updatedItem.batchId &&
+            updatedItem.isManual
+          ) {
+            updatedItem = {
+              ...updatedItem,
+              batchId: "",
+              // Also clear derived fields if batch no is manually changed/cleared
+              expiry: "",
+              mrp: "",
+              pack: "",
+              pricePerItem: "",
+              gst: "",
+              effPurRate: "",
+              amount: "0",
+            };
           }
 
           return updatedItem;
@@ -109,9 +359,95 @@ const PurchaseReturn = () => {
     );
   };
 
-  // Update handleSearch to directly set items
-  const handleSearch = async () => {
-    if (!formData.distributorId || !formData.invoiceNumber) {
+  // --- Product Selector Handlers ---
+  const handleProductNameChange = (e, itemId) => {
+    const value = e.target.value;
+    // Update the item's name directly for display in input
+    handleInputChange(itemId, "itemName", value);
+    // Store search term and target item ID for the dialog
+    setProductSearchTerm(value);
+    setProductSelectorTargetId(itemId);
+
+    // Open selector if needed
+    if (value.length === 1 && value === " ") {
+      e.preventDefault(); // Prevent space from being typed
+      setProductSearchTerm(""); // Clear search term when opening with space
+      setProductSelectorOpen(true);
+    } else if (value.length > 0 && value[0] !== " ") {
+      setProductSelectorOpen(true);
+    } else {
+      setProductSelectorOpen(false); // Close if input is cleared
+      // If input is cleared, reset associated product data
+      handleInputChange(itemId, "itemName", ""); // Ensures reset logic in handleInputChange runs
+    }
+  };
+
+  const handleProductSelect = (product) => {
+    if (productSelectorTargetId !== null) {
+      // Use the temporary 'productSelection' field to pass the whole object
+      handleInputChange(productSelectorTargetId, "productSelection", product);
+      // Focus batch input after product selection
+      setTimeout(() => {
+        // Target the input *inside* the BatchSuggestion component for the specific row
+        const targetInput = document.querySelector(
+          `[data-row-id="${productSelectorTargetId}"] [data-field="batchNo"] input#batch-number-input`
+        );
+        targetInput?.focus();
+      }, 0);
+    }
+    setProductSelectorOpen(false);
+    setProductSelectorTargetId(null);
+    setProductSearchTerm("");
+  };
+  // --- End Product Selector Handlers ---
+
+  // --- Batch Suggestion Handler ---
+  const handleBatchSelect = (batch, itemId) => {
+    // Use the temporary 'batchSelection' field
+    handleInputChange(itemId, "batchSelection", batch);
+    // Focus next input (e.g., quantity) after batch selection
+    setTimeout(() => {
+      // Use data-row-id and data-field for targeting
+      const targetInput = document.querySelector(
+        `[data-row-id="${itemId}"] [data-field="qty"]` // Assuming 'qty' is the next logical field
+      );
+      targetInput?.focus();
+    }, 0);
+  };
+  // --- End Batch Suggestion Handler ---
+
+  // Fetch accounts on component mount
+  useEffect(() => {
+    if (accountFetchStatus === "idle") {
+      dispatch(fetchAccounts());
+    }
+  }, [dispatch, accountFetchStatus]);
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const distributorId = queryParams.get("distributorId");
+    const invoiceNumber = queryParams.get("invoiceNumber");
+    const name = queryParams.get("distributorName");
+
+    if (distributorId && invoiceNumber && name) {
+      setdistributorName(name);
+      setFormData({
+        ...formData,
+        distributorId,
+        invoiceNumber,
+        distributorName: name,
+      });
+      handleSearch(distributorId, invoiceNumber);
+    }
+  }, [location.search]);
+
+  // Update handleSearch to directly set items and clear errors
+  // Update handleSearch to populate items with inventoryId/batchId now
+  const handleSearch = async (distributorIdParam, invoiceNumberParam) => {
+    const distId = formData.distributorId || distributorIdParam;
+    const invNum = formData.invoiceNumber || invoiceNumberParam;
+
+    if (!distId || !invNum) {
       toast({
         title: "Please select distributor and enter invoice number",
         variant: "destructive",
@@ -130,8 +466,8 @@ const PurchaseReturn = () => {
           },
           credentials: "include",
           body: JSON.stringify({
-            distributorId: formData.distributorId,
-            invoiceNumber: formData.invoiceNumber,
+            distributorId: distId,
+            invoiceNumber: invNum,
           }),
         }
       );
@@ -144,50 +480,53 @@ const PurchaseReturn = () => {
       const data = await response.json();
       const { invoiceDetails, products } = data;
 
-      // Update form data with invoice details
+      // Update form data with invoice details and date
       setFormData((prev) => ({
         ...prev,
         invoiceId: invoiceDetails._id,
         distributorName: invoiceDetails.distributorName,
         distributorId: invoiceDetails.distributorId,
         invoiceNumber: invoiceDetails.invoiceNumber,
+        invoiceDate: invoiceDetails.invoiceDate,
       }));
 
       // Directly format products into items structure
       const formattedItems = products.map((product, index) => {
+        const purchaseRate = parseFloat(product.purchaseRate) || 0;
+        const discount = parseFloat(product.discount) || 0;
         const effectivePurRate = adjustRateForDisc
-          ? product.purchaseRate -
-            (product.purchaseRate * (product.discount || 0)) / 100
-          : product.purchaseRate;
-
-        const adjustedQty = product.quantity / product.pack;
+          ? purchaseRate - (purchaseRate * discount) / 100
+          : purchaseRate;
+        const packValue = parseFloat(product.pack) || 1; // Default pack to 1 if null/0/undefined
+        const quantityValue = parseFloat(product.quantity) || 0;
+        const adjustedQty = quantityValue / packValue; // Use base units for internal qty state
         const calculatedAmount = effectivePurRate * adjustedQty;
-        const gstAmount = claimGSTInReturn
-          ? (calculatedAmount * product.gstPer) / 100
-          : 0;
 
         return {
-          id: index + 1,
-          inventoryId: product.inventoryId._id,
+          id: product._id || `inv-${index}`, // Use product._id or generate a temp ID
+          inventoryId: product.inventoryId?._id || product.inventoryId, // Handle populated vs non-populated
           itemName: product.productName,
           batchId: product.batchId,
           batchNo: product.batchNumber,
-          pack: product.pack,
-          expiry: product.expiry,
-          mrp: product.mrp,
-          qty: adjustedQty,
-          pricePerItem: product.purchaseRate,
-          discount: product.discount || 0,
+          pack: packValue,
+          expiry: product.expiry || "",
+          mrp: product.mrp || "",
+          qty: adjustedQty, // Store quantity in base units
+          pricePerItem: purchaseRate,
+          discount: discount,
           effPurRate: effectivePurRate,
-          gst: product.gstPer,
+          gst: product.gstPer || "", // Use gstPer from invoice data
           amount: calculatedAmount.toFixed(2),
+          isManual: false, // Mark as loaded from invoice
         };
       });
 
       setItems(formattedItems);
+      setItemErrors({});
     } catch (error) {
       toast({
         title: "Failed to search invoice",
+        description: error.message || "An unexpected error occurred.", // Provide more context
         variant: "destructive",
       });
     } finally {
@@ -196,104 +535,141 @@ const PurchaseReturn = () => {
   };
 
   // Update useEffect to recalculate when adjustRateForDisc changes
+  // Update useEffect for adjustRateForDisc/claimGSTInReturn needs review, ensure it uses correct fields like pricePerItem
   useEffect(() => {
     setItems((prevItems) =>
       prevItems.map((item) => {
         const purchaseRate = parseFloat(item.pricePerItem) || 0;
         const discount = parseFloat(item.discount) || 0;
-        const effPurRate = adjustRateForDisc
+        let effPurRate = adjustRateForDisc
           ? purchaseRate - (purchaseRate * discount) / 100
           : purchaseRate;
 
-        const qty = parseFloat(item.qty) || 0;
-        const pack = parseFloat(item.pack) || 1;
-        const adjustedQty = qty / pack;
-        const amount = effPurRate * adjustedQty;
-        const gst = parseFloat(item.gst) || 0;
-        const gstAmount = claimGSTInReturn ? (amount * gst) / 100 : 0;
+        const qty = parseFloat(item.qty) || 0; // Qty is already in base units
+        // const pack = parseFloat(item.pack) || 1; // Pack not used in amount calc here
+        const amount = effPurRate * qty;
+        // const gst = parseFloat(item.gst) || 0; // GST not used directly in item.amount
+        // const gstAmount = claimGSTInReturn ? (amount * gst) / 100 : 0;
 
-        return {
-          ...item,
-          effPurRate,
-          amount: (amount + gstAmount).toFixed(2),
-        };
+        // Only update if effPurRate actually changed
+        // Use a tolerance check for floating point comparison
+        if (Math.abs(effPurRate - item.effPurRate) > 0.001) {
+          return {
+            ...item,
+            effPurRate,
+            amount: amount.toFixed(2),
+          };
+        }
+        // If only claimGSTInReturn changed, no need to update individual item state here
+        // The calculateTotals function will handle it based on the flag
+        return item;
       })
     );
-  }, [adjustRateForDisc, claimGSTInReturn]);
+  }, [adjustRateForDisc, claimGSTInReturn]); // Keep claimGSTInReturn dependency for recalculating totals implicitly
 
   const calculateTotals = () => {
-    return items.reduce(
+    const totalsBeforeRounding = items.reduce(
       (acc, item) => {
-        const qty = parseFloat(item.qty) || 0;
+        const qty = parseFloat(item.qty) || 0; // Qty is base units
         const rate = parseFloat(item.effPurRate) || 0;
-        const amount = qty * rate;
+        const amount = qty * rate; // This is the taxable amount per item
         const gst = parseFloat(item.gst) || 0;
         const gstAmount = claimGSTInReturn ? (amount * gst) / 100 : 0;
+        const itemTotal = amount + gstAmount;
+        const pack = parseFloat(item.pack) || 1;
+        const displayQty = qty / pack; // Calculate display quantity (packs/strips)
 
         return {
           products: acc.products + 1,
-          totalQuantity: acc.totalQuantity + qty,
-          discount: acc.discount,
+          totalQuantity: acc.totalQuantity + qty, // Accumulate base quantity
+          discount: acc.discount, // Assuming discount calculation might be added later? Currently unused.
           taxableAmount: acc.taxableAmount + amount,
           cgstSgst: acc.cgstSgst + gstAmount,
-          roundOff:
-            Math.round((acc.total + amount + gstAmount) * 100) / 100 -
-            (acc.total + amount + gstAmount),
-          refundableAmt: acc.refundableAmt + amount + gstAmount,
-          total: acc.total + amount + (claimGSTInReturn ? gstAmount : 0),
+          total: acc.total + itemTotal, // Accumulate precise total
         };
       },
       {
         products: 0,
-        totalQuantity: 0,
+        totalQuantity: 0, // This will be total base quantity
         discount: 0,
         taxableAmount: 0,
         cgstSgst: 0,
-        roundOff: 0,
-        refundableAmt: 0,
-        total: 0,
+        total: 0, // Start precise total at 0
       }
     );
+
+    // Perform rounding after reduce
+    const roundedTotal = Math.round(totalsBeforeRounding.total);
+    const roundOff = (roundedTotal - totalsBeforeRounding.total).toFixed(2); // Calculate roundOff
+
+    return {
+      ...totalsBeforeRounding,
+      total: roundedTotal, // Final total is the rounded amount
+      refundableAmt: roundedTotal, // Refundable amount should also be the rounded total
+      roundOff: parseFloat(roundOff), // Store the calculated roundOff
+    };
   };
 
+  // Updated handleAddItem
   const handleAddItem = () => {
-    setItems((prev) => [
-      ...prev,
-      {
-        id: prev.length + 1,
-        itemName: "",
-        invoiceNo: "",
-        invoiceDate: "",
-        batchNo: "",
+    setItems((prev) => {
+      // Generate a unique temporary ID for the new row
+      const nextId = `new-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const newItem = {
+        id: nextId,
+        inventoryId: "",
+        itemName: "", // User input triggers product search
+        batchId: "",
+        batchNo: "", // User input triggers batch search or is selected
         pack: "",
         expiry: "",
         mrp: "",
-        qty: "",
+        qty: "", // Qty represents base units internally
         pricePerItem: "",
+        discount: 0,
         effPurRate: "",
         gst: "",
         amount: "0",
-      },
-    ]);
+        isManual: true, // Flag to indicate manually added item
+      };
+      return [...prev, newItem];
+    });
+
+    // Focus the product name input of the new row
+    setTimeout(() => {
+      // Use the newly generated ID to find the input
+      const newItemId = items.length ? items[items.length - 1].id : null; // Get the ID of the last item *before* potential state update finishes
+      // A more robust way is needed if state update isn't immediate
+      // Find the ID of the *actually* added item after state updates
+      const addedItem = items.find(
+        (item) => item.isManual && !item.inventoryId
+      ); // Find the incomplete manual item
+      const targetId = addedItem ? addedItem.id : null;
+
+      if (targetId) {
+        // Target the input within the specific row using data-row-id
+        const targetInput = document.querySelector(
+          `[data-row-id="${targetId}"] [data-field="itemName"]`
+        );
+        targetInput?.focus();
+      }
+    }, 100); // Increased timeout slightly
   };
 
   const handleDeleteItem = (id) => {
     setItems((prevItems) => prevItems.filter((item) => item.id !== id));
+    setItemErrors((prevErrors) => {
+      const newErrors = { ...prevErrors };
+      delete newErrors[id];
+      return newErrors;
+    });
   };
 
-  const handleSave = async () => {
-    if (!formData.distributorId || !formData.invoiceId || items.length === 0) {
-      toast({
-        title: "Please select distributor and enter invoice number",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  // Function to save the return *with* refund details (called by RefundDialog)
+  const handleRefundSubmit = async (refundDetailsFromDialog) => {
     setLoading(true);
     try {
-      const totals = calculateTotals();
-      // Format products data
+      const totals = calculateTotals(); // Recalculate totals or pass from proceedWithSave
       const formattedProducts = items.map((item) => ({
         inventoryId: item.inventoryId,
         batchId: item.batchId,
@@ -301,17 +677,15 @@ const PurchaseReturn = () => {
         batchNumber: item.batchNo,
         expiry: item.expiry,
         HSN: item.HSN || "",
-        mrp: parseFloat(item.mrp),
-        quantity: parseFloat(item.qty) * parseFloat(item.pack), // Convert to base unit quantity
-        pack: parseFloat(item.pack),
-        purchaseRate: parseFloat(item.pricePerItem),
-        discount: item.discount || 0,
-        gstPer: parseFloat(item.gst),
-        amount: parseFloat(item.amount),
+        mrp: parseFloat(item.mrp) || 0,
+        quantity: parseFloat(item.qty * (item.pack || 1)) || 0,
+        pack: parseFloat(item.pack) || 1,
+        purchaseRate: parseFloat(item.pricePerItem) || 0,
+        discount: parseFloat(item.discount) || 0,
+        gstPer: parseFloat(item.gst) || 0,
+        amount: parseFloat(item.amount) || 0,
         reason: item.reason || "other",
       }));
-
-      // Format bill summary
       const billSummary = {
         subtotal: totals.taxableAmount,
         discountAmount: totals.discount,
@@ -320,46 +694,129 @@ const PurchaseReturn = () => {
         totalQuantity: totals.totalQuantity,
         productCount: totals.products,
         grandTotal: totals.total,
+        roundOff: totals.roundOff,
         gstSummary: calculateGSTSummary(items),
       };
 
       const returnData = {
         returnDate,
-        distributorId: formData.distributorId,
-        originalInvoice: formData.invoiceId,
-        originalInvoiceNumber: formData.invoiceNumber,
-        originalInvoiceDate: formData.invoiceDate,
+        distributorId: formData.distributorId || null,
+        ...(formData.invoiceId &&
+          formData.invoiceNumber && {
+            originalInvoice: formData.invoiceId,
+            originalInvoiceNumber: formData.invoiceNumber,
+            originalInvoiceDate: formData.invoiceDate,
+          }),
         products: formattedProducts,
         claimGSTInReturn,
         adjustRateForDisc,
         billSummary,
+        refundDetails: refundDetailsFromDialog, // Use details from dialog
       };
 
+      // --- API Call ---
       const response = await fetch(`${Backend_URL}/api/purchase/return`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(returnData),
       });
-
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(
           errorData.message || "Failed to create purchase return"
         );
       }
-
-      const data = await response.json();
+      // --- Success ---
       toast({
         title: "Purchase return created successfully",
         variant: "success",
       });
-      navigate("/purchase/return/list"); // Assuming this is the returns list page
+      navigate("/purchase/return");
     } catch (error) {
       toast({
         title: "Failed to create purchase return",
+        description: error.message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefundDialogOpen(false); // Close dialog regardless of outcome
+      setLoading(false);
+    }
+  };
+
+  // Function to save the return *without* refund details
+  const saveReturnWithoutRefund = async () => {
+    setLoading(true);
+    try {
+      const totals = calculateTotals();
+      const formattedProducts = items.map((item) => ({
+        inventoryId: item.inventoryId,
+        batchId: item.batchId,
+        productName: item.itemName,
+        batchNumber: item.batchNo,
+        expiry: item.expiry,
+        HSN: item.HSN || "",
+        mrp: parseFloat(item.mrp) || 0,
+        quantity: parseFloat(item.qty) || 0,
+        pack: parseFloat(item.pack) || 1,
+        purchaseRate: parseFloat(item.pricePerItem) || 0,
+        discount: parseFloat(item.discount) || 0,
+        gstPer: parseFloat(item.gst) || 0,
+        amount: parseFloat(item.amount) || 0,
+        reason: item.reason || "other",
+      }));
+      const billSummary = {
+        subtotal: totals.taxableAmount,
+        discountAmount: totals.discount,
+        taxableAmount: totals.taxableAmount,
+        gstAmount: totals.cgstSgst,
+        totalQuantity: totals.totalQuantity,
+        productCount: totals.products,
+        grandTotal: totals.total,
+        roundOff: totals.roundOff,
+        gstSummary: calculateGSTSummary(items),
+      };
+
+      const returnData = {
+        returnDate,
+        distributorId: formData.distributorId || null,
+        ...(formData.invoiceId &&
+          formData.invoiceNumber && {
+            originalInvoice: formData.invoiceId,
+            originalInvoiceNumber: formData.invoiceNumber,
+            originalInvoiceDate: formData.invoiceDate,
+          }),
+        products: formattedProducts,
+        claimGSTInReturn,
+        adjustRateForDisc,
+        billSummary,
+        refundDetails: null, // Explicitly null
+      };
+
+      // --- API Call ---
+      const response = await fetch(`${Backend_URL}/api/purchase/return`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(returnData),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || "Failed to create purchase return"
+        );
+      }
+      // --- Success ---
+      toast({
+        title: "Purchase return created successfully",
+        variant: "success",
+      });
+      navigate("/purchase/return");
+    } catch (error) {
+      toast({
+        title: "Failed to create purchase return",
+        description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       });
     } finally {
@@ -367,8 +824,98 @@ const PurchaseReturn = () => {
     }
   };
 
+  // This function now decides whether to open the dialog or save directly
+  const proceedWithSave = async () => {
+    // --- Basic Validations (Expiry, Empty Items, Manual Item Completeness) ---
+    const hasErrors = items.some((item) => itemErrors[item.id]?.expiry);
+    if (hasErrors) {
+      toast({
+        title: "Invalid Expiry Date Format",
+        description: "Please correct the highlighted expiry dates (MM/YY).",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (items.length === 0) {
+      toast({
+        title: "No Items Added",
+        description: "Please add items to the return.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const manualItemErrors = items.some(
+      (item) =>
+        item.isManual &&
+        (!item.inventoryId ||
+          !item.batchId ||
+          !item.qty ||
+          isNaN(parseFloat(item.qty)) ||
+          parseFloat(item.qty) <= 0)
+    );
+    if (manualItemErrors) {
+      toast({
+        title: "Incomplete Manual Items",
+        description:
+          "Please ensure all manually added items have a product, batch, and a valid quantity (> 0).",
+        variant: "destructive",
+      });
+      return;
+    }
+    // --- End Basic Validations ---
+
+    // --- Refund Validation (moved here, basic check if refund method exists if needed, full check in RefundDialog/handleRefundSubmit) ---
+    const totals = calculateTotals();
+    setRefundError(""); // Clear previous error (might be better in the dialog itself)
+
+    // --- Decision Point ---
+    if (totals.refundableAmt > 0) {
+      // Open Refund Dialog
+      setRefundDialogData({
+        refundableAmount: totals.refundableAmt,
+        distributorName: formData.distributorName || "Selected Distributor", // Pass distributor name
+        distributorId: formData.distributorId, // Pass ID if needed by dialog/submission
+        // Add any other relevant data for the dialog
+      });
+      setIsRefundDialogOpen(true);
+      // Don't save yet, wait for handleRefundSubmit
+    } else {
+      // Save directly without refund
+      await saveReturnWithoutRefund();
+    }
+  };
+
+  // Modified handleSave to check for missing info and trigger dialog
+  const handleSave = () => {
+    const missingDistributor = !formData.distributorId;
+    const missingInvoice = !formData.invoiceNumber;
+
+    if (missingDistributor || missingInvoice) {
+      let description = "";
+      if (missingDistributor && missingInvoice) {
+        description =
+          "Distributor and Invoice Number are not selected. This return will not be linked to an original purchase.";
+      } else if (missingDistributor) {
+        description =
+          "Distributor is not selected. This return will not be linked to an original purchase.";
+      } else {
+        // missingInvoice
+        description =
+          "Invoice Number is not provided. This return may not be correctly linked to the original purchase.";
+      }
+      setConfirmDialogContent({
+        title: "Proceed Without Linking?",
+        description: `${description} Do you want to continue?`,
+      });
+      setIsConfirmDialogOpen(true);
+    } else {
+      // If both are provided, proceed directly
+      proceedWithSave();
+    }
+  };
+
   // Helper function to calculate GST summary
-  const calculateGSTSummary = (items) => {
+  const calculateGSTSummary = (itemsToSummarize) => {
     const gstRates = [0, 5, 12, 18, 28];
     const summary = {};
 
@@ -377,26 +924,38 @@ const PurchaseReturn = () => {
         taxable: 0,
         cgst: 0,
         sgst: 0,
-        igst: 0,
+        igst: 0, // Assuming only CGST/SGST for now
         total: 0,
       };
     });
 
-    items.forEach((item) => {
-      const gstRate = parseFloat(item.gst);
-      const qty = parseFloat(item.qty);
-      const rate = parseFloat(item.effPurRate);
-      const amount = qty * rate;
+    itemsToSummarize.forEach((item) => {
+      const gstRate = parseFloat(item.gst); // Use item.gst
+      const qty = parseFloat(item.qty) || 0; // Qty is base units
+      const rate = parseFloat(item.effPurRate) || 0;
+      const amount = qty * rate; // Taxable amount for the item
 
-      if (gstRates.includes(gstRate)) {
+      if (!isNaN(gstRate) && gstRates.includes(gstRate)) {
         summary[gstRate].taxable += amount;
-        const gstAmount = (amount * gstRate) / 100;
-        summary[gstRate].cgst += gstAmount / 2;
-        summary[gstRate].sgst += gstAmount / 2;
-        summary[gstRate].total += amount + gstAmount;
+        if (claimGSTInReturn) {
+          // Apply GST only if claimed
+          const gstAmount = (amount * gstRate) / 100;
+          summary[gstRate].cgst += gstAmount / 2;
+          summary[gstRate].sgst += gstAmount / 2;
+          summary[gstRate].total += amount + gstAmount;
+        } else {
+          summary[gstRate].total += amount; // If not claiming GST, total is just taxable
+        }
       }
     });
-
+    // Round the values in the summary
+    Object.keys(summary).forEach((rate) => {
+      summary[rate].taxable = parseFloat(summary[rate].taxable.toFixed(2));
+      summary[rate].cgst = parseFloat(summary[rate].cgst.toFixed(2));
+      summary[rate].sgst = parseFloat(summary[rate].sgst.toFixed(2));
+      summary[rate].igst = parseFloat(summary[rate].igst.toFixed(2));
+      summary[rate].total = parseFloat(summary[rate].total.toFixed(2));
+    });
     return summary;
   };
 
@@ -433,7 +992,7 @@ const PurchaseReturn = () => {
         {/* Top Section */}
         <div className="grid grid-cols-4 gap-4">
           {/* Left Section - Distributor */}
-          <div className="col-span-3 border rounded-lg p-4">
+          <div className="col-span-3 border rounded-lg p-4 font-semibold">
             <div className="grid grid-cols-12 gap-4">
               <div className="col-span-7">
                 <Label className="text-sm font-medium mb-2 block">
@@ -519,41 +1078,41 @@ const PurchaseReturn = () => {
         {/* Items Table */}
         <div className="w-full border-[1px] border-inherit py-4 rounded-sm space-y-2">
           {/* Table Headers */}
-          <div className="grid grid-cols-12 w-full space-x-1 px-4">
-            <div className="col-span-2">
-              <p className="text-xs font-semibold">PRODUCT</p>
-            </div>
+          <div className="grid grid-cols-[3fr_2fr_0.75fr_1fr_1fr_0.75fr_1fr_0.5fr_1fr_0.5fr_1fr_50px] w-full gap-1 px-4 items-center">
             <div>
+              <p className="text-xs font-semibold ">PRODUCT</p>
+            </div>
+            <div className="">
               <p className="text-xs font-semibold">BATCH NO</p>
             </div>
-            <div>
+            <div className="">
               <p className="text-xs font-semibold">PACK</p>
             </div>
-            <div>
+            <div className="">
               <p className="text-xs font-semibold">EXPIRY</p>
             </div>
-            <div>
+            <div className="">
               <p className="text-xs font-semibold">MRP</p>
             </div>
-            <div>
+            <div className="">
               <p className="text-xs font-semibold">QTY</p>
             </div>
-            <div>
+            <div className="">
               <p className="text-xs font-semibold">PUR RATE</p>
             </div>
-            <div>
+            <div className="">
               <p className="text-xs font-semibold">DISC %</p>
             </div>
-            <div>
+            <div className="">
               <p className="text-xs font-semibold">EFF PUR RATE</p>
             </div>
-            <div>
+            <div className="">
               <p className="text-xs font-semibold">GST</p>
             </div>
-            <div>
+            <div className="">
               <p className="text-xs font-semibold">AMOUNT</p>
             </div>
-            <div>
+            <div className="">
               <p className="text-xs font-semibold">ACTION</p>
             </div>
           </div>
@@ -561,82 +1120,151 @@ const PurchaseReturn = () => {
           {/* Table Body */}
           <div className="w-full space-y-2 px-4">
             {items.map((item, index) => (
-              <div key={item.id} className="grid grid-cols-12 w-full space-x-1">
-                <div className="col-span-2">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={item.itemName}
-                      onChange={(e) =>
-                        handleInputChange(item.id, "itemName", e.target.value)
-                      }
-                      className="h-8 w-full border-[1px] border-gray-300 px-1 pl-7"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <input
+              <div
+                key={item.id}
+                // Add data-row-id for easier targeting
+                data-row-id={item.id}
+                className="grid grid-cols-[3fr_2fr_0.75fr_1fr_1fr_0.75fr_1fr_0.5fr_1fr_0.5fr_1fr_50px] w-full gap-1 items-start relative font-semibold" // Changed items-center to items-start for error message positioning
+              >
+                {/* PRODUCT Input */}
+                <div >
+                  <Input
                     type="text"
-                    value={item.batchNo}
-                    onChange={(e) =>
-                      handleInputChange(item.id, "batchNo", e.target.value)
-                    }
+                    value={
+                      item.id === productSelectorTargetId
+                        ? productSearchTerm
+                        : item.itemName
+                    } // Show search term for target row, else show item name
+                    placeholder="Type or Press Space"
+                    data-row-index={index} // Keep for potential handleKeyDown usage
+                    data-field="itemName"
+                    onKeyDown={(e) => {
+                      if (e.key === " " && e.target.value.length === 0) {
+                        e.preventDefault(); // Prevent space if field is empty
+                        handleProductNameChange(e, item.id);
+                      }
+                      // Add Enter key navigation if needed, careful not to conflict
+                      // else if (e.key === 'Enter') {
+                      //    handleKeyDown(e, index, "itemName");
+                      // }
+                    }}
+                    onChange={(e) => handleProductNameChange(e, item.id)}
                     className="h-8 w-full border-[1px] border-gray-300 px-1"
+                    // ref={(el) => inputRefs.current[`item-${item.id}-itemName`] = el} // Example ref
                   />
                 </div>
+                {/* BATCH NO Input */}
+                <div data-field="batchNo">
+                  {" "}
+                  {/* Wrapper div with data-field */}
+                  <BatchSuggestion
+                    // Use item.id for unique identification if needed by BatchSuggestion internally
+                    inventoryId={item.inventoryId}
+                    value={item.batchNo}
+                    setValue={(value) =>
+                      handleInputChange(item.id, "batchNo", value)
+                    } // Update batchNo for display typing
+                    onSuggestionSelect={(batch) =>
+                      handleBatchSelect(batch, item.id)
+                    }
+                    inputRef={inputRefs} // Pass refs if BatchSuggestion needs them for internal navigation
+                    disabled={!item.inventoryId} // Disable if no product selected
+                    //   ref={(el) => inputRefs.current[`item-${item.id}-batchNo`] = el} // Ref for BatchSuggestion input wrapper if needed
+                    // Add onKeyDown to BatchSuggestion if Enter navigation is needed from it
+                  />
+                </div>
+                {/* PACK Input */}
                 <div>
-                  <input
-                    type="text"
+                  <Input
+                    type="text" // Keep as text? Or number?
                     value={item.pack}
+                    data-row-index={index}
+                    data-field="pack"
+                    onKeyDown={(e) => handleKeyDown(e, index, "pack")}
                     onChange={(e) =>
                       handleInputChange(item.id, "pack", e.target.value)
                     }
                     className="h-8 w-full border-[1px] border-gray-300 px-1"
+                    readOnly={!item.isManual && item.batchId} // Pack usually comes from batch
                   />
                 </div>
-                <div>
-                  <input
+                {/* EXPIRY Input */}
+                <div className="relative">
+                  {" "}
+                  {/* Relative positioning for error message */}
+                  <Input
                     type="text"
                     value={item.expiry}
+                    placeholder="MM/YY"
+                    data-row-index={index}
+                    data-field="expiry"
+                    onKeyDown={(e) => handleKeyDown(e, index, "expiry")}
                     onChange={(e) =>
                       handleInputChange(item.id, "expiry", e.target.value)
                     }
-                    className="h-8 w-full border-[1px] border-gray-300 px-1"
+                    className={`h-8 w-full border-[1px] px-1 ${
+                      itemErrors[item.id]?.expiry
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    }`}
+                    readOnly={!item.isManual && item.batchId} // Expiry comes from batch
                   />
+                  {itemErrors[item.id]?.expiry && (
+                    <p className="text-xs text-red-500 absolute -bottom-4 left-0">
+                      {itemErrors[item.id].expiry}
+                    </p>
+                  )}
                 </div>
+                {/* MRP Input */}
                 <div>
                   <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs">
                       ₹
                     </span>
-                    <input
+                    <Input
                       type="number"
                       value={item.mrp}
+                      data-row-index={index}
+                      data-field="mrp"
+                      onKeyDown={(e) => handleKeyDown(e, index, "mrp")}
                       onChange={(e) =>
                         handleInputChange(item.id, "mrp", e.target.value)
                       }
                       className="h-8 w-full border-[1px] border-gray-300 px-1 pl-5"
+                      step="any"
+                      readOnly={!item.isManual && item.batchId} // MRP comes from batch
                     />
                   </div>
                 </div>
+                {/* QTY Input */}
                 <div>
-                  <input
+                  <Input
                     type="number"
-                    value={item.qty}
+                    value={item.qty} // Display base unit qty internally
+                    placeholder="Units" // Placeholder clarification
+                    data-row-index={index}
+                    data-field="qty"
+                    onKeyDown={(e) => handleKeyDown(e, index, "qty")}
                     onChange={(e) =>
                       handleInputChange(item.id, "qty", e.target.value)
                     }
                     className="h-8 w-full border-[1px] border-gray-300 px-1"
+                    step="any"
+                    data-row-id={item.id} // Add data-row-id for easier targeting by focus logic
                   />
                 </div>
+                {/* PUR RATE Input */}
                 <div>
                   <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs">
                       ₹
                     </span>
-                    <input
+                    <Input
                       type="number"
                       value={item.pricePerItem}
+                      data-row-index={index}
+                      data-field="pricePerItem"
+                      onKeyDown={(e) => handleKeyDown(e, index, "pricePerItem")}
                       onChange={(e) =>
                         handleInputChange(
                           item.id,
@@ -645,71 +1273,86 @@ const PurchaseReturn = () => {
                         )
                       }
                       className="h-8 w-full border-[1px] border-gray-300 px-1 pl-5"
+                      step="any"
+                      readOnly={!item.isManual && item.batchId} // Rate comes from batch
                     />
                   </div>
                 </div>
+                {/* DISC % Input */}
                 <div>
                   <div className="relative">
-                    <input
+                    <Input
                       type="number"
                       value={item.discount}
+                      data-row-index={index}
+                      data-field="discount"
+                      onKeyDown={(e) => handleKeyDown(e, index, "discount")}
                       onChange={(e) =>
                         handleInputChange(item.id, "discount", e.target.value)
                       }
-                      className="h-8 w-16 border-[1px] border-gray-300 px-1 pr-5"
+                      className="h-8 w-full border-[1px] border-gray-300 px-1 pr-5"
+                      step="any"
                     />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2">
-                      %
-                    </span>
                   </div>
                 </div>
+                {/* EFF PUR RATE Input */}
                 <div>
                   <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs">
                       ₹
                     </span>
-                    <input
+                    <Input
                       type="number"
                       value={item.effPurRate}
-                      onChange={(e) =>
-                        handleInputChange(item.id, "effPurRate", e.target.value)
-                      }
-                      className="h-8 w-full border-[1px] border-gray-300 px-1 pl-5"
+                      readOnly // Calculated field
+                      className="h-8 w-full border-[1px] border-gray-300 px-1 pl-5 bg-gray-100"
+                      tabIndex={-1}
+                      step="any"
                     />
                   </div>
                 </div>
+                {/* GST Input */}
                 <div>
                   <div className="relative">
-                    <input
+                    <Input
                       type="number"
                       value={item.gst}
+                      data-row-index={index}
+                      data-field="gst"
+                      onKeyDown={(e) => handleKeyDown(e, index, "gst")}
                       onChange={(e) =>
                         handleInputChange(item.id, "gst", e.target.value)
                       }
                       className="h-8 w-full border-[1px] border-gray-300 px-1 pr-5"
-                      readOnly
+                      step="any"
+                      readOnly={!item.isManual && item.batchId} // GST might come from batch
                     />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
                       %
                     </span>
                   </div>
                 </div>
+                {/* AMOUNT Input */}
                 <div>
                   <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs">
                       ₹
                     </span>
-                    <input
-                      type="text"
+                    <Input
+                      type="text" // Use text as it's formatted
                       value={item.amount}
-                      className="h-8 w-full border-[1px] border-gray-300 px-1 pl-5"
+                      readOnly // Calculated field
+                      className="h-8 w-full border-[1px] border-gray-300 px-1 pl-5 bg-gray-100"
+                      tabIndex={-1}
                     />
                   </div>
                 </div>
-                <div className="flex items-center justify-center gap-2">
+                {/* ACTION Button */}
+                <div className="flex items-center justify-center">
                   <button
                     onClick={() => handleDeleteItem(item.id)}
                     className="hover:text-red-500"
+                    tabIndex={-1}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -757,6 +1400,37 @@ const PurchaseReturn = () => {
             </div>
           </div>
         </div>
+
+        {/* Add the RefundDialog instance */}
+        <RefundDialog
+          open={isRefundDialogOpen}
+          onOpenChange={setIsRefundDialogOpen}
+          refundData={refundDialogData}
+          onSubmit={handleRefundSubmit}
+          loadingStatus={loading} // Pass loading status
+        />
+        {/* Placeholder ^ We'll create this component next */}
+
+        {/* Confirmation Dialog */}
+        <AlertDialog
+          open={isConfirmDialogOpen}
+          onOpenChange={setIsConfirmDialogOpen}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{confirmDialogContent.title}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {confirmDialogContent.description}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>No, Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={proceedWithSave}>
+                Yes, Continue
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {/* Footer */}
@@ -766,7 +1440,7 @@ const PurchaseReturn = () => {
             Total Products: {totals.products}
           </div>
           <div className="text-gray-400">
-            Total Quantity: {totals.totalQuantity}
+            Total Quantity: {totals.totalQuantity} {/* This is base quantity */}
           </div>
         </div>
         <div>
@@ -799,6 +1473,16 @@ const PurchaseReturn = () => {
         </div>
       </div>
 
+      {/* Add ProductSelector Dialog */}
+      <ProductSelector
+        open={productSelectorOpen}
+        onOpenChange={setProductSelectorOpen}
+        onSelect={handleProductSelect}
+        search={productSearchTerm}
+        setSearch={setProductSearchTerm}
+        // Pass current items if needed for filtering/display?
+      />
+
       {/* Add SelectDistributorDlg */}
       <SelectDistributorDlg
         open={distributorSelectDialog}
@@ -807,6 +1491,16 @@ const PurchaseReturn = () => {
         setSearch={setdistributorName}
         onSelect={handleDistributorSelect}
       />
+
+      {/* Add the RefundDialog instance */}
+      <RefundDialog
+        open={isRefundDialogOpen}
+        onOpenChange={setIsRefundDialogOpen}
+        refundData={refundDialogData}
+        onSubmit={handleRefundSubmit}
+        loadingStatus={loading} // Pass loading status
+      />
+      {/* Placeholder ^ We'll create this component next */}
     </div>
   );
 };

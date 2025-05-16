@@ -19,12 +19,11 @@ export default function CustomerDetails() {
   const dispatch = useDispatch();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const {  details: customerDetails,  status, tabName, invoices, payments} = useSelector((state) => state.customers.currentCustomer);
-
   useEffect(() => {
     if (customerId) {
-      if(status === 'idle' || customerDetails?._id !== customerId) {
+     
         dispatch(fetchCustomerDetails(customerId));
-      }
+      
     }
   }, [customerId, dispatch]);
 
@@ -142,7 +141,7 @@ export default function CustomerDetails() {
                     General Details
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="grid gap-4">
+                <CardContent className="grid gap-4 font-semibold">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <div className="text-sm text-muted-foreground">
@@ -206,10 +205,10 @@ export default function CustomerDetails() {
                     <TableHead className="font-semibold text-right">Items</TableHead>
                     <TableHead className="font-semibold text-right">Grand Total</TableHead>
                     <TableHead className="font-semibold text-right">Due Amount</TableHead>
-                    <TableHead className="font-semibold">Status</TableHead>
+                    <TableHead className="font-semibold text-right">Status</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="font-semibold">
                   {formatInvoices(invoices).length > 0 ? (
                     formatInvoices(invoices).map((invoice, index) => (
                       <TableRow
@@ -217,7 +216,11 @@ export default function CustomerDetails() {
                         onClick={() => navigate(`/sales/${invoice.id}`)}
                         className="cursor-pointer hover:bg-muted/50"
                       >
-                        <TableCell>{invoice.date}</TableCell>
+                        <TableCell>{new Date(invoice.date).toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                        })}</TableCell>
                         <TableCell>
                           <span className="text-blue-600">{invoice.type}</span>
                         </TableCell>
@@ -229,22 +232,14 @@ export default function CustomerDetails() {
                             {invoice.dueAmount}
                           </span>
                         </TableCell>
-                        <TableCell>
-                        <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "inline-flex items-center  px-2 py-1 text-xs font-medium",
-                          {
-                            "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20":
-                              invoice.status === "Paid",
-                            "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20":
-                              invoice.status === "Unpaid",
-                          }
-                        )}
+                        <TableCell className="text-right">
+                      <Badge
+                        variant={invoice.status === "Paid" ? "success" : invoice.status === "Unpaid" ? "destructive" : "secondary"}
+                       
+                      
                       >
                         {invoice.status}
-                      </span>
-                    </div>
+                      </Badge>
                         </TableCell>
                       </TableRow>
                     ))
@@ -277,13 +272,13 @@ export default function CustomerDetails() {
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
-                    <TableHead className="font-semibold">Payment Ndisumber</TableHead>
+                    <TableHead className="font-semibold">Payment Number</TableHead>
                     <TableHead className="font-semibold">Payment Method</TableHead>
-                    <TableHead className="font-semibold text-right">Amount</TableHead>
-                    <TableHead className="font-semibold">Status</TableHead>
+                    <TableHead className="font-semibold text-right">Amount (₹)</TableHead>
+                    <TableHead className="font-semibold text-right">Status</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="font-semibold">
                   {payments && payments.length > 0 ? (
                     payments.map((payment) => (
                       <TableRow
@@ -292,19 +287,19 @@ export default function CustomerDetails() {
                         className="cursor-pointer hover:bg-muted/50"
                       >
                         <TableCell>
-                          {new Date(payment.date).toLocaleDateString()}
+                          {new Date(payment.paymentDate).toLocaleDateString("en-IN", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })}
                         </TableCell>
-                        <TableCell>{payment.paymentNumber || '-'}</TableCell>
+                        <TableCell>{payment.paymentNumber || "-"}</TableCell>
                         <TableCell>{payment.paymentMethod}</TableCell>
-                        <TableCell className="text-right">₹ {formatCurrency(payment.amount)}</TableCell>
-                        <TableCell>
+                        <TableCell className="text-right">{(payment.amount)}</TableCell>
+                        <TableCell className="text-right">
                           <Badge
-                            variant="secondary"
-                            className={
-                              payment.status === "Completed"
-                                ? "bg-green-100 text-green-700 hover:bg-green-100 font-medium"
-                                : "bg-yellow-100 text-yellow-700 hover:bg-yellow-100 font-medium"
-                            }
+                            variant={payment.status === "COMPLETED" ? "success" : "destructive"}
+                          
                           >
                             {payment.status}
                           </Badge>
@@ -327,7 +322,7 @@ export default function CustomerDetails() {
             </div>
           </TabsContent>
           <TabsContent value="ledger" className="m-0">
-            <LedgerTabContent isActive={tabName === 'ledger'} distributorId={customerId} />
+            <LedgerTabContent isActive={tabName === 'ledger'} customerId={customerId} />
           </TabsContent>
         </div>
       </Tabs>

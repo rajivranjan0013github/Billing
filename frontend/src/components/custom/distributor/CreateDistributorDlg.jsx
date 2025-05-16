@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { createDistributor, updateDistributor } from "../../../redux/slices/distributorSlice";
+import {
+  createDistributor,
+  updateDistributor,
+} from "../../../redux/slices/distributorSlice";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
@@ -32,33 +35,40 @@ const INITIAL_FORM_DATA = {
   address: "",
   bankDetails: {
     accountNumber: "",
-    ifsc: ""
-  }
-}
+    ifsc: "",
+  },
+};
 
-export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, distributorToEdit }) {
+export default function CreateDistributorDlg({
+  open,
+  onOpenChange,
+  onSuccess,
+  distributorToEdit,
+}) {
   const inputRef = useRef([]);
   const dispatch = useDispatch();
-  const { createDistributorStatus, updateDistributorStatus } = useSelector((state) => state.distributor);
+  const { createDistributorStatus, updateDistributorStatus } = useSelector(
+    (state) => state.distributor
+  );
   const { toast } = useToast();
-  
+
   const inputKeys = [
-    'name',
-    'openBalance',
-    'balance_type',
-    'mob',
-    'email',
-    'gstin',
-    'DLNumber',
-    'accountNumber',
-    'ifsc',
-    'address',
-    'save_button'
+    "name",
+    "openBalance",
+    "balance_type",
+    "mob",
+    "email",
+    "gstin",
+    "DLNumber",
+    "accountNumber",
+    "ifsc",
+    "address",
+    "save_button",
   ];
 
   // handling button shortcuts
   const handleKeyDown = (e, currentKey) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       const currentIndex = inputKeys.indexOf(currentKey);
       if (e.shiftKey) {
@@ -87,8 +97,8 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, di
         openBalance: Math.abs(distributorToEdit.openBalance || 0).toString(),
         bankDetails: {
           accountNumber: distributorToEdit.bankDetails?.accountNumber || "",
-          ifsc: distributorToEdit.bankDetails?.ifsc || ""
-        }
+          ifsc: distributorToEdit.bankDetails?.ifsc || "",
+        },
       });
     } else {
       setFormData(INITIAL_FORM_DATA);
@@ -97,13 +107,13 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, di
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    if (name === 'accountNumber' || name === 'ifsc') {
+    if (name === "accountNumber" || name === "ifsc") {
       setFormData({
         ...formData,
         bankDetails: {
           ...formData.bankDetails,
-          [name]: value
-        }
+          [name]: value,
+        },
       });
     } else {
       setFormData({ ...formData, [name]: value });
@@ -122,17 +132,22 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, di
       let openBalance = Number(distributorData.openBalance);
       if (distributorData.balance_type === "pay" && openBalance > 0) {
         openBalance = -openBalance;
-      } else if (distributorData.balance_type === "collect" && openBalance < 0) {
+      } else if (
+        distributorData.balance_type === "collect" &&
+        openBalance < 0
+      ) {
         openBalance = Math.abs(openBalance);
       }
       distributorData.openBalance = openBalance;
-      
+
       let result;
       if (distributorToEdit) {
-        result = await dispatch(updateDistributor({ 
-          id: distributorToEdit._id, 
-          distributorData 
-        })).unwrap();
+        result = await dispatch(
+          updateDistributor({
+            id: distributorToEdit._id,
+            distributorData,
+          })
+        ).unwrap();
         toast({
           title: "Distributor updated successfully",
           variant: "success",
@@ -144,7 +159,7 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, di
           variant: "success",
         });
       }
-      
+
       onOpenChange(false);
       onSuccess?.(result);
       if (!distributorToEdit) {
@@ -152,7 +167,9 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, di
       }
     } catch (error) {
       toast({
-        title: distributorToEdit ? "Failed to update distributor" : "Failed to create distributor",
+        title: distributorToEdit
+          ? "Failed to update distributor"
+          : "Failed to create distributor",
         variant: "destructive",
       });
     }
@@ -161,15 +178,17 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, di
   useEffect(() => {
     // Add a small delay to ensure the component is fully rendered
     const timer = setTimeout(() => {
-      if(open && inputRef.current['name']) {
-        inputRef.current['name']?.focus();
+      if (open && inputRef.current["name"]) {
+        inputRef.current["name"]?.focus();
       }
     }, 100);
 
     return () => clearTimeout(timer);
   }, [open]);
 
-  const isLoading = createDistributorStatus === "loading" || updateDistributorStatus === "loading";
+  const isLoading =
+    createDistributorStatus === "loading" ||
+    updateDistributorStatus === "loading";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -181,7 +200,11 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, di
         </DialogHeader>
         <Separator />
 
-        <form id="createDistributorForm" onSubmit={handleSubmit} className="p-6">
+        <form
+          id="createDistributorForm"
+          onSubmit={handleSubmit}
+          className="p-6"
+        >
           <div className="space-y-6">
             <div className="space-y-4">
               <div className="flex items-center gap-4">
@@ -194,11 +217,11 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, di
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
-                    onKeyDown={(e) => handleKeyDown(e, 'name')}
-                    ref={el => inputRef.current['name'] = el}
+                    onKeyDown={(e) => handleKeyDown(e, "name")}
+                    ref={(el) => (inputRef.current["name"] = el)}
                     placeholder="Enter Distributor name"
                     required
-                    className="h-8 mt-1.5 text-sm"
+                    className="h-8 mt-1.5 text-sm font-semibold p-2 border rounded-md"
                   />
                 </div>
                 <div className="w-[180px]">
@@ -211,22 +234,24 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, di
                     type="number"
                     value={formData.openBalance}
                     onChange={handleInputChange}
-                    onKeyDown={(e) => handleKeyDown(e, 'openBalance')}
-                    ref={el => inputRef.current['openBalance'] = el}
+                    onKeyDown={(e) => handleKeyDown(e, "openBalance")}
+                    ref={(el) => (inputRef.current["openBalance"] = el)}
                     placeholder="₹ 0"
-                    className="h-8 mt-1.5 text-sm"
+                    className="h-8 mt-1.5 text-sm font-semibold p-2 border rounded-md"
                   />
                 </div>
                 <div className="w-[160px]">
                   <Label className="text-xs font-medium ">Type</Label>
                   <Select
                     value={formData.balance_type}
-                    onValueChange={(value) => handleSelectChange("balance_type", value)}
+                    onValueChange={(value) =>
+                      handleSelectChange("balance_type", value)
+                    }
                   >
-                    <SelectTrigger 
+                    <SelectTrigger
                       className="h-8 mt-1.5 text-sm"
-                      ref={el => inputRef.current['balance_type'] = el}
-                      onKeyDown={(e) => handleKeyDown(e, 'balance_type')}
+                      ref={(el) => (inputRef.current["balance_type"] = el)}
+                      onKeyDown={(e) => handleKeyDown(e, "balance_type")}
                     >
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
@@ -248,10 +273,10 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, di
                     name="mob"
                     value={formData.mob}
                     onChange={handleInputChange}
-                    onKeyDown={(e) => handleKeyDown(e, 'mob')}
-                    ref={el => inputRef.current['mob'] = el}
+                    onKeyDown={(e) => handleKeyDown(e, "mob")}
+                    ref={(el) => (inputRef.current["mob"] = el)}
                     placeholder="Enter mobile"
-                    className="h-8 mt-1.5 text-sm"
+                    className="h-8 mt-1.5 text-sm font-semibold p-2 border rounded-md"
                   />
                 </div>
                 <div>
@@ -264,10 +289,10 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, di
                     type="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    onKeyDown={(e) => handleKeyDown(e, 'email')}
-                    ref={el => inputRef.current['email'] = el}
+                    onKeyDown={(e) => handleKeyDown(e, "email")}
+                    ref={(el) => (inputRef.current["email"] = el)}
                     placeholder="Enter email"
-                    className="h-8 mt-1.5 text-sm"
+                    className="h-8 mt-1.5 text-sm font-semibold p-2 border rounded-md"
                   />
                 </div>
               </div>
@@ -284,10 +309,10 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, di
                     name="gstin"
                     value={formData.gstin}
                     onChange={handleInputChange}
-                    onKeyDown={(e) => handleKeyDown(e, 'gstin')}
-                    ref={el => inputRef.current['gstin'] = el}
+                    onKeyDown={(e) => handleKeyDown(e, "gstin")}
+                    ref={(el) => (inputRef.current["gstin"] = el)}
                     placeholder="ex: 29XXXXX9438X1XX"
-                    className="h-8 mt-1 text-sm"
+                    className="h-8 mt-1 text-sm font-semibold p-2 border rounded-md"
                   />
                 </div>
                 <div>
@@ -299,17 +324,20 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, di
                     name="DLNumber"
                     value={formData.DLNumber}
                     onChange={handleInputChange}
-                    onKeyDown={(e) => handleKeyDown(e, 'DLNumber')}
-                    ref={el => inputRef.current['DLNumber'] = el}
+                    onKeyDown={(e) => handleKeyDown(e, "DLNumber")}
+                    ref={(el) => (inputRef.current["DLNumber"] = el)}
                     placeholder="Enter DL Number"
-                    className="h-8 mt-1 text-sm"
+                    className="h-8 mt-1 text-sm font-semibold p-2 border rounded-md"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <Label htmlFor="accountNumber" className="text-xs font-medium">
+                  <Label
+                    htmlFor="accountNumber"
+                    className="text-xs font-medium"
+                  >
                     Bank Account Number
                   </Label>
                   <Input
@@ -317,10 +345,10 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, di
                     name="accountNumber"
                     value={formData.bankDetails.accountNumber}
                     onChange={handleInputChange}
-                    onKeyDown={(e) => handleKeyDown(e, 'accountNumber')}
-                    ref={el => inputRef.current['accountNumber'] = el}
+                    onKeyDown={(e) => handleKeyDown(e, "accountNumber")}
+                    ref={(el) => (inputRef.current["accountNumber"] = el)}
                     placeholder="Enter account number"
-                    className="h-8 mt-1 text-sm"
+                    className="h-8 mt-1 text-sm font-semibold p-2 border rounded-md"
                   />
                 </div>
                 <div>
@@ -332,10 +360,10 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, di
                     name="ifsc"
                     value={formData.bankDetails.ifsc}
                     onChange={handleInputChange}
-                    onKeyDown={(e) => handleKeyDown(e, 'ifsc')}
-                    ref={el => inputRef.current['ifsc'] = el}
+                    onKeyDown={(e) => handleKeyDown(e, "ifsc")}
+                    ref={(el) => (inputRef.current["ifsc"] = el)}
                     placeholder="Enter IFSC code"
-                    className="h-8 mt-1 text-sm uppercase"
+                    className="h-8 mt-1 text-sm font-semibold p-2 border rounded-md uppercase"
                   />
                 </div>
               </div>
@@ -347,12 +375,12 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, di
                 <Textarea
                   id="address"
                   name="address"
-                  className="w-full h-[60px] p-2 mt-1 rounded-md border border-input text-sm resize-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full h-[60px] p-2 mt-1 rounded-md border border-input text-sm font-semibold resize-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter complete address"
                   value={formData.address}
                   onChange={handleInputChange}
-                  onKeyDown={(e) => handleKeyDown(e, 'address')}
-                  ref={el => inputRef.current['address'] = el}
+                  onKeyDown={(e) => handleKeyDown(e, "address")}
+                  ref={(el) => (inputRef.current["address"] = el)}
                 />
               </div>
             </div>
@@ -371,7 +399,7 @@ export default function CreateDistributorDlg({ open, onOpenChange, onSuccess, di
           <Button
             type="submit"
             form="createDistributorForm"
-            ref={el => inputRef.current['save_button'] = el}
+            ref={(el) => (inputRef.current["save_button"] = el)}
             disabled={isLoading}
             className="h-8 px-10 text-sm bg-blue-600 text-white hover:bg-blue-700"
           >

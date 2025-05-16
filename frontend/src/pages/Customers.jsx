@@ -26,10 +26,10 @@ const Customers = () => {
   const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
 
   useEffect(() => {
-    if (status === "idle") {
+   
       dispatch(fetchCustomers({ page: currentPage, searchQuery, searchType }));
-    }
-  }, [status, dispatch, currentPage, searchQuery, searchType]);
+    
+  }, [ dispatch, currentPage, searchQuery, searchType]);
 
   const handleEdit = (customer) => {
     setEditingCustomer(customer);

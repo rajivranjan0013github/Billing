@@ -63,7 +63,6 @@ export default function PurchaseTable({
   const [editingIndex, setEditingIndex] = useState(null);
   const [editAll, setEditAll] = useState(false);
   const [editBatchNumbers, setEditBatchNumbers] = useState({});
-
   // Add useEffect to recalculate current product amount when gstMode changes
   useEffect(() => {
     if (newProduct?.quantity && newProduct?.purchaseRate) {
@@ -102,7 +101,6 @@ export default function PurchaseTable({
           amount = (effectiveRate + gstAmountPerUnit) * quantity;
           break;
       }
-
       setNewProduct((prev) => ({
         ...prev,
         amount: convertToFraction(amount),
@@ -180,42 +178,67 @@ export default function PurchaseTable({
 
   // Internal keydown handler for the table's input row
   const handleTableKeyDown = (e, currentKey) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    const fieldOrder = [
+      "product",
+      "batchNumber",
+      "HSN",
+      "expiry",
+      "pack",
+      "quantity",
+      "free",
+      "mrp",
+      "purchaseRate",
+      "schemeInput1",
+      "schemeInput2",
+      "discount",
+      "gstPer",
+      "addButton",
+    ];
+
+    if (e.key === "Enter") {
       e.preventDefault();
-      const currentIndex = tableInputKeys.indexOf(currentKey);
 
-      if (currentIndex === -1) return; // Key not found
+      if (e.shiftKey) {
+        // Move backwards
+        const currentIndex = fieldOrder.indexOf(currentKey);
+        if (currentIndex > 0) {
+          const prevField = fieldOrder[currentIndex - 1];
+          if (inputRef.current[prevField]) {
+            inputRef.current[prevField].focus();
+          }
+        }
+        return;
+      }
 
-      // Find the next *truly* empty input field
-      for (let i = currentIndex + 1; i < tableInputKeys.length; i++) {
-        const nextKey = tableInputKeys[i];
+      // Move forwards
+      const currentIndex = fieldOrder.indexOf(currentKey);
+      if (currentIndex === -1) return;
 
-        // Consider a field empty if it's undefined, null, or an empty/whitespace string.
-        const isFieldEmpty =
-          newProduct[nextKey] === undefined ||
-          newProduct[nextKey] === null ||
-          String(newProduct[nextKey]).trim() === "";
+      // If we're on the last field (addButton), trigger add
+      if (currentKey === "addButton") {
+        handleAdd();
+        return;
+      }
 
-        // Focus if the field is empty OR it's the addButton
-        if (isFieldEmpty || nextKey === "addButton") {
-          if (inputRef.current[nextKey]) {
-            inputRef.current[nextKey].focus();
-            return; // Focus set, exit loop
+      // Find next empty field
+      for (let i = currentIndex + 1; i < fieldOrder.length; i++) {
+        const nextField = fieldOrder[i];
+
+        // Check if the field is empty
+        const isEmpty =
+          !newProduct[nextField] || String(newProduct[nextField]).trim() === "";
+
+        if (isEmpty || nextField === "addButton") {
+          if (inputRef.current[nextField]) {
+            inputRef.current[nextField].focus();
+            return;
           }
         }
       }
-      // If no empty field found after the current one, default to the add button
+
+      // If no empty field found, focus the add button
       if (inputRef.current["addButton"]) {
         inputRef.current["addButton"].focus();
-      }
-    } else if (e.key === "Enter" && e.shiftKey) {
-      e.preventDefault();
-      const currentIndex = tableInputKeys.indexOf(currentKey);
-      if (currentIndex > 0) {
-        const prevKey = tableInputKeys[currentIndex - 1];
-        if (inputRef.current[prevKey]) {
-          inputRef.current[prevKey].focus();
-        }
       }
     }
   };
@@ -247,18 +270,14 @@ export default function PurchaseTable({
       mfcName: product.mfcName,
       productName: product.name,
       inventoryId: product._id,
+      HSN: product.HSN || "", // Pre-fill HSN if available
+      pack: product.pack || 1, // Pre-fill default pack
+      location: product.location || "", // Pre-fill location if available
     }));
     setProductSearch(product.name);
     if (inputRef && inputRef.current["batchNumber"]) {
       inputRef.current["batchNumber"].focus();
     }
-    // if(product?.batch?.length) {
-    //   if(inputRef && inputRef.current['batchNumber']) {
-    //     inputRef.current['batchNumber'].focus();
-    //   }
-    // } else if(inputRef && inputRef.current['HSN']) {
-    //   inputRef.current['HSN'].focus();
-    // }
   };
 
   // product seach Input handler
@@ -276,11 +295,28 @@ export default function PurchaseTable({
   };
 
   const handleBatchSelect = (batch) => {
-    Object.assign(batch, { quantity: "" });
     setBatchNumber(batch.batchNumber);
-    setNewProduct({ ...newProduct, batchId: batch._id, ...batch });
-  };
+    setNewProduct((prev) => ({
+      ...prev,
+      batchId: batch._id,
+      batchNumber: batch.batchNumber,
+      expiry: batch.expiry || "",
+      mrp: batch.mrp || "",
+      pack: batch.pack || prev.pack, // Override pack if batch has specific pack
+      purchaseRate: batch.purchaseRate || "",
+      gstPer: batch.gstPer || "",
+      HSN: batch.HSN || prev.HSN, // Keep existing HSN if batch doesn't have one
+    }));
 
+    // Focus HSN field after batch selection
+   
+  };
+  useEffect(() => {
+    if (newProduct.productName && newProduct.batchNumber) {
+      const syntheticEvent = new KeyboardEvent("keydown", { key: "Enter" });
+      handleTableKeyDown(syntheticEvent, "batchNumber");
+    }
+  }, [ newProduct.batchNumber]);
   // edit all product togather
   const handleInputChangeEditMode = (index, field, value) => {
     setProducts((prevProducts) => {
@@ -735,7 +771,7 @@ export default function PurchaseTable({
         {products.length !== 0 &&
           products.map((product, index) => (
             <div
-              className="grid grid-cols-[30px_3fr_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_50px] gap-1 px-2 mt-1"
+              className="grid grid-cols-[30px_3fr_2fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_1fr_50px] gap-1 px-2 mt-1 font-semibold"
               key={product?.inventoryId}
             >
               <div className="flex justify-center items-center font-semibold">

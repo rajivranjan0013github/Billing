@@ -83,6 +83,22 @@ export const deleteCustomer = createAsyncThunk(
   }
 );
 
+export const fetchCustomerLedgerEntries = createAsyncThunk(
+  "customers/fetchLedgerEntries",
+  async (customerId) => {
+    const response = await fetch(
+      `${Backend_URL}/api/customers/ledger/${customerId}`,
+      {
+        credentials: "include",
+      }
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch ledger entries");
+    }
+    return response.json();
+  }
+);
+
 const customerSlice = createSlice({
   name: "customers",
   initialState: {
@@ -96,6 +112,8 @@ const customerSlice = createSlice({
       returns: [],
       status: "idle",
       tabName: "profile",
+      ledgerEntries: [],
+      ledgerStatus: "idle",
     },
     pagination: {
       currentPage: 1,
@@ -168,6 +186,17 @@ const customerSlice = createSlice({
         state.customers = state.customers.filter(
           (customer) => customer._id !== action.payload
         );
+      })
+      .addCase(fetchCustomerLedgerEntries.pending, (state) => {
+        state.currentCustomer.ledgerStatus = "loading";
+      })
+      .addCase(fetchCustomerLedgerEntries.fulfilled, (state, action) => {
+        state.currentCustomer.ledgerStatus = "succeeded";
+        state.currentCustomer.ledgerEntries = action.payload;
+      })
+      .addCase(fetchCustomerLedgerEntries.rejected, (state, action) => {
+        state.currentCustomer.ledgerStatus = "failed";
+        state.error = action.error.message;
       });
   },
 });

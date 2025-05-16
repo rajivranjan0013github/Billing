@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
+import { Badge } from "../components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -57,17 +58,17 @@ const Payments = () => {
 
   // Get Redux state
   const { payments } = useSelector((state) => state.payment);
-  
-  // Get params from URL or use defaults
-  const urlDateFilter = searchParams.get('dateFilter') || 'today';
-  const urlFromDate = searchParams.get('from');
-  const urlToDate = searchParams.get('to');
 
-  const [paymentTypeFilter, setPaymentTypeFilter] = useState('all');  // Set default to 'all'
+  // Get params from URL or use defaults
+  const urlDateFilter = searchParams.get("dateFilter") || "today";
+  const urlFromDate = searchParams.get("from");
+  const urlToDate = searchParams.get("to");
+
+  const [paymentTypeFilter, setPaymentTypeFilter] = useState("all"); // Set default to 'all'
   const [dateFilterType, setDateFilterType] = useState(urlDateFilter);
   const [dateRange, setDateRange] = useState({
     from: urlFromDate ? new Date(urlFromDate) : new Date(),
-    to: urlToDate ? new Date(urlToDate) : new Date()
+    to: urlToDate ? new Date(urlToDate) : new Date(),
   });
 
   // Add search state
@@ -88,18 +89,22 @@ const Payments = () => {
   useEffect(() => {
     const handleDebouncedSearch = async () => {
       if (!debouncedSearchQuery.trim()) {
-        await dispatch(fetchPayments({
-          startDate: dateRange.from,
-          endDate: dateRange.to,
-          filter: paymentTypeFilter !== 'all' ? paymentTypeFilter : undefined
-        })).unwrap();
+        await dispatch(
+          fetchPayments({
+            startDate: dateRange.from,
+            endDate: dateRange.to,
+            filter: paymentTypeFilter !== "all" ? paymentTypeFilter : undefined,
+          })
+        ).unwrap();
         return;
       }
 
       try {
-        await dispatch(searchPayments({
-          query: debouncedSearchQuery
-        })).unwrap();
+        await dispatch(
+          searchPayments({
+            query: debouncedSearchQuery,
+          })
+        ).unwrap();
       } catch (err) {
         toast({
           title: "Error",
@@ -122,37 +127,40 @@ const Payments = () => {
           throw new Error("Invalid date selection");
         }
 
-        const newFromDate = format(fromDate, 'yyyy-MM-dd');
-        const newToDate = format(toDate, 'yyyy-MM-dd');
-        
+        const newFromDate = format(fromDate, "yyyy-MM-dd");
+        const newToDate = format(toDate, "yyyy-MM-dd");
+
         setDateRange({ from: fromDate, to: toDate });
         setDateFilterType("custom");
-        
+
         // Update URL with date range and filter
-        setSearchParams(prev => {
-          prev.set('from', newFromDate);
-          prev.set('to', newToDate);
-          prev.set('dateFilter', 'custom');
-          if (paymentTypeFilter !== 'all') {
-            prev.set('filter', paymentTypeFilter);
+        setSearchParams((prev) => {
+          prev.set("from", newFromDate);
+          prev.set("to", newToDate);
+          prev.set("dateFilter", "custom");
+          if (paymentTypeFilter !== "all") {
+            prev.set("filter", paymentTypeFilter);
           } else {
-            prev.delete('filter');
+            prev.delete("filter");
           }
           return prev;
         });
 
-        dispatch(fetchPayments({
-          startDate: fromDate,
-          endDate: toDate,
-          filter: paymentTypeFilter,
-        })).unwrap()
-        .catch(err => {
-          toast({
-            title: "Error fetching payments",
-            description: err.message,
-            variant: "destructive",
+        dispatch(
+          fetchPayments({
+            startDate: fromDate,
+            endDate: toDate,
+            filter: paymentTypeFilter,
+          })
+        )
+          .unwrap()
+          .catch((err) => {
+            toast({
+              title: "Error fetching payments",
+              description: err.message,
+              variant: "destructive",
+            });
           });
-        });
       } catch (err) {
         toast({
           title: "Error",
@@ -198,36 +206,39 @@ const Payments = () => {
           break;
       }
 
-      const newFromDate = format(newRange.from, 'yyyy-MM-dd');
-      const newToDate = format(newRange.to, 'yyyy-MM-dd');
-      
+      const newFromDate = format(newRange.from, "yyyy-MM-dd");
+      const newToDate = format(newRange.to, "yyyy-MM-dd");
+
       setDateRange(newRange);
 
       // Update URL with date range and filter
-      setSearchParams(prev => {
-        prev.set('from', newFromDate);
-        prev.set('to', newToDate);
-        prev.set('dateFilter', value);
-        if (paymentTypeFilter !== 'all') {
-          prev.set('filter', paymentTypeFilter);
+      setSearchParams((prev) => {
+        prev.set("from", newFromDate);
+        prev.set("to", newToDate);
+        prev.set("dateFilter", value);
+        if (paymentTypeFilter !== "all") {
+          prev.set("filter", paymentTypeFilter);
         } else {
-          prev.delete('filter');
+          prev.delete("filter");
         }
         return prev;
       });
 
-      dispatch(fetchPayments({
-        startDate: newRange.from,
-        endDate: newRange.to,
-        filter: paymentTypeFilter,
-      })).unwrap()
-      .catch(err => {
-        toast({
-          title: "Error fetching payments",
-          description: err.message,
-          variant: "destructive",
+      dispatch(
+        fetchPayments({
+          startDate: newRange.from,
+          endDate: newRange.to,
+          filter: paymentTypeFilter,
+        })
+      )
+        .unwrap()
+        .catch((err) => {
+          toast({
+            title: "Error fetching payments",
+            description: err.message,
+            variant: "destructive",
+          });
         });
-      });
     } catch (err) {
       toast({
         title: "Error",
@@ -239,37 +250,40 @@ const Payments = () => {
 
   // Update effect to initialize with 'all' filter
   useEffect(() => {
-    const fromParam = searchParams.get('from');
-    const toParam = searchParams.get('to');
-    const dateFilterParam = searchParams.get('dateFilter');
+    const fromParam = searchParams.get("from");
+    const toParam = searchParams.get("to");
+    const dateFilterParam = searchParams.get("dateFilter");
 
     // If no params, set to today's date
     if (!fromParam || !toParam) {
       const today = new Date();
-      const todayFormatted = format(today, 'yyyy-MM-dd');
-      
+      const todayFormatted = format(today, "yyyy-MM-dd");
+
       // Update URL with today's date
-      setSearchParams(prev => {
-        prev.set('from', todayFormatted);
-        prev.set('to', todayFormatted);
-        prev.set('dateFilter', 'today');
+      setSearchParams((prev) => {
+        prev.set("from", todayFormatted);
+        prev.set("to", todayFormatted);
+        prev.set("dateFilter", "today");
         return prev;
       });
 
       setDateRange({ from: today, to: today });
-      setDateFilterType('today');
-      
-      dispatch(fetchPayments({
-        startDate: today,
-        endDate: today
-      })).unwrap()
-      .catch(err => {
-        toast({
-          title: "Error fetching payments",
-          description: err.message,
-          variant: "destructive",
+      setDateFilterType("today");
+
+      dispatch(
+        fetchPayments({
+          startDate: today,
+          endDate: today,
+        })
+      )
+        .unwrap()
+        .catch((err) => {
+          toast({
+            title: "Error fetching payments",
+            description: err.message,
+            variant: "destructive",
+          });
         });
-      });
       return;
     }
 
@@ -284,52 +298,58 @@ const Payments = () => {
 
       const paramRange = {
         from: fromDate,
-        to: toDate
+        to: toDate,
       };
 
       setDateRange(paramRange);
-      
+
       if (dateFilterParam) {
         setDateFilterType(dateFilterParam);
       }
 
-      dispatch(fetchPayments({
-        startDate: fromDate,
-        endDate: toDate
-      })).unwrap()
-      .catch(err => {
-        toast({
-          title: "Error fetching payments",
-          description: err.message,
-          variant: "destructive",
+      dispatch(
+        fetchPayments({
+          startDate: fromDate,
+          endDate: toDate,
+        })
+      )
+        .unwrap()
+        .catch((err) => {
+          toast({
+            title: "Error fetching payments",
+            description: err.message,
+            variant: "destructive",
+          });
         });
-      });
     } catch (err) {
       // If dates are invalid, reset to today
       const today = new Date();
-      const todayFormatted = format(today, 'yyyy-MM-dd');
-      
-      setSearchParams(prev => {
-        prev.set('from', todayFormatted);
-        prev.set('to', todayFormatted);
-        prev.set('dateFilter', 'today');
+      const todayFormatted = format(today, "yyyy-MM-dd");
+
+      setSearchParams((prev) => {
+        prev.set("from", todayFormatted);
+        prev.set("to", todayFormatted);
+        prev.set("dateFilter", "today");
         return prev;
       });
 
       setDateRange({ from: today, to: today });
-      setDateFilterType('today');
-      
-      dispatch(fetchPayments({
-        startDate: today,
-        endDate: today
-      })).unwrap()
-      .catch(err => {
-        toast({
-          title: "Error fetching payments",
-          description: err.message,
-          variant: "destructive",
+      setDateFilterType("today");
+
+      dispatch(
+        fetchPayments({
+          startDate: today,
+          endDate: today,
+        })
+      )
+        .unwrap()
+        .catch((err) => {
+          toast({
+            title: "Error fetching payments",
+            description: err.message,
+            variant: "destructive",
+          });
         });
-      });
 
       toast({
         title: "Invalid date parameters",
@@ -346,24 +366,29 @@ const Payments = () => {
   // Filter payments based on payment type
   const filteredPayments = useMemo(() => {
     if (!payments) return [];
-    if (paymentTypeFilter === 'all') return payments;
-    return payments.filter(payment => payment.paymentType === paymentTypeFilter);
+    if (paymentTypeFilter === "all") return payments;
+    return payments.filter(
+      (payment) => payment.paymentType === paymentTypeFilter
+    );
   }, [payments, paymentTypeFilter]);
 
   // Calculate totals based on filtered payments
   const totalPaymentIn = useMemo(() => {
     return filteredPayments
-      .filter(payment => payment.paymentType === "Payment In")
+      .filter((payment) => payment.paymentType === "Payment In")
       .reduce((sum, payment) => sum + (payment.amount || 0), 0);
   }, [filteredPayments]);
 
   const totalPaymentOut = useMemo(() => {
     return filteredPayments
-      .filter(payment => payment.paymentType === "Payment Out")
+      .filter((payment) => payment.paymentType === "Payment Out")
       .reduce((sum, payment) => sum + (payment.amount || 0), 0);
   }, [filteredPayments]);
 
-  const netTotal = useMemo(() => totalPaymentIn - totalPaymentOut, [totalPaymentIn, totalPaymentOut]);
+  const netTotal = useMemo(
+    () => totalPaymentIn - totalPaymentOut,
+    [totalPaymentIn, totalPaymentOut]
+  );
 
   // Calculate payment method breakdowns with memoization
   const calculatePaymentMethodTotals = useCallback((payments) => {
@@ -376,13 +401,15 @@ const Payments = () => {
 
   const paymentInMethodTotals = useMemo(() => {
     return calculatePaymentMethodTotals(
-      filteredPayments.filter(payment => payment.paymentType === "Payment In")
+      filteredPayments.filter((payment) => payment.paymentType === "Payment In")
     );
   }, [filteredPayments, calculatePaymentMethodTotals]);
 
   const paymentOutMethodTotals = useMemo(() => {
     return calculatePaymentMethodTotals(
-      filteredPayments.filter(payment => payment.paymentType === "Payment Out")
+      filteredPayments.filter(
+        (payment) => payment.paymentType === "Payment Out"
+      )
     );
   }, [filteredPayments, calculatePaymentMethodTotals]);
 
@@ -397,7 +424,6 @@ const Payments = () => {
       return acc;
     }, {});
   }, [paymentInMethodTotals, paymentOutMethodTotals]);
-
 
   return (
     <div className="w-full p-4 space-y-2">
@@ -462,11 +488,16 @@ const Payments = () => {
                     className="h-6 w-6 p-0 hover:bg-slate-100 rounded-full"
                     onClick={() => {
                       setSearchQuery("");
-                      dispatch(fetchPayments({
-                        startDate: dateRange.from,
-                        endDate: dateRange.to,
-                        filter: paymentTypeFilter !== 'all' ? paymentTypeFilter : undefined
-                      }));
+                      dispatch(
+                        fetchPayments({
+                          startDate: dateRange.from,
+                          endDate: dateRange.to,
+                          filter:
+                            paymentTypeFilter !== "all"
+                              ? paymentTypeFilter
+                              : undefined,
+                        })
+                      );
                     }}
                   >
                     <X className="h-4 w-4 text-blue-500" />
@@ -475,10 +506,7 @@ const Payments = () => {
               )}
             </div>
           </div>
-          <Select
-            value={paymentTypeFilter}
-            onValueChange={handleFilterChange}
-          >
+          <Select value={paymentTypeFilter} onValueChange={handleFilterChange}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by type" />
             </SelectTrigger>
@@ -516,7 +544,10 @@ const Payments = () => {
             </div>
           )}
         </div>
-        <Button variant="outline" onClick={() => navigate("/payment/create-payment")}>
+        <Button
+          variant="outline"
+          onClick={() => navigate("/payment/create-payment")}
+        >
           <Plus className="mr-2 h-4 w-4" />
           Create Payment
         </Button>
@@ -531,7 +562,7 @@ const Payments = () => {
                 <TrendingUp className="h-4 w-4 text-green-500" />
                 <div className="flex flex-col">
                   <span className="text-sm font-medium">Total Payment In</span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground font-semibold">
                     {
                       filteredPayments.filter(
                         (p) => p.paymentType === "Payment In"
@@ -545,7 +576,7 @@ const Payments = () => {
                 +₹ {totalPaymentIn.toLocaleString("en-IN")}
               </span>
             </div>
-            <div className="mt-2 flex items-center gap-3 overflow-x-auto">
+            <div className="mt-2 flex items-center gap-3 overflow-x-auto font-semibold">
               {Object.entries(paymentInMethodTotals).map(([method, amount]) => (
                 <div
                   key={method}
@@ -568,7 +599,7 @@ const Payments = () => {
                 <TrendingDown className="h-4 w-4 text-red-500" />
                 <div className="flex flex-col">
                   <span className="text-sm font-medium">Total Payment Out</span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground font-semibold">
                     {
                       filteredPayments.filter(
                         (p) => p.paymentType === "Payment Out"
@@ -582,7 +613,7 @@ const Payments = () => {
                 -₹ {totalPaymentOut.toLocaleString("en-IN")}
               </span>
             </div>
-            <div className="mt-2 flex items-center gap-3 overflow-x-auto">
+            <div className="mt-2 flex items-center gap-3 overflow-x-auto font-semibold">
               {Object.entries(paymentOutMethodTotals).map(
                 ([method, amount]) => (
                   <div
@@ -607,7 +638,7 @@ const Payments = () => {
                 <ArrowRightLeft className="h-4 w-4 text-blue-500" />
                 <div className="flex flex-col">
                   <span className="text-sm font-medium">Net Total</span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground font-semibold">
                     {filteredPayments.length} total payments
                   </span>
                 </div>
@@ -621,7 +652,7 @@ const Payments = () => {
                 {Math.abs(netTotal).toLocaleString("en-IN")}
               </span>
             </div>
-            <div className="mt-2 flex items-center gap-3 overflow-x-auto">
+            <div className="mt-2 flex items-center gap-3 overflow-x-auto font-semibold">
               {Object.entries(netMethodTotals).map(([method, amount]) => (
                 <div
                   key={method}
@@ -676,11 +707,19 @@ const Payments = () => {
                 <TableCell className="font-semibold">
                   {payment?.distributorName || payment?.customerName || "--"}
                 </TableCell>
-                <TableCell>{payment?.paymentType}</TableCell>
+                <TableCell>
+                  <Badge variant={payment?.paymentType === "Payment In" ? "success" : "destructive"}>
+                    {payment?.paymentType}
+                  </Badge>
+                </TableCell>
                 <TableCell>{payment?.paymentMethod}</TableCell>
                 <TableCell>{payment?.remarks || "-"}</TableCell>
                 <TableCell
-                  className={`text-right font-bold ${payment?.paymentType === "Payment In" ? "text-green-600" : "text-red-600"}`}
+                  className={`text-right font-bold ${
+                    payment?.paymentType === "Payment In"
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}
                 >
                   {payment?.paymentType === "Payment In" ? "+" : "-"}₹{" "}
                   {payment?.amount?.toLocaleString("en-IN")}

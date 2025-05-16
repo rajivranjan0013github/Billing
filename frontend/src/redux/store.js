@@ -3,7 +3,6 @@ import staffReducer from "./slices/staffSlice";
 import userReducer from "./slices/userSlice";
 import pharmacyReducer from "./slices/pharmacySlice";
 import loaderReducer from "./slices/loaderSlice";
-import hospitalReducer from "./slices/HospitalSlice";
 import expenseReducer from "./slices/expenseSlice";
 import distributorSlice from "./slices/distributorSlice";
 import billReducer from "./slices/SellBillSlice";
@@ -21,7 +20,6 @@ export const store = configureStore({
     pharmacy: pharmacyReducer,
     user: userReducer,
     loader: loaderReducer,
-    hospital: hospitalReducer,
     expenses: expenseReducer,
     distributor: distributorSlice,
     bill: billReducer,

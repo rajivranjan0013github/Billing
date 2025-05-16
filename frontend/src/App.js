@@ -13,9 +13,9 @@ import Settings from "./pages/Settings";
 import StaffProfile from "./pages/StaffProfile";
 import AddStaff from "./pages/AddStaff";
 import { fetchUserData } from "./redux/slices/userSlice";
-import { fetchHospitalInfo } from "./redux/slices/HospitalSlice";
+import { fetchPharmacyInfo } from "./redux/slices/pharmacySlice";
 import { setLoading } from "./redux/slices/loaderSlice";
-import HospitalInfo from "./pages/HospitalInfo";
+import PharmacyInfo from "./pages/PharmacyInfo";
 import AboutPage from "./pages/About";
 import ContactPage from "./pages/ContactUs";
 import Expenses from "./pages/Expenses";
@@ -58,7 +58,7 @@ const AppContent = () => {
         if (isAuthenticated) {
           return Promise.all([
             dispatch(fetchStaffMembers()),
-            dispatch(fetchHospitalInfo()),
+            dispatch(fetchPharmacyInfo()),
           ]);
         }
       })
@@ -107,8 +107,8 @@ const AppContent = () => {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/editstaff/:staffId" element={<AddStaff />} />
               <Route
-                path="/settings/hospital-info"
-                element={<HospitalInfo />}
+                path="/settings/pharmacy-info"
+                element={<PharmacyInfo />}
               />
               <Route path="/expenses" element={<Expenses />} />
               <Route path="/sales" element={<Sales />} />
@@ -140,12 +140,9 @@ const AppContent = () => {
                 path="/distributors/:distributorId"
                 element={<DistributorDetails />}
               />
+              <Route path="/payment/:paymentId" element={<PaymentDetails />} />
               <Route
-                path="/payment/:paymentId"
-                element={<PaymentDetails />}
-              />
-              <Route
-                path="/payment/create-payment"
+                path="/payment/create-payment/:distributorId?"
                 element={<CreatePayment />}
               />
               <Route
@@ -157,10 +154,19 @@ const AppContent = () => {
                 path="/purchase/return/:returnId"
                 element={<EditPurchaseReturn />}
               />
-              <Route path="/sales/invoice-print" element={<SalesInvoicePrint />} />
-              <Route path="/payment/invoice-print" element={<PaymentInvoicePrint />} />
+              <Route
+                path="/sales/invoice-print"
+                element={<SalesInvoicePrint />}
+              />
+              <Route
+                path="/payment/invoice-print"
+                element={<PaymentInvoicePrint />}
+              />
               <Route path="/settings/config" element={<BillingSettings />} />
-              <Route path="/accounts/transactions/:accountId" element={<Transactions />} />
+              <Route
+                path="/accounts/transactions/:accountId"
+                element={<Transactions />}
+              />
             </>
           )}
         </Routes>

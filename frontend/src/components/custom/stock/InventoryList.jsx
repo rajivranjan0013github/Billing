@@ -24,10 +24,10 @@ const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
   const [isManageInventoryOpen, setIsManageInventoryOpen] = useState(false);
 
   useEffect(() => {
-    if (itemsStatus === "idle") {
+    
       dispatch(fetchItems());
-    }
-  }, [dispatch, itemsStatus]);
+    
+  }, [dispatch]);
 
   useEffect(() => {
     if (items.length > 0 && !selectedItemId) {
@@ -104,7 +104,7 @@ const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
                       <span className="font-medium truncate capitalize">{item?.name}</span>
                       <CircleCheckBig className="h-3 w-3 text-blue-500 shrink-0" />
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className="text-xs text-muted-foreground truncate font-semibold">
                       {item?.mfcName}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
@@ -116,7 +116,7 @@ const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
                   <div className="text-right shrink-0 justify-center">
                     <Badge
                         variant={item?.quantity > 0 ? "success" : "destructive"}
-                        className="h-5 text-xs font-medium rounded-none"
+                        
                       >
                         {item?.quantity > 0 ? "In Stock" : "Out of Stock"}
                       </Badge>

@@ -8,7 +8,7 @@ const Settings = () => {
   return (
     <div className="p-4 gap-4 flex">
       <Button
-        onClick={() => navigate("/settings/hospital-info")}
+        onClick={() => navigate("/settings/pharmacy-info")}
       >
         Pharmacy Info
       </Button>

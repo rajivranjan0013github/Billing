@@ -160,7 +160,7 @@ export default function ContactPage() {
                       </div>
                       <div className="flex items-center space-x-4">
                         <Mail className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 flex-shrink-0" />
-                        <span className="text-sm sm:text-base">support@thehospital.com</span>
+                        <span className="text-sm sm:text-base">support@thebilling.com</span>
                       </div>
                       <div className="flex items-start space-x-4">
                         <MapPin className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 flex-shrink-0 mt-1" />
@@ -239,7 +239,7 @@ export default function ContactPage() {
         </section>
       </main>
       <footer className="flex flex-col sm:flex-row justify-between items-center py-6 px-4 md:px-6 border-t bg-white">
-        <p className="text-xs text-gray-500 mb-2 sm:mb-0">© 2024 The Hospital. All rights reserved.</p>
+        <p className="text-xs text-gray-500 mb-2 sm:mb-0">© 2024 The Billing. All rights reserved.</p>
         <nav className="flex gap-4">
           <Link className="text-xs hover:underline underline-offset-4" href="#">
             Terms of Service

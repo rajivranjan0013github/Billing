@@ -54,6 +54,22 @@ export default function ProductSelector({
     }
   }, [dispatch, itemsStatus]);
 
+  // Global F2 shortcut handler
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (e.key === "F2" && open) {
+        e.preventDefault();
+        setNewItemDialogOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleGlobalKeyDown);
+    };
+  }, [open]);
+
   // Update selectedId when dialog opens or filtered products change
   useEffect(() => {
     const filteredProducts = products?.filter(
@@ -100,28 +116,21 @@ export default function ProductSelector({
         behavior: "smooth",
         block: "nearest",
       });
-    } else if (e.key === "Enter" && selectedId) {
-      // Handle selection
-      handleSelect(filteredProducts.find((p) => p._id === selectedId));
-      onOpenChange(false);
+    } else if (e.key === "Enter") {
+      // If there are no filtered products, open the new item dialog
+      if (filteredProducts.length === 0) {
+        setNewItemDialogOpen(true);
+        return;
+      }
+      // Otherwise handle product selection as before
+      if (selectedId) {
+        handleSelect(filteredProducts.find((p) => p._id === selectedId));
+        onOpenChange(false);
+      }
     } else if (e.key === "Escape") {
       onOpenChange(false);
     }
   };
-
-  useEffect(() => {
-    const handleGlobalKeyDown = (e) => {
-      if (e.key === "F2" && open) {
-        setNewItemDialogOpen(true);
-      }
-    };
-
-    window.addEventListener("keydown", handleGlobalKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleGlobalKeyDown);
-    };
-  }, [newItemDialogOpen, open]);
 
   // Add handling for selection
   const handleSelect = (product) => {
@@ -142,7 +151,6 @@ export default function ProductSelector({
                 Select a Product
               </DialogTitle>
             </div>
-            
           </DialogHeader>
           <Separator />
 
@@ -161,8 +169,8 @@ export default function ProductSelector({
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
-                variant='outline'
-                className='px-2'
+                variant="outline"
+                className="px-2"
                 onClick={() => setNewItemDialogOpen(true)}
               >
                 <Plus className="h-3 w-3" />
@@ -197,39 +205,63 @@ export default function ProductSelector({
             <ScrollArea className="h-[400px] pr-2 py-1">
               <Table>
                 <TableBody>
-                  {filteredProducts.map((product) => (
-                    <TableRow
-                      key={product._id}
-                      id={product._id}
-                      className={cn(
-                        "cursor-pointer hover:bg-blue-50 transition-colors",
-                        selectedId === product._id && "bg-blue-200"
-                      )}
-                      onClick={() => handleSelect(product)}
-                    >
-                      <TableCell className="w-[30%] py-3">
-                        <div className="font-medium">{product.name}</div>
-                      </TableCell>
-                      <TableCell className="w-[30%] py-3">
-                        <div className="text-sm text-gray-600">{product.mfcName}</div>
-                      </TableCell>
-                      <TableCell className="w-[10%] py-3 text-center">
-                        {product.pack}
-                      </TableCell>
-                      <TableCell className="w-[20%] py-3 text-center">
-                        <span
-                          className={`${
-                            product.quantity > 0 ? "bg-green-500" : "bg-red-500"
-                          } text-white px-2 py-1 text-xs`}
-                        >
-                          {product.quantity > 0 ? "In Stock" : "Out of Stock"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="w-[10%] py-3 text-center">
-                        {product?.location}
+                  {filteredProducts.length > 0 ? (
+                    filteredProducts.map((product) => (
+                      <TableRow
+                        key={product._id}
+                        id={product._id}
+                        className={cn(
+                          "cursor-pointer hover:bg-blue-50 transition-colors",
+                          selectedId === product._id && "bg-blue-200"
+                        )}
+                        onClick={() => handleSelect(product)}
+                      >
+                        <TableCell className="w-[30%] py-3">
+                          <div className="font-medium">{product.name}</div>
+                        </TableCell>
+                        <TableCell className="w-[30%] py-3">
+                          <div className="text-sm text-gray-600">
+                            {product.mfcName}
+                          </div>
+                        </TableCell>
+                        <TableCell className="w-[10%] py-3 text-center">
+                          {product.pack}
+                        </TableCell>
+                        <TableCell className="w-[20%] py-3 text-center">
+                          <span
+                            className={`${
+                              product.quantity > 0
+                                ? "bg-green-500"
+                                : "bg-red-500"
+                            } text-white px-2 py-1 text-xs`}
+                          >
+                            {product.quantity > 0 ? "In Stock" : "Out of Stock"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="w-[10%] py-3 text-center">
+                          {product?.location}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8">
+                        <div className="flex flex-col items-center gap-3">
+                          <PackageX className="h-12 w-12 text-gray-400" />
+                          <div className="text-gray-500">No products found</div>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setNewItemDialogOpen(true);
+                            }}
+                            className="bg-blue-600 text-white hover:bg-blue-700"
+                          >
+                            Add new product
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </ScrollArea>
@@ -250,6 +282,7 @@ export default function ProductSelector({
       <AddNewInventory
         open={newItemDialogOpen}
         onOpenChange={setNewItemDialogOpen}
+        initialProductName={search}
       />
     </>
   );

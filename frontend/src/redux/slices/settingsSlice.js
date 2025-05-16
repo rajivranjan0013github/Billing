@@ -1,16 +1,16 @@
-import { createSlice } from '@reduxjs/toolkit';
-import createLoadingAsyncThunk from './createLoadingAsyncThunk';
-import { Backend_URL } from '../../assets/Data';
+import { createSlice } from "@reduxjs/toolkit";
+import createLoadingAsyncThunk from "./createLoadingAsyncThunk";
+import { Backend_URL } from "../../assets/Data";
 
 // Async thunk for fetching settings
 export const fetchSettings = createLoadingAsyncThunk(
-  'settings/fetchSettings',
+  "settings/fetchSettings",
   async () => {
     const response = await fetch(`${Backend_URL}/api/settings`, {
-      credentials: 'include'
+      credentials: "include",
     });
     if (!response.ok) {
-      throw new Error('Failed to fetch settings');
+      throw new Error("Failed to fetch settings");
     }
     return response.json();
   },
@@ -19,18 +19,18 @@ export const fetchSettings = createLoadingAsyncThunk(
 
 // Async thunk for updating settings
 export const updateSettings = createLoadingAsyncThunk(
-  'settings/updateSettings',
+  "settings/updateSettings",
   async (settingsData) => {
     const response = await fetch(`${Backend_URL}/api/settings`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(settingsData),
-      credentials: 'include'
+      credentials: "include",
     });
     if (!response.ok) {
-      throw new Error('Failed to update settings');
+      throw new Error("Failed to update settings");
     }
     return response.json();
   },
@@ -38,42 +38,41 @@ export const updateSettings = createLoadingAsyncThunk(
 );
 
 const settingsSlice = createSlice({
-  name: 'settings',
+  name: "settings",
   initialState: {
     settings: {
       adjustment: false,
-      doctors: []
     },
-    status: 'idle',
-    updateStatus : 'idle',
-    error: null
+    status: "idle",
+    updateStatus: "idle",
+    error: null,
   },
   reducers: {},
   extraReducers: (builder) => {
     builder
       .addCase(fetchSettings.pending, (state) => {
-        state.status = 'loading';
+        state.status = "loading";
       })
       .addCase(fetchSettings.fulfilled, (state, action) => {
-        state.status = 'succeeded';
+        state.status = "succeeded";
         state.settings = action.payload;
       })
       .addCase(fetchSettings.rejected, (state, action) => {
-        state.status = 'failed';
+        state.status = "failed";
         state.error = action.error.message;
       })
       .addCase(updateSettings.pending, (state) => {
-        state.updateStatus = 'loading';
+        state.updateStatus = "loading";
       })
       .addCase(updateSettings.fulfilled, (state, action) => {
-        state.updateStatus = 'succeeded';
+        state.updateStatus = "succeeded";
         state.settings = action.payload;
       })
       .addCase(updateSettings.rejected, (state, action) => {
-        state.updateStatus = 'failed';
+        state.updateStatus = "failed";
         state.error = action.error.message;
       });
-  }
+  },
 });
 
-export default settingsSlice.reducer; 
+export default settingsSlice.reducer;

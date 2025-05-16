@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { hospitalPlugin } from "../plugins/hospitalPlugin.js";
+import { pharmacyPlugin } from "../plugins/pharmacyPlugin.js";
 
 const stockTimelineSchema = new mongoose.Schema(
   {
@@ -19,6 +19,7 @@ const stockTimelineSchema = new mongoose.Schema(
         "SALE_EDIT",
         "SALE_RETURN",
         "PURCHASE_EDIT",
+        "SALE_DELETE",
         "PURCHASE_DELETE",
       ],
     },
@@ -30,20 +31,23 @@ const stockTimelineSchema = new mongoose.Schema(
     batchNumber: String,
     expiry: String,
     mrp: Number,
-    purchaseRate: Number, // net purchase rate = 
+    purchaseRate: Number, // net purchase rate =
     saleRate: Number, // sale rate also
     gstPer: Number,
-    discount : {type : Number, default : 0},
-    createdBy: {type: mongoose.Schema.Types.ObjectId,ref: "User",},
+    discount: { type: Number, default: 0 },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     createdByName: String,
     distributorName: String,
     distributorMob: String,
+    customerName: String,
+    customerMob: String,
+
     remarks: String,
   },
   { timestamps: true }
 );
 
-stockTimelineSchema.plugin(hospitalPlugin);
+stockTimelineSchema.plugin(pharmacyPlugin);
 
 export const StockTimeline = mongoose.model(
   "StockTimeline",

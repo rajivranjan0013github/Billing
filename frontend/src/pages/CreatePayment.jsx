@@ -2,12 +2,20 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
 import { Checkbox } from "../components/ui/checkbox";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "../components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableFooter,
+} from "../components/ui/table";
 import { ArrowLeft, Calendar, Search, Plus, Store } from "lucide-react";
 import { Card } from "../components/ui/card";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { fetchDistributors } from "../redux/slices/distributorSlice";
 import { SearchSuggestion } from "../components/custom/custom-fields/CustomSearchSuggestion";
 import { Backend_URL } from "../assets/Data";
@@ -16,7 +24,12 @@ import MakePaymentDlg from "../components/custom/payment/MakePaymentDlg";
 import { formatCurrency } from "../utils/Helper";
 
 // First, let's create a TableContent component for better organization
-export const TableContent = ({ isLoadingBills, pendingInvoices, selectedBills, onBillSelection }) => {
+export const TableContent = ({
+  isLoadingBills,
+  pendingInvoices,
+  selectedBills,
+  onBillSelection,
+}) => {
   if (isLoadingBills) {
     return (
       <div className="border rounded-md">
@@ -43,55 +56,94 @@ export const TableContent = ({ isLoadingBills, pendingInvoices, selectedBills, o
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-12">
-            <Checkbox 
-              checked={selectedBills.length === pendingInvoices.length && pendingInvoices.length > 0}
+          <TableHead className="w-12 font-semibold">
+            <Checkbox
+              checked={
+                selectedBills.length === pendingInvoices.length &&
+                pendingInvoices.length > 0
+              }
               onCheckedChange={(checked) => {
                 if (checked) {
-                  pendingInvoices.forEach(invoice => onBillSelection(invoice, true));
+                  pendingInvoices.forEach((invoice) =>
+                    onBillSelection(invoice, true)
+                  );
                 } else {
-                  pendingInvoices.forEach(invoice => onBillSelection(invoice, false));
+                  pendingInvoices.forEach((invoice) =>
+                    onBillSelection(invoice, false)
+                  );
                 }
               }}
             />
           </TableHead>
-          <TableHead>Date</TableHead>
-          <TableHead>Due Date</TableHead>
-          <TableHead>Invoice Number</TableHead>
-          <TableHead className="text-right">Invoice Amount</TableHead>
-          <TableHead className="text-right">Amount Settled</TableHead>
+          <TableHead className="font-semibold">Date</TableHead>
+          <TableHead className="font-semibold">Due Date</TableHead>
+          <TableHead className="font-semibold">Invoice Number</TableHead>
+          <TableHead className="text-right font-semibold">
+            Invoice Amount
+          </TableHead>
+          <TableHead className="text-right font-semibold">
+            Amount Settled
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {pendingInvoices.map((invoice) => (
           <TableRow key={invoice._id}>
             <TableCell>
-              <Checkbox 
-                checked={selectedBills.some(bill => bill._id === invoice._id)}
+              <Checkbox
+                checked={selectedBills.some((bill) => bill._id === invoice._id)}
                 onCheckedChange={(checked) => onBillSelection(invoice, checked)}
               />
             </TableCell>
-            <TableCell>{new Date(invoice.invoiceDate).toLocaleDateString()}</TableCell>
-            <TableCell>{invoice.paymentDueDate ? new Date(invoice.paymentDueDate).toLocaleDateString() : '-'}</TableCell>
-            <TableCell>{invoice.invoiceNumber}</TableCell>
-            <TableCell className="text-right">
+            <TableCell className="font-semibold">
+              {new Date(invoice.invoiceDate).toLocaleDateString()}
+            </TableCell>
+            <TableCell className="font-semibold">
+              {invoice.paymentDueDate
+                ? new Date(invoice.paymentDueDate).toLocaleDateString()
+                : "-"}
+            </TableCell>
+            <TableCell className="font-semibold">
+              {invoice.invoiceNumber}
+            </TableCell>
+            <TableCell className="text-right font-semibold">
               ₹{invoice.grandTotal.toLocaleString()}{" "}
-              <span className="text-red-500 ml-1">
-                (₹{roundToTwo(invoice.grandTotal - invoice.amountPaid).toLocaleString()} pending)
+              <span className="text-red-500 ml-1 font-semibold">
+                (₹
+                {roundToTwo(
+                  invoice.grandTotal - invoice.amountPaid
+                ).toLocaleString()}{" "}
+                pending)
               </span>
             </TableCell>
-            <TableCell className="text-right">₹{invoice.amountPaid.toLocaleString()}</TableCell>
+            <TableCell className="text-right font-semibold">
+              ₹{invoice.amountPaid.toLocaleString()}
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
       <TableFooter>
         <TableRow>
-          <TableCell colSpan={4}>Total</TableCell>
-          <TableCell className="text-right">
-            ₹{roundToTwo(pendingInvoices.reduce((total, invoice) => total + invoice.grandTotal, 0)).toLocaleString()}
+          <TableCell colSpan={4} className="font-semibold">
+            Total
           </TableCell>
-          <TableCell className="text-right">
-            ₹{roundToTwo(pendingInvoices.reduce((total, invoice) => total + invoice.amountPaid, 0)).toLocaleString()}
+          <TableCell className="text-right font-semibold">
+            ₹
+            {roundToTwo(
+              pendingInvoices.reduce(
+                (total, invoice) => total + invoice.grandTotal,
+                0
+              )
+            ).toLocaleString()}
+          </TableCell>
+          <TableCell className="text-right font-semibold">
+            ₹
+            {roundToTwo(
+              pendingInvoices.reduce(
+                (total, invoice) => total + invoice.amountPaid,
+                0
+              )
+            ).toLocaleString()}
           </TableCell>
         </TableRow>
       </TableFooter>
@@ -105,20 +157,27 @@ const roundToTwo = (num) => {
 
 export default function Component() {
   const navigate = useNavigate();
-  const { distributors, fetchStatus } = useSelector((state) => state.distributor);
+  const { distributors, fetchStatus } = useSelector(
+    (state) => state.distributor
+  );
   const [pendingInvoices, setPendingInvoices] = useState([]);
   const [selecteddistributor, setSelecteddistributor] = useState(null);
   const [value, setValue] = useState("");
   const distributorNameRef = useRef(null);
   const dispatch = useDispatch();
-  const {toast} = useToast();
+  const { toast } = useToast();
+  const { distributorId } = useParams();
   const [paymentDate, setPaymentDate] = useState(() => {
-    return new Intl.DateTimeFormat('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    }).format(new Date()).split('/').reverse().join('-');
+    return new Intl.DateTimeFormat("en-IN", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+      .format(new Date())
+      .split("/")
+      .reverse()
+      .join("-");
   });
   const [isLoadingBills, setIsLoadingBills] = useState(false);
   const [selectedBills, setSelectedBills] = useState([]);
@@ -131,28 +190,55 @@ export default function Component() {
     if (fetchStatus === "idle") {
       dispatch(fetchDistributors());
     }
-  }, [fetchStatus]);
+  }, [fetchStatus, dispatch]);
+
+  const handleFetchPendingInvoices = useCallback(
+    async (distributorId) => {
+      setIsLoadingBills(true);
+      try {
+        const response = await fetch(
+          `${Backend_URL}/api/payment/pending-invoices/${distributorId}?bill_type=purchase`,
+          { credentials: "include" }
+        );
+        const data = await response.json();
+        setPendingInvoices(data);
+      } catch (error) {
+        // Handle error appropriately, e.g., show a toast notification
+      } finally {
+        setIsLoadingBills(false);
+      }
+    },
+    [setIsLoadingBills, setPendingInvoices]
+  );
+
+  useEffect(() => {
+    if (distributorId && distributors.length > 0) {
+      const distributor = distributors.find((d) => d._id === distributorId);
+      if (distributor) {
+        setSelecteddistributor(distributor);
+        setValue(distributor.name);
+        handleFetchPendingInvoices(distributor._id);
+      }
+    }
+  }, [
+    distributorId,
+    distributors,
+    handleFetchPendingInvoices,
+    setSelecteddistributor,
+    setValue,
+  ]);
 
   useEffect(() => {
     const fetchPaymentNumber = async () => {
-      const response = await fetch(`${Backend_URL}/api/payment/payment-number`, {credentials: "include"});
+      const response = await fetch(
+        `${Backend_URL}/api/payment/payment-number`,
+        { credentials: "include" }
+      );
       const data = await response.json();
       setPaymentOutNumber(data.paymentNumber);
-    }
+    };
     fetchPaymentNumber();
   }, []);
-
-  const handleFetchPendingInvoices = async(distributorId) => {
-    setIsLoadingBills(true);
-    try {
-      const response = await fetch(`${Backend_URL}/api/payment/pending-invoices/${distributorId}?bill_type=purchase`, {credentials: "include"});
-      const data = await response.json();
-      setPendingInvoices(data);
-    } catch (error) {
-    } finally {
-      setIsLoadingBills(false);
-    }
-  }
 
   const handledistributorSuggestionSelect = (suggestion) => {
     setSelecteddistributor(suggestion);
@@ -165,33 +251,47 @@ export default function Component() {
       const newSelectedBills = [...selectedBills, invoice];
       setSelectedBills(newSelectedBills);
       // Calculate total pending amount of selected bills
-      const totalPending = roundToTwo(newSelectedBills.reduce((total, bill) => 
-        total + (bill.grandTotal - bill.amountPaid), 0
-      ));
+      const totalPending = roundToTwo(
+        newSelectedBills.reduce(
+          (total, bill) => total + (bill.grandTotal - bill.amountPaid),
+          0
+        )
+      );
       setPaymentAmount(totalPending);
     } else {
-      const newSelectedBills = selectedBills.filter(bill => bill._id !== invoice._id);
+      const newSelectedBills = selectedBills.filter(
+        (bill) => bill._id !== invoice._id
+      );
       setSelectedBills(newSelectedBills);
-      const totalPending = roundToTwo(newSelectedBills.reduce((total, bill) => 
-        total + (bill.grandTotal - bill.amountPaid), 0
-      ));
+      const totalPending = roundToTwo(
+        newSelectedBills.reduce(
+          (total, bill) => total + (bill.grandTotal - bill.amountPaid),
+          0
+        )
+      );
       setPaymentAmount(totalPending);
     }
   };
 
   const handleSubmit = async () => {
     if (!selecteddistributor) {
-      toast({ title: 'Select distributor', variant: 'destructive',});
+      toast({ title: "Select distributor", variant: "destructive" });
       return;
     }
 
     if (paymentAmount <= 0) {
-      toast({ title: 'Payment amount must be greater than 0', variant: 'destructive',});
+      toast({
+        title: "Payment amount must be greater than 0",
+        variant: "destructive",
+      });
       return;
     }
 
     if (!paymentOutNumber) {
-      toast({ title: 'Please enter a payment out number', variant: 'destructive',});
+      toast({
+        title: "Please enter a payment out number",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -218,11 +318,13 @@ export default function Component() {
       <div className="grid md:grid-cols-2 gap-4 mb-4">
         <Card className="p-4 space-y-4">
           <div className="space-y-2">
-            <label className="text-sm text-muted-foreground">Distributor Name</label>
+            <label className="text-sm text-muted-foreground font-semibold">
+              Distributor Name
+            </label>
             <div className="relative">
               <SearchSuggestion
                 suggestions={distributors}
-                placeholder='Search distributor by name'
+                placeholder="Search distributor by name"
                 value={value}
                 setValue={setValue}
                 onSuggestionSelect={handledistributorSuggestionSelect}
@@ -231,41 +333,40 @@ export default function Component() {
               />
             </div>
           </div>
-          {
-            selecteddistributor && (
-              <div className="text-sm text-muted-foreground">
-                Current Balance: {formatCurrency(selecteddistributor?.currentBalance)}
-              </div>
-            )
-          }
+          {selecteddistributor && (
+            <div className="text-sm text-muted-foreground font-semibold">
+              Current Balance:{" "}
+              {formatCurrency(selecteddistributor?.currentBalance)}
+            </div>
+          )}
 
-          <div className="space-y-2">
-            <label className="text-sm text-muted-foreground">
+          <div className="space-y-2 font-semibold">
+            <label className="text-sm text-muted-foreground ">
               Payment Amount
             </label>
-            <Input 
-              type="number" 
-              value={paymentAmount || ''}
+            <Input
+              type="number"
+              value={paymentAmount || ""}
               disabled={selectedBills.length !== 0}
               onChange={(e) => {
                 const value = e.target.value;
-                setPaymentAmount(value === '' ? '' : Number(value));
+                setPaymentAmount(value === "" ? "" : Number(value));
               }}
-              placeholder="0" 
+              placeholder="0"
             />
           </div>
         </Card>
 
-        <Card className="p-4 space-y-4">
+        <Card className="p-4 space-y-4 font-semibold">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">
+              <label className="text-sm text-muted-foreground font-semibold">
                 Payment Date
               </label>
               <div className="relative">
                 <Calendar className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  type="date" 
+                <Input
+                  type="date"
                   value={paymentDate}
                   onChange={(e) => setPaymentDate(e.target.value)}
                   className="pl-8"
@@ -273,10 +374,10 @@ export default function Component() {
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">
+              <label className="text-sm text-muted-foreground ">
                 Payment Out Number
               </label>
-              <Input 
+              <Input
                 value={paymentOutNumber}
                 onChange={(e) => setPaymentOutNumber(e.target.value)}
                 placeholder="Enter..."
@@ -285,10 +386,12 @@ export default function Component() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm text-muted-foreground">Remarks</label>
-            <Textarea 
-              placeholder="Enter Remarks" 
-              className="resize-none" 
+            <label className="text-sm text-muted-foreground font-semibold">
+              Remarks
+            </label>
+            <Textarea
+              placeholder="Enter Remarks"
+              className="resize-none"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
@@ -296,7 +399,7 @@ export default function Component() {
         </Card>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4 font-semibold">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">
             Settle invoices with this payment
@@ -313,12 +416,14 @@ export default function Component() {
           <div className="border rounded-md">
             <div className="h-[400px] flex flex-col items-center justify-center text-muted-foreground">
               <Store className="h-12 w-12 mb-4" />
-              <p className="text-lg">Select a distributor to view pending invoices</p>
+              <p className="text-lg font-semibold">
+                Select a distributor to view pending invoices
+              </p>
             </div>
           </div>
         ) : (
-          <TableContent 
-            isLoadingBills={isLoadingBills} 
+          <TableContent
+            isLoadingBills={isLoadingBills}
             pendingInvoices={pendingInvoices}
             selectedBills={selectedBills}
             onBillSelection={handleBillSelection}
@@ -336,11 +441,11 @@ export default function Component() {
           amount: roundToTwo(paymentAmount),
           remarks: notes,
           paymentNumber: paymentOutNumber,
-          bills: selectedBills.map(bill => ({
+          bills: selectedBills.map((bill) => ({
             billId: bill._id,
             amount: roundToTwo(bill.grandTotal - bill.amountPaid),
-            billNumber: bill.invoiceNumber
-          }))
+            billNumber: bill.invoiceNumber,
+          })),
         }}
       />
     </div>

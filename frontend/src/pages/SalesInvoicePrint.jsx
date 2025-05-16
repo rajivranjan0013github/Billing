@@ -13,7 +13,7 @@ const SalesInvoicePrint = () => {
   const printRef = useRef();
   const [pageSize, setPageSize] = useState("A4"); // A4 or A5
   const invoiceData = location.state?.invoiceData;
-  const hospitalInfo = useSelector((state) => state.hospital.hospitalInfo);
+  const pharmacyInfo = useSelector((state) => state.pharmacy.pharmacyInfo);
 
   // Add useEffect for keyboard shortcut
   useEffect(() => {
@@ -26,7 +26,7 @@ const SalesInvoicePrint = () => {
 
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [pageSize, invoiceData, hospitalInfo]);
+  }, [pageSize, invoiceData, pharmacyInfo]);
 
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
@@ -173,10 +173,10 @@ const SalesInvoicePrint = () => {
               >
                 TAX INVOICE
               </div>
-              {hospitalInfo?.logoUsable && (
+              {pharmacyInfo?.logoUsable && (
                 <div className="w-auto h-[78px] p-1">
                   <img
-                    src={hospitalInfo.logoUsable}
+                    src={pharmacyInfo.logoUsable}
                     alt="Logo"
                     className="w-full h-full object-contain"
                   />
@@ -186,17 +186,17 @@ const SalesInvoicePrint = () => {
             {/* Business Info - Left Side */}
             <div className="col-span-3  gap-2 py-1 ">
               <h2 className="font-semibold uppercase text-xl">
-                {hospitalInfo?.name || "Your Pharmacy Name"}
+                {pharmacyInfo?.name || "Your Pharmacy Name"}
               </h2>
               <p className="text-sm  leading-snug">
-                {hospitalInfo?.address || "Pharmacy Address"}
+                {pharmacyInfo?.address || "Pharmacy Address"}
               </p>
               <div className="text-sm  space-x-6">
-                <span>Mob No: {hospitalInfo?.contactNumber}</span>
-                <span>DL: {hospitalInfo?.drugLicenceNumber}</span>
+                <span>Mob No: {pharmacyInfo?.contactNumber}</span>
+                <span>DL: {pharmacyInfo?.drugLicenceNumber}</span>
               </div>
               <div className="text-sm ">
-                <span>GSTIN: {hospitalInfo?.gstNumber}</span>
+                <span>GSTIN: {pharmacyInfo?.gstNumber}</span>
               </div>
             </div>
 

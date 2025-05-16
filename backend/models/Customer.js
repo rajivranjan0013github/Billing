@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { hospitalPlugin } from "../plugins/hospitalPlugin.js";
+import { pharmacyPlugin } from "../plugins/pharmacyPlugin.js";
 const customerSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -24,6 +24,12 @@ const customerSchema = new mongoose.Schema({
       ref: "Payment",
     },
   ],
+  ledger: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Ledger",
+    },
+  ],
   openBalance: { type: Number, default: 0 },
   currentBalance: { type: Number, default: 0 },
   createdAt: {
@@ -31,5 +37,5 @@ const customerSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
-customerSchema.plugin(hospitalPlugin);
+customerSchema.plugin(pharmacyPlugin);
 export const Customer = mongoose.model("Customer", customerSchema);

@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle} from "../../ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../../ui/dialog";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Button } from "../../ui/button";
@@ -23,13 +28,13 @@ const FORMDATAINITIAL = {
 
 // Input keys in order of navigation
 const inputKeys = [
-  'name',
-  'medicine_form',
-  'mfcName',
-  'pack',
-  'composition',
-  'location',
-  'submitButton'
+  "name",
+  "medicine_form",
+  "mfcName",
+  "pack",
+  "composition",
+  "location",
+  "submitButton",
 ];
 
 // Convert MEDICINE_FORMS to format expected by SearchSuggestion
@@ -41,7 +46,13 @@ const medicineFormSuggestions = MEDICINE_FORMS.map((form) => ({
   ...form,
 }));
 
-export default function AddNewInventory({ open, onOpenChange, inventoryDetails}) {
+export default function AddNewInventory({
+  open,
+  onOpenChange,
+  inventoryDetails,
+  onProductCreated,
+  initialProductName,
+}) {
   const inputRef = useRef([]);
   const { toast } = useToast();
   const dispatch = useDispatch();
@@ -60,7 +71,7 @@ export default function AddNewInventory({ open, onOpenChange, inventoryDetails})
         pack: inventoryDetails.pack || "",
         composition: inventoryDetails.composition || "",
         medicine_form: category,
-        location : inventoryDetails?.location || ''
+        location: inventoryDetails?.location || "",
       });
       setCategorySearchValue(
         form
@@ -71,6 +82,27 @@ export default function AddNewInventory({ open, onOpenChange, inventoryDetails})
       );
     }
   }, [inventoryDetails]);
+
+  // Effect to pre-fill name and focus when dialog opens for a new product with initialProductName
+  useEffect(() => {
+    if (open && !inventoryDetails && initialProductName) {
+      setFormData((prev) => ({ ...prev, name: initialProductName }));
+      // Delay focus slightly to ensure the input is rendered and ready
+      setTimeout(() => {
+        inputRef.current["name"]?.focus();
+      }, 0);
+    } else if (open && !inventoryDetails && !initialProductName) {
+      // If dialog opens for new product without initial name, focus the name field by default
+      setTimeout(() => {
+        inputRef.current["name"]?.focus();
+      }, 0);
+    }
+    // Reset form when dialog closes and it's not an update
+    if (!open && !inventoryDetails) {
+      setFormData(FORMDATAINITIAL);
+      setCategorySearchValue("");
+    }
+  }, [open, inventoryDetails, initialProductName, inputRef]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -87,7 +119,7 @@ export default function AddNewInventory({ open, onOpenChange, inventoryDetails})
 
     dispatch(action)
       .unwrap()
-      .then(() => {
+      .then((newlyCreatedProduct) => {
         toast({
           title: inventoryDetails
             ? `Product updated successfully`
@@ -95,6 +127,9 @@ export default function AddNewInventory({ open, onOpenChange, inventoryDetails})
           variant: "success",
         });
         onOpenChange(false);
+        if (onProductCreated && !inventoryDetails) {
+          onProductCreated(newlyCreatedProduct);
+        }
         if (!inventoryDetails) {
           setFormData(FORMDATAINITIAL);
           setCategorySearchValue("");
@@ -114,7 +149,7 @@ export default function AddNewInventory({ open, onOpenChange, inventoryDetails})
   };
 
   const handleKeyDown = (e, currentKey) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       const currentIndex = inputKeys.indexOf(currentKey);
       if (e.shiftKey) {
@@ -158,26 +193,34 @@ export default function AddNewInventory({ open, onOpenChange, inventoryDetails})
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="grid grid-cols-2 gap-5">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium text-gray-700">
+                <Label
+                  htmlFor="name"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Product Name<span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="name"
-                  data-dialog-autofocus="true"
+                  data-dialog-autofocus={
+                    !initialProductName && !inventoryDetails
+                  }
                   placeholder="Enter Product Name"
                   value={formData.name}
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
                   }
                   required
-                  onKeyDown={(e) => handleKeyDown(e, 'name')}
-                  ref={el => inputRef.current['name'] = el}
-                  className="h-9"
+                  onKeyDown={(e) => handleKeyDown(e, "name")}
+                  ref={(el) => (inputRef.current["name"] = el)}
+                  className="h-9 font-semibold"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="medicine-form" className="text-sm font-medium text-gray-700">
+                <Label
+                  htmlFor="medicine-form"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Product Category<span className="text-red-500">*</span>
                 </Label>
                 <SearchSuggestion
@@ -187,14 +230,17 @@ export default function AddNewInventory({ open, onOpenChange, inventoryDetails})
                   value={categorySearchValue}
                   setValue={setCategorySearchValue}
                   onSuggestionSelect={handleCategorySelect}
-                  onKeyDown={(e) => handleKeyDown(e, 'medicine_form')}
-                  ref={el => inputRef.current['medicine_form'] = el}
-                  className="h-9"
+                  onKeyDown={(e) => handleKeyDown(e, "medicine_form")}
+                  ref={(el) => (inputRef.current["medicine_form"] = el)}
+                  className="h-9 font-semibold"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="mfcName" className="text-sm font-medium text-gray-700">
+                <Label
+                  htmlFor="mfcName"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Company Name<span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -205,14 +251,17 @@ export default function AddNewInventory({ open, onOpenChange, inventoryDetails})
                   onChange={(e) =>
                     setFormData({ ...formData, mfcName: e.target.value })
                   }
-                  onKeyDown={(e) => handleKeyDown(e, 'mfcName')}
-                  ref={el => inputRef.current['mfcName'] = el}
-                  className="h-9"
+                  onKeyDown={(e) => handleKeyDown(e, "mfcName")}
+                  ref={(el) => (inputRef.current["mfcName"] = el)}
+                  className="h-9 font-semibold"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="pack" className="text-sm font-medium text-gray-700">
+                <Label
+                  htmlFor="pack"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Units Per Pack<span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -224,14 +273,17 @@ export default function AddNewInventory({ open, onOpenChange, inventoryDetails})
                   onChange={(e) =>
                     setFormData({ ...formData, pack: e.target.value })
                   }
-                  onKeyDown={(e) => handleKeyDown(e, 'pack')}
-                  ref={el => inputRef.current['pack'] = el}
-                  className="h-9"
+                  onKeyDown={(e) => handleKeyDown(e, "pack")}
+                  ref={(el) => (inputRef.current["pack"] = el)}
+                  className="h-9 font-semibold"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="composition" className="text-sm font-medium text-gray-700">
+                <Label
+                  htmlFor="composition"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Composition
                 </Label>
                 <Input
@@ -241,14 +293,17 @@ export default function AddNewInventory({ open, onOpenChange, inventoryDetails})
                   onChange={(e) =>
                     setFormData({ ...formData, composition: e.target.value })
                   }
-                  onKeyDown={(e) => handleKeyDown(e, 'composition')}
-                  ref={el => inputRef.current['composition'] = el}
-                  className="h-9"
+                  onKeyDown={(e) => handleKeyDown(e, "composition")}
+                  ref={(el) => (inputRef.current["composition"] = el)}
+                  className="h-9 font-semibold"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="location" className="text-sm font-medium text-gray-700">
+                <Label
+                  htmlFor="location"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Location
                 </Label>
                 <Input
@@ -258,20 +313,19 @@ export default function AddNewInventory({ open, onOpenChange, inventoryDetails})
                   onChange={(e) =>
                     setFormData({ ...formData, location: e.target.value })
                   }
-                  onKeyDown={(e) => handleKeyDown(e, 'location')}
-                  ref={el => inputRef.current['location'] = el}
-                  className="h-9"
+                  onKeyDown={(e) => handleKeyDown(e, "location")}
+                  ref={(el) => (inputRef.current["location"] = el)}
+                  className="h-9 font-semibold"
                 />
               </div>
             </div>
-
           </form>
         </div>
 
         <div className="p-3 bg-gray-100 border-t flex items-center justify-end gap-2">
           <Button
             variant="outline"
-            size='sm'
+            size="sm"
             onClick={(e) => {
               e.preventDefault();
               onOpenChange(false);
@@ -281,13 +335,13 @@ export default function AddNewInventory({ open, onOpenChange, inventoryDetails})
           >
             Cancel
           </Button>
-          <Button 
-            id="submitButton" 
+          <Button
+            id="submitButton"
             type="submit"
-            size='sm'
+            size="sm"
             onClick={handleSubmit}
             disabled={isLoading}
-            ref={el => inputRef.current['submitButton'] = el}
+            ref={(el) => (inputRef.current["submitButton"] = el)}
             className="bg-blue-600 text-white hover:bg-blue-700"
           >
             {isLoading

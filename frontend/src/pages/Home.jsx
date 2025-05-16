@@ -24,7 +24,7 @@ export default function LandingPage() {
   const location = useLocation();
   const featuresRef = useRef(null);
   const [formData, setFormData] = useState({
-    hospitalId: "",
+    pharmacyId: "",
     username: "", // Changed from email to username
     password: "",
   });
@@ -35,7 +35,7 @@ export default function LandingPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   // Add a new ref for the Hospital ID input
-  const hospitalIdRef = useRef(null);
+  const pharmacyIdRef = useRef(null);
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -64,7 +64,7 @@ export default function LandingPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (formData.hospitalId && formData.username && formData.password) {
+    if (formData.pharmacyId && formData.username && formData.password) {
       setIsLoading(true);
       try {
         await dispatch(loginUser(formData)).unwrap();
@@ -91,9 +91,9 @@ export default function LandingPage() {
 
   // Add a new function to handle the "Get Started" button click
   const handleGetStarted = () => {
-    if (hospitalIdRef.current) {
-      hospitalIdRef.current.focus();
-      hospitalIdRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (pharmacyIdRef.current) {
+      pharmacyIdRef.current.focus();
+      pharmacyIdRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   };
 
@@ -114,8 +114,8 @@ export default function LandingPage() {
   };
 
   const scrollToLoginForm = () => {
-    if (hospitalIdRef.current) {
-      hospitalIdRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (pharmacyIdRef.current) {
+      pharmacyIdRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   };
 
@@ -275,19 +275,19 @@ export default function LandingPage() {
                     <div className="space-y-2">
                       <label
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        htmlFor="hospitalId"
+                        htmlFor="pharmacyId"
                       >
                         Business ID
                       </label>
                       <Input
                         className="w-full flex h-10 rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
-                        id="hospitalId"
+                        id="pharmacyId"
                         placeholder="Enter your Business ID"
                         type="text"
                         required
-                        value={formData.hospitalId}
+                        value={formData.pharmacyId}
                         onChange={handleInputChange}
-                        ref={hospitalIdRef}
+                        ref={pharmacyIdRef}
                       />
                     </div>
                     <div className="space-y-2">

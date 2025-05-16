@@ -108,24 +108,24 @@ const Transactions = () => {
               <TableBody>
                 {transactions.map((transaction) => (
                   <TableRow key={transaction._id || `${transaction.paymentDate}-${transaction.amount}`} className='hover:bg-muted/50' onClick={() => navigate(`/payment/${transaction._id}`)}>
-                    <TableCell>
+                    <TableCell className="font-semibold">
                       {transaction.paymentDate ? new Date(transaction.paymentDate).toLocaleDateString('en-IN', {
                         day: '2-digit',
                         month: 'short',
                         year: 'numeric'
                       }) : 'N/A'}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="font-semibold">
                       {transaction.customerName || transaction.distributorName || 'N/A'}
                     </TableCell>
                     <TableCell>{transaction.paymentNumber || '---'}</TableCell>
-                    <TableCell className="">
+                    <TableCell className="font-semibold text-green-600">
                       {transaction.paymentType === 'Payment In' ? `₹ ${transaction.amount?.toLocaleString('en-IN')}` : '-'}
                     </TableCell>
-                    <TableCell className="">
+                    <TableCell className="font-semibold text-red-600">
                       {transaction.paymentType === 'Payment Out' ? `₹ ${transaction.amount?.toLocaleString('en-IN')}` : '-'}
                     </TableCell>
-                    <TableCell className="">
+                    <TableCell className="font-semibold">
                       <span className={transaction.accountBalance >= 0 ? "text-green-600" : "text-red-600"}>
                         ₹ {Math.abs(transaction.accountBalance)?.toLocaleString('en-IN')}
                       </span>

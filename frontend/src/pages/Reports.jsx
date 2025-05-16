@@ -280,7 +280,6 @@ const Reports = () => {
 
   // Function to handle product selection
   const handleProductSelect = (product) => {
-    console.log("Selected product in handler:", product);
     // Close the dialog
     setIsProductDialogOpen(false);
     // Set the selected product
@@ -468,7 +467,6 @@ const Reports = () => {
     const needsProductFilter = isFilterRequired("product");
     const needsExpiryDurationFilter = isFilterRequired("expiryRange");
     const needsThresholdFilter = selectedReportType[activeTab] === "low-stock";
-    console.log(needsExpiryDurationFilter);
 
     if (
       !needsDateRange &&

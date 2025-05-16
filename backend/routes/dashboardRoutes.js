@@ -59,7 +59,7 @@ router.get("/metrics", verifyToken, async (req, res) => {
       },
     ];
 
-    const salesSummaryResult = await SalesBill.aggregate(salesPipeline);
+    const salesSummaryResult = await SalesBill.pharmacyAwareAggregate(salesPipeline);
     const salesSummary =
       salesSummaryResult[0] || {
         totalRevenue: 0,
@@ -111,7 +111,7 @@ router.get("/metrics", verifyToken, async (req, res) => {
       },
     ];
 
-    const purchaseSummaryResult = await InvoiceSchema.aggregate(purchasePipeline);
+    const purchaseSummaryResult = await InvoiceSchema.pharmacyAwareAggregate(purchasePipeline);
     const purchaseSummary =
       purchaseSummaryResult[0] || {
         totalCost: 0,
@@ -188,8 +188,8 @@ router.get("/metrics", verifyToken, async (req, res) => {
     ];
 
     const [paymentInResult, paymentOutResult] = await Promise.all([
-      Payment.aggregate(paymentInPipeline),
-      Payment.aggregate(paymentOutPipeline),
+      Payment.pharmacyAwareAggregate(paymentInPipeline),
+      Payment.pharmacyAwareAggregate(paymentOutPipeline),
     ]);
 
     const totalPaymentIn = paymentInResult[0]?.totalCollection[0]?.totalAmount || 0;

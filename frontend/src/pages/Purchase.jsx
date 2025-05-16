@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Search, Users, X, ArrowLeft, Plus } from "lucide-react";
+import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
   Select,
@@ -47,6 +48,7 @@ export default function PurchasesTransactions() {
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
+  const isInitialDebounceEffectRun = useRef(true);
 
   // Get data from Redux
   const { purchaseBills: initialPurchaseBills, fetchStatus, searchStatus, error } = useSelector((state) => state.purchaseBill);
@@ -80,6 +82,13 @@ export default function PurchasesTransactions() {
   // Handle debounced search
   useEffect(() => {
     const handleDebouncedSearch = async () => {
+      if (isInitialDebounceEffectRun.current) {
+        isInitialDebounceEffectRun.current = false;
+        if (!debouncedSearchQuery.trim()) {
+          return;
+        }
+      }
+
       if (!debouncedSearchQuery.trim()) {
         await fetchPurchaseBillsData({
           startDate: dateRange.from,
@@ -693,19 +702,16 @@ export default function PurchasesTransactions() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "inline-flex items-center px-2 py-1 text-xs font-medium",
-                          {
-                            "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20":
-                              bill.paymentStatus === "paid",
-                            "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20":
-                              bill.paymentStatus === "due",
-                          }
-                        )}
+                      <Badge
+                        variant={
+                          bill.paymentStatus === "paid"
+                            ? "success"
+                            : "destructive"
+                        }
+                            
                       >
                         {bill.paymentStatus === "paid" ? "Paid" : "Due"}
-                      </span>
+                      </Badge>
                     </div>
                   </TableCell>
                 </TableRow>

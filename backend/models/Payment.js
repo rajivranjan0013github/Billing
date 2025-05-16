@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { hospitalPlugin } from "../plugins/hospitalPlugin.js";
+import { pharmacyPlugin } from "../plugins/pharmacyPlugin.js";
 
 const PaymentCounterSchema = new mongoose.Schema({
   year: {
@@ -10,6 +10,7 @@ const PaymentCounterSchema = new mongoose.Schema({
     default: 0,
   },
 });
+PaymentCounterSchema.plugin(pharmacyPlugin);
 
 const PaymentCounter = mongoose.model("PaymentCounter", PaymentCounterSchema);
 
@@ -73,21 +74,25 @@ const paymentSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    bills: [{
+    bills: [
+      {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Invoice",
       },
     ],
-    salesBills: [{
+    salesBills: [
+      {
         type: mongoose.Schema.Types.ObjectId,
         ref: "SalesBill",
       },
     ],
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "Staff" },
-    createdByName : String,
-  },{ timestamps: true});
+    createdByName: String,
+  },
+  { timestamps: true }
+);
 
-paymentSchema.plugin(hospitalPlugin);
+paymentSchema.plugin(pharmacyPlugin);
 
 paymentSchema.statics.getNextPaymentNumber = async function (session) {
   const currentYear = new Date().getFullYear();
