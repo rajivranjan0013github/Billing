@@ -116,10 +116,17 @@ export default function ProductSelector({
         behavior: "smooth",
         block: "nearest",
       });
-    } else if (e.key === "Enter" && selectedId) {
-      // Handle selection
-      handleSelect(filteredProducts.find((p) => p._id === selectedId));
-      onOpenChange(false);
+    } else if (e.key === "Enter") {
+      // If there are no filtered products, open the new item dialog
+      if (filteredProducts.length === 0) {
+        setNewItemDialogOpen(true);
+        return;
+      }
+      // Otherwise handle product selection as before
+      if (selectedId) {
+        handleSelect(filteredProducts.find((p) => p._id === selectedId));
+        onOpenChange(false);
+      }
     } else if (e.key === "Escape") {
       onOpenChange(false);
     }

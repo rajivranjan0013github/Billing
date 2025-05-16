@@ -142,7 +142,7 @@ const AppContent = () => {
               />
               <Route path="/payment/:paymentId" element={<PaymentDetails />} />
               <Route
-                path="/payment/create-payment"
+                path="/payment/create-payment/:distributorId?"
                 element={<CreatePayment />}
               />
               <Route

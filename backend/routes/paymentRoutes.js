@@ -1,12 +1,12 @@
-import express from 'express';
-import { Payment } from '../models/Payment.js';
-import mongoose from 'mongoose';
-import { InvoiceSchema } from '../models/InvoiceSchema.js';
+import express from "express";
+import { Payment } from "../models/Payment.js";
+import mongoose from "mongoose";
+import { InvoiceSchema } from "../models/InvoiceSchema.js";
 import { SalesBill } from "../models/SalesBill.js";
 import { Distributor } from "../models/Distributor.js";
 import AccountDetails from "../models/AccountDetails.js";
-import {Customer} from '../models/Customer.js'
-import { verifyToken } from '../middleware/authMiddleware.js';
+import { Customer } from "../models/Customer.js";
+import { verifyToken } from "../middleware/authMiddleware.js";
 import { Ledger } from "../models/ledger.js";
 const router = express.Router();
 
@@ -20,13 +20,13 @@ router.get("/payment-number", async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const { paymentType, startDate, endDate } = req.query;
-    
+
     // Build query object
     const query = {};
     if (paymentType) {
       query.paymentType = paymentType;
     }
-    
+
     // Add date range filter if provided with proper date formatting
     if (startDate || endDate) {
       query.paymentDate = {};
@@ -44,14 +44,14 @@ router.get("/", async (req, res) => {
       }
     }
 
-    const payments = await Payment.find(query)
-      .sort({ createdAt: -1 })
-      .lean();
-      
+    const payments = await Payment.find(query).sort({ createdAt: -1 }).lean();
+
     res.status(200).json(payments);
   } catch (error) {
     console.error("Error fetching payments:", error);
-    res.status(500).json({ message: "Error fetching payments", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error fetching payments", error: error.message });
   }
 });
 
@@ -63,14 +63,14 @@ router.get("/search", async (req, res) => {
       $or: [
         { paymentNumber: { $regex: query, $options: "i" } },
         { distributorName: { $regex: query, $options: "i" } },
-        { customerName: { $regex: query, $options: "i" } }
-      ]
+        { customerName: { $regex: query, $options: "i" } },
+      ],
     };
 
     const payments = await Payment.find(searchQuery)
       .sort({ createdAt: -1 })
       .lean();
-      
+
     res.status(200).json(payments);
   } catch (error) {
     res.status(500).json({
@@ -87,19 +87,19 @@ router.get("/pending-invoices/:distributorId", async (req, res) => {
   try {
     const { distributorId } = req.params;
     const { bill_type } = req.query;
-    
+
     if (!mongoose.Types.ObjectId.isValid(distributorId)) {
       return res.status(400).json({ message: "Invalid distributor ID format" });
     }
 
     let pendingInvoices = [];
-    
+
     if (bill_type === "purchase") {
       pendingInvoices = await InvoiceSchema.find(
-        { 
-          distributorId: new mongoose.Types.ObjectId(distributorId), 
+        {
+          distributorId: new mongoose.Types.ObjectId(distributorId),
           paymentStatus: "due",
-          status: "active"  // Only get active invoices
+          status: "active", // Only get active invoices
         },
         {
           _id: 1,
@@ -108,23 +108,28 @@ router.get("/pending-invoices/:distributorId", async (req, res) => {
           paymentDueDate: 1,
           grandTotal: 1,
           amountPaid: 1,
-          paymentStatus: 1
+          paymentStatus: 1,
         }
-      ).sort({ invoiceDate: -1 }).session(session);
+      )
+        .sort({ invoiceDate: -1 })
+        .session(session);
     } else if (bill_type === "sales") {
-      pendingInvoices = await SalesBill.find(
-        { 
-          distributor: new mongoose.Types.ObjectId(distributorId), 
-          paymentStatus: "due" 
-        }
-      ).session(session);
+      pendingInvoices = await SalesBill.find({
+        distributor: new mongoose.Types.ObjectId(distributorId),
+        paymentStatus: "due",
+      }).session(session);
     }
-    
+
     await session.commitTransaction();
     res.status(200).json(pendingInvoices);
   } catch (error) {
     await session.abortTransaction();
-    res.status(500).json({ message: "Error fetching pending invoices", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Error fetching pending invoices",
+        error: error.message,
+      });
   } finally {
     session.endSession();
   }
@@ -134,9 +139,22 @@ router.get("/pending-invoices/:distributorId", async (req, res) => {
 router.post("/make-payment", verifyToken, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
-  
+
   try {
-    const { bills,  distributorId,  remarks,  paymentType, paymentMethod,  amount,  paymentDate, chequeNumber, chequeDate, micrCode, transactionNumber, accountId} = req.body;
+    const {
+      bills,
+      distributorId,
+      remarks,
+      paymentType,
+      paymentMethod,
+      amount,
+      paymentDate,
+      chequeNumber,
+      chequeDate,
+      micrCode,
+      transactionNumber,
+      accountId,
+    } = req.body;
 
     // Enhanced validation
     if (!paymentType || !paymentMethod || !distributorId || !amount) {
@@ -145,11 +163,15 @@ router.post("/make-payment", verifyToken, async (req, res) => {
 
     // Validate payment method specific fields
     if (paymentMethod === "CHEQUE" && (!chequeNumber || !chequeDate)) {
-      return res.status(400).json({ message: "Cheque number and date required for cheque payments" });
+      return res
+        .status(400)
+        .json({
+          message: "Cheque number and date required for cheque payments",
+        });
     }
 
     // Fetch distributor
-    const model = paymentType === 'Payment Out' ? Distributor : Customer;
+    const model = paymentType === "Payment Out" ? Distributor : Customer;
     const distributorDoc = await model.findById(distributorId).session(session);
     if (!distributorDoc) {
       return res.status(404).json({ message: "Distributor not found" });
@@ -174,13 +196,14 @@ router.post("/make-payment", verifyToken, async (req, res) => {
       accountId,
       status: paymentMethod === "CHEQUE" ? "PENDING" : "COMPLETED",
       createdBy: req.user._id,
-      createByName : req.user.name,
+      createByName: req.user.name,
     });
 
     // Handle account updates based on payment method
     if (paymentMethod === "CHEQUE") {
       // For cheque payments, we only update distributor balance as it's a payment promise
-      distributorDoc.currentBalance += paymentType === "Payment Out" ? amount : -amount;
+      distributorDoc.currentBalance +=
+        paymentType === "Payment Out" ? amount : -amount;
     } else {
       // For non-cheque payments (CASH, BANK, UPI), validate and update account
       if (!accountId) {
@@ -195,13 +218,15 @@ router.post("/make-payment", verifyToken, async (req, res) => {
       }
 
       // Update account balance
-      const transactionAmount = paymentType === "Payment Out" ? -amount : amount;
+      const transactionAmount =
+        paymentType === "Payment Out" ? -amount : amount;
       account.balance += transactionAmount;
 
       await account.save({ session });
 
       // Update distributor balanceArrowLeft
-      distributorDoc.currentBalance += paymentType === "Payment Out" ? amount : -amount;
+      distributorDoc.currentBalance +=
+        paymentType === "Payment Out" ? amount : -amount;
     }
 
     let remainingAmount = amount;
@@ -209,7 +234,8 @@ router.post("/make-payment", verifyToken, async (req, res) => {
     for (const bill of bills) {
       if (remainingAmount <= 0) break;
 
-      const BillModel = paymentType === "Payment Out" ? InvoiceSchema : SalesBill;
+      const BillModel =
+        paymentType === "Payment Out" ? InvoiceSchema : SalesBill;
       const billDoc = await BillModel.findById(bill.billId).session(session);
 
       if (!billDoc) {
@@ -234,16 +260,17 @@ router.post("/make-payment", verifyToken, async (req, res) => {
       } else {
         payment.salesBills.push(bill.billId);
       }
-      
+
       await billDoc.save({ session });
     }
 
     await payment.save({ session });
+    distributorDoc.payments.push(payment._id);
     await distributorDoc.save({ session });
 
     const ledgerEntry = new Ledger({
       distributorId: distributorId,
-      customerId: distributorDoc._id, 
+      customerId: distributorDoc._id,
       balance: distributorDoc.currentBalance,
       invoiceNumber: payment.paymentNumber,
       description: paymentType,
@@ -254,30 +281,37 @@ router.post("/make-payment", verifyToken, async (req, res) => {
       ledgerEntry.credit = payment.amount;
     }
     await ledgerEntry.save({ session });
-    
+
     await session.commitTransaction();
     res.status(201).json(payment);
-
   } catch (error) {
     await session.abortTransaction();
     console.error("Error creating payment:", error);
-    res.status(500).json({ 
-      message: "Error creating payment", 
-      error: error.message 
+    res.status(500).json({
+      message: "Error creating payment",
+      error: error.message,
     });
   } finally {
     session.endSession();
   }
 });
 
-// 
+//
 router.get("/details/:paymentId", async (req, res) => {
   try {
     const { paymentId } = req.params;
-    const payment = await Payment.findById(paymentId).populate("bills").populate("salesBills").lean();
+    const payment = await Payment.findById(paymentId)
+      .populate("bills")
+      .populate("salesBills")
+      .lean();
     res.status(200).json(payment);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching payment details", error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Error fetching payment details",
+        error: error.message,
+      });
   }
 });
 
@@ -295,12 +329,18 @@ router.delete("/:paymentId", async (req, res) => {
       return res.status(404).json({ message: "Payment not found" });
     }
 
-    const model = payment.paymentType === "Payment Out" ? Distributor : Customer;
+    const model =
+      payment.paymentType === "Payment Out" ? Distributor : Customer;
 
     // Find distributor and revert balance
-    const distributor = await model.findById(payment.distributorId).session(session);
+    const distributor = await model
+      .findById(payment.distributorId)
+      .session(session);
     if (distributor) {
-      distributor.currentBalance -= payment.paymentType === "Payment Out" ? payment.amount : -payment.amount;
+      distributor.currentBalance -=
+        payment.paymentType === "Payment Out"
+          ? payment.amount
+          : -payment.amount;
       const ledgerEntry = new Ledger({
         distributorId: distributor._id,
         customerId: distributor._id,
@@ -308,9 +348,9 @@ router.delete("/:paymentId", async (req, res) => {
         description: payment.paymentType + " Deleted",
         invoiceNumber: payment.paymentNumber,
       });
-      if(payment.paymentType === "Payment Out"){
+      if (payment.paymentType === "Payment Out") {
         ledgerEntry.credit = payment.amount;
-      }else{
+      } else {
         ledgerEntry.debit = payment.amount;
       }
       await ledgerEntry.save({ session });
@@ -319,10 +359,15 @@ router.delete("/:paymentId", async (req, res) => {
 
     // Revert account balance if it's not a pending cheque payment
     if (payment.paymentMethod !== "CHEQUE" || payment.status === "COMPLETED") {
-      const account = await AccountDetails.findById(payment.accountId).session(session);
+      const account = await AccountDetails.findById(payment.accountId).session(
+        session
+      );
       if (account) {
         // Reverse the original transaction
-        const transactionAmount = payment.paymentType === "Payment Out" ? payment.amount : -payment.amount;
+        const transactionAmount =
+          payment.paymentType === "Payment Out"
+            ? payment.amount
+            : -payment.amount;
         account.balance -= transactionAmount;
         await account.save({ session });
       }
@@ -334,8 +379,11 @@ router.delete("/:paymentId", async (req, res) => {
         const bill = await InvoiceSchema.findById(billId).session(session);
         if (bill) {
           bill.amountPaid -= payment.amount;
-          bill.paymentStatus = bill.amountPaid >= bill.grandTotal ? "paid" : "due";
-          bill.payments = bill.payments.filter(pid => pid.toString() !== paymentId);
+          bill.paymentStatus =
+            bill.amountPaid >= bill.grandTotal ? "paid" : "due";
+          bill.payments = bill.payments.filter(
+            (pid) => pid.toString() !== paymentId
+          );
           await bill.save({ session });
         }
       }
@@ -344,8 +392,11 @@ router.delete("/:paymentId", async (req, res) => {
         const bill = await SalesBill.findById(billId).session(session);
         if (bill) {
           bill.amountPaid -= payment.amount;
-          bill.paymentStatus = bill.amountPaid >= bill.grandTotal ? "paid" : "due";
-          bill.payments = bill.payments.filter(pid => pid.toString() !== paymentId);
+          bill.paymentStatus =
+            bill.amountPaid >= bill.grandTotal ? "paid" : "due";
+          bill.payments = bill.payments.filter(
+            (pid) => pid.toString() !== paymentId
+          );
           await bill.save({ session });
         }
       }
@@ -356,13 +407,12 @@ router.delete("/:paymentId", async (req, res) => {
 
     await session.commitTransaction();
     res.status(200).json({ message: "Payment deleted successfully" });
-
   } catch (error) {
     await session.abortTransaction();
     console.error("Error deleting payment:", error);
-    res.status(500).json({ 
-      message: "Error deleting payment", 
-      error: error.message 
+    res.status(500).json({
+      message: "Error deleting payment",
+      error: error.message,
     });
   } finally {
     session.endSession();

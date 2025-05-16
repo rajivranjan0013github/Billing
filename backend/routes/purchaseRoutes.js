@@ -101,6 +101,7 @@ router.delete("/draft/:id", verifyToken, async (req, res) => {
 router.post("/", verifyToken, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
+  let paymentDoc; // Hoist paymentDoc declaration
 
   try {
     const { _id, invoiceType, distributorId, payment, ...details } = req.body;
@@ -156,7 +157,7 @@ router.post("/", verifyToken, async (req, res) => {
       await account.save({ session });
 
       // Create payment record WITH account balance
-      const paymentDoc = new Payment({
+      paymentDoc = new Payment({
         paymentNumber,
         amount: payment.amount,
         paymentType: "Payment Out",
@@ -179,31 +180,25 @@ router.post("/", verifyToken, async (req, res) => {
 
       // For cheque payments, we don't need to validate account
       if (payment?.paymentMethod === "CHEQUE") {
-        // Update distributor balance since it's still a payment promise
-        distributorDetails.currentBalance =
-          (distributorDetails.currentBalance || 0) - dueAmount;
-        await distributorDetails.save({ session });
+        await paymentDoc.save({ session });
       } else {
         // For non-cheque payments, validate and update account
         if (!payment?.accountId) {
           throw new Error("Account ID is required for non-cheque payments");
         }
-
-        // Update distributor balance
-        distributorDetails.currentBalance =
-          (distributorDetails.currentBalance || 0) - dueAmount;
-        await distributorDetails.save({ session });
+        await paymentDoc.save({ session });
       }
 
-      await paymentDoc.save({ session });
       newInvoice.payments.push(paymentDoc._id);
     }
 
-    // Update distributor balance
+    // Update distributor balance - MOVED HERE after all payment processing
+    const previousBalance = distributorDetails.currentBalance || 0;
+    distributorDetails.currentBalance =
+      previousBalance - (details.grandTotal - (payment?.amount || 0));
 
     const ledgerEntry = new Ledger({
       distributorId: distributorId,
-      customerId: distributorDetails._id,
       balance: distributorDetails.currentBalance,
       debit: payment?.amount || 0,
       credit: details.grandTotal,
@@ -211,6 +206,18 @@ router.post("/", verifyToken, async (req, res) => {
       description: "Purchase Bill",
     });
     await ledgerEntry.save({ session });
+
+    // Push all relevant IDs to distributorDetails
+    if (newInvoice?._id) {
+      distributorDetails.invoices.push(newInvoice._id);
+    }
+    if (paymentDoc?._id) {
+      distributorDetails.payments.push(paymentDoc._id);
+    }
+    if (ledgerEntry?._id) {
+      distributorDetails.ledger.push(ledgerEntry._id);
+    }
+    await distributorDetails.save({ session });
 
     // Process inventory updates
     for (const product of req.body.products) {
@@ -333,6 +340,7 @@ router.post("/", verifyToken, async (req, res) => {
 router.post("/edit", verifyToken, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
+  let paymentDoc; // Hoist paymentDoc declaration
 
   try {
     const { invoiceType, distributorId, _id, payment, ...details } = req.body;
@@ -521,6 +529,7 @@ router.post("/edit", verifyToken, async (req, res) => {
     });
 
     // Handle new payment if provided
+    let distributorNeedsSave = false;
     if (payment && payment.amount > 0) {
       const paymentNumber = await Payment.getNextPaymentNumber(session);
 
@@ -535,7 +544,8 @@ router.post("/edit", verifyToken, async (req, res) => {
       account.balance -= payment?.amount || 0;
       await account.save({ session });
 
-      const paymentDoc = new Payment({
+      // Create payment record WITH account balance
+      paymentDoc = new Payment({
         paymentNumber,
         amount: payment.amount,
         paymentType: "Payment Out",
@@ -554,22 +564,31 @@ router.post("/edit", verifyToken, async (req, res) => {
         bills: [existingInvoice._id],
       });
 
+      await paymentDoc.save({ session });
+      existingInvoice.payments.push(paymentDoc._id);
+
+      if (paymentDoc?._id) {
+        distributorDetails.payments.push(paymentDoc._id);
+        distributorNeedsSave = true;
+      }
+
+      // Original logic for distributor balance update
       if (payment.paymentMethod === "CHEQUE") {
         distributorDetails.currentBalance =
-          (distributorDetails.currentBalance || 0) - dueAmount;
-        await distributorDetails.save({ session });
+          (distributorDetails.currentBalance || 0) - dueAmount; // Note: dueAmount from invoice, not payment.amount. Review if this is intended.
+        distributorNeedsSave = true;
       } else {
         if (!payment.accountId) {
           throw new Error("Account ID is required for non-cheque payments");
         }
-
         distributorDetails.currentBalance =
-          (distributorDetails.currentBalance || 0) - dueAmount;
-        await distributorDetails.save({ session });
+          (distributorDetails.currentBalance || 0) - dueAmount; // Note: dueAmount
+        distributorNeedsSave = true;
       }
+    }
 
-      await paymentDoc.save({ session });
-      existingInvoice.payments.push(paymentDoc._id);
+    if (distributorNeedsSave) {
+      await distributorDetails.save({ session });
     }
 
     // Save the updated invoice
@@ -741,6 +760,7 @@ router.post("/search-by-invoice", verifyToken, async (req, res) => {
 router.post("/return", verifyToken, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
+  let refundPayment; // Hoist refundPayment
 
   try {
     const {
@@ -855,24 +875,6 @@ router.post("/return", verifyToken, async (req, res) => {
     }
 
     // Handle Distributor Balance & Ledger for the return value itself
-    if (distributorDetails) {
-      const returnAmount = Number(billSummary.grandTotal) || 0;
-      if (returnAmount > 0) {
-        distributorDetails.currentBalance =
-          (distributorDetails.currentBalance || 0) + returnAmount;
-        await distributorDetails.save({ session });
-
-        const ledgerEntryForReturn = new Ledger({
-          distributorId: distributorDetails._id,
-          balance: distributorDetails.currentBalance,
-          debit: returnAmount,
-          credit: 0,
-          invoiceNumber: purchaseReturn.debitNoteNumber,
-          description: `Goods returned via Debit Note: ${purchaseReturn.debitNoteNumber} to ${distributorDetails.name}`,
-        });
-        await ledgerEntryForReturn.save({ session });
-      }
-    }
 
     // Handle Refund (Payment In from Distributor or Unspecified Source)
     if (refundDetails && refundDetails.amount > 0) {
@@ -896,7 +898,7 @@ router.post("/return", verifyToken, async (req, res) => {
       }
 
       const paymentNumber = await Payment.getNextPaymentNumber(session);
-      const refundPayment = new Payment({
+      refundPayment = new Payment({
         paymentNumber,
         amount: refundAmount,
         paymentType: "Payment In",
@@ -921,29 +923,23 @@ router.post("/return", verifyToken, async (req, res) => {
       await refundPayment.save({ session });
       purchaseReturn.payments.push(refundPayment._id);
 
-      // Ledger entry for refund - created regardless of distributorDetails for the PR itself.
-      // Distributor-specific balance update and ledger fields are conditional.
-      let refundLedgerBalance = 0; // Default balance for ledger if no specific distributor
-      let refundLedgerDistributorId = null;
-      let refundLedgerDescription = `Refund received for Debit Note ${purchaseReturn.debitNoteNumber} (Unspecified Source) via Payment: ${refundPayment.paymentNumber}`;
-
+      // Update distributor balance and create ledger entry for refund
       if (distributorDetails) {
         distributorDetails.currentBalance -= refundAmount;
-        await distributorDetails.save({ session });
-        refundLedgerBalance = distributorDetails.currentBalance;
-        refundLedgerDistributorId = distributorDetails._id;
-        refundLedgerDescription = `Refund received for Debit Note ${purchaseReturn.debitNoteNumber} from ${distributorDetails.name} via Payment: ${refundPayment.paymentNumber}`;
-      }
+        distributorDetails.payments.push(refundPayment._id);
 
-      const ledgerEntryForRefund = new Ledger({
-        distributorId: refundLedgerDistributorId,
-        balance: refundLedgerBalance,
-        debit: 0,
-        credit: refundAmount,
-        invoiceNumber: refundPayment.paymentNumber,
-        description: refundLedgerDescription,
-      });
-      await ledgerEntryForRefund.save({ session });
+        const ledgerEntryForRefund = new Ledger({
+          distributorId: distributorDetails._id,
+          balance: distributorDetails.currentBalance,
+          debit: 0,
+          credit: refundAmount,
+          invoiceNumber: refundPayment.paymentNumber,
+          description: `Refund payment for Debit Note ${purchaseReturn.debitNoteNumber}`,
+        });
+        await ledgerEntryForRefund.save({ session });
+        distributorDetails.ledger.push(ledgerEntryForRefund._id);
+        await distributorDetails.save({ session });
+      }
     }
 
     // Save purchase return
@@ -965,7 +961,6 @@ router.post("/return", verifyToken, async (req, res) => {
 
 // Get next debit note number
 
-
 // Get all purchase returns
 router.get("/returns", verifyToken, async (req, res) => {
   try {
@@ -976,8 +971,10 @@ router.get("/returns", verifyToken, async (req, res) => {
     // Add date range to query if provided
     if (startDate && endDate) {
       query.returnDate = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
+        // Set start date to beginning of day (00:00:00)
+        $gte: new Date(new Date(startDate).setHours(0, 0, 0, 0)),
+        // Set end date to end of day (23:59:59.999)
+        $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)),
       };
     }
 
@@ -1112,6 +1109,10 @@ router.delete("/:id", verifyToken, async (req, res) => {
             await account.save({ session });
           }
         }
+        if (distributor) {
+          // Ensure distributor exists before pulling
+          distributor.payments.pull(payment._id); // Remove payment ID from distributor
+        }
       }
 
       // Delete all associated payments
@@ -1123,12 +1124,65 @@ router.delete("/:id", verifyToken, async (req, res) => {
       const distributor = await Distributor.findById(
         invoice.distributorId
       ).session(session);
-      const dueAmount = Number(invoice.grandTotal) - Number(invoice.amountPaid);
       if (distributor) {
-        distributor.currentBalance =
-          (distributor.currentBalance || 0) + dueAmount;
-        await distributor.save({ session });
+        const previousBalance = distributor.currentBalance || 0;
+        const dueAmount =
+          Number(invoice.grandTotal) - Number(invoice.amountPaid);
+        distributor.currentBalance = previousBalance + dueAmount;
       }
+
+      // Add a ledger entry for the deletion
+      const ledgerEntryForDeletion = new Ledger({
+        distributorId: distributor._id,
+        balance: distributor.currentBalance,
+        debit: invoice.grandTotal,
+        credit: invoice.amountPaid,
+        invoiceNumber: invoice.invoiceNumber,
+        description: `Purchase invoice ${invoice.invoiceNumber} deleted`,
+      });
+      await ledgerEntryForDeletion.save({ session });
+    } else {
+      // Case where there were no payments, but invoice is deleted
+      const distributor = await Distributor.findById(
+        invoice.distributorId
+      ).session(session);
+      if (distributor) {
+        const previousBalance = distributor.currentBalance || 0;
+        distributor.currentBalance =
+          previousBalance + Number(invoice.grandTotal);
+        const ledgerEntryForDeletion = new Ledger({
+          distributorId: distributor._id,
+          balance: distributor.currentBalance,
+          debit: invoice.grandTotal,
+          credit: 0,
+          invoiceNumber: invoice.invoiceNumber,
+          description: `Purchase invoice ${invoice.invoiceNumber} deleted (no prior payments)`,
+        });
+        await ledgerEntryForDeletion.save({ session });
+      }
+    }
+
+    const distributorToSave = await Distributor.findById(
+      invoice.distributorId
+    ).session(session);
+    if (distributorToSave) {
+      distributorToSave.invoices.pull(invoice._id);
+
+      // Find the ledger entry for deletion that was just created
+      // This assumes invoiceNumber and description make it unique enough for this context
+      const deletionLedgerCriteria = {
+        invoiceNumber: invoice.invoiceNumber,
+        description: { $regex: `${invoice.invoiceNumber} deleted` },
+      };
+      const ledgerEntryForDeletionJustSaved = await Ledger.findOne(
+        deletionLedgerCriteria
+      ).session(session);
+
+      if (ledgerEntryForDeletionJustSaved?._id) {
+        distributorToSave.ledger.push(ledgerEntryForDeletionJustSaved._id);
+      }
+
+      await distributorToSave.save({ session });
     }
 
     // Finally delete the invoice

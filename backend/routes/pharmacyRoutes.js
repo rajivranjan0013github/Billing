@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import cookie from "cookie";
 import { identifyPharmacy } from "../middleware/pharmacyMiddleware.js";
 import { presignedUrl } from "../s3.js";
+import AccountDetails from "../models/AccountDetails.js";
 
 const router = express.Router();
 
@@ -30,11 +31,54 @@ router.post("/create", verifySuperAdmin, async (req, res) => {
 
     const savedPharmacy = await newPharmacy.save({ session });
 
+    // Create default accounts for the pharmacy
+    const currentDate = new Date();
+
+    // Create Cash Account
+    const cashAccount = new AccountDetails({
+      accountType: "CASH",
+      balance: 0,
+      cashDetails: {
+        openingBalance: 0,
+        openingBalanceDate: currentDate,
+      },
+    });
+    await cashAccount.save({ session });
+
+    // Create Bank Account
+    const bankAccount = new AccountDetails({
+      accountType: "BANK",
+      balance: 0,
+      bankDetails: {
+        bankName: "",
+        accountNumber: "",
+        ifscCode: "",
+        accountHolderName: "",
+        type: "SAVINGS",
+        openingBalance: 0,
+        openingBalanceDate: currentDate,
+      },
+    });
+    await bankAccount.save({ session });
+
+    // Create UPI Account
+    const upiAccount = new AccountDetails({
+      accountType: "UPI",
+      balance: 0,
+      upiDetails: {
+        upiId: "",
+        upiName: "",
+        openingBalance: 0,
+        openingBalanceDate: currentDate,
+      },
+    });
+    await upiAccount.save({ session });
+
     await session.commitTransaction();
     session.endSession();
 
     res.status(201).json({
-      message: "Pharmacy created successfully",
+      message: "Pharmacy created successfully with default accounts",
       pharmacy: savedPharmacy,
     });
   } catch (error) {
@@ -59,12 +103,10 @@ router.get("/getPharmacy", async (req, res) => {
     }
     res.status(200).json(pharmacy);
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Error fetching pharmacy details",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error fetching pharmacy details",
+      error: error.message,
+    });
   }
 });
 

@@ -145,7 +145,7 @@ export default function PaymentDetails() {
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">PAYMENT AMOUNT</p>
-              <p className="font-medium">₹{formatCurrency(paymentDetails.amount)}</p>
+              <p className="font-medium">{formatCurrency(paymentDetails.amount)}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">PAYMENT NUMBER</p>

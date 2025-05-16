@@ -22,7 +22,7 @@ import settingsRoutes from "./routes/settingsRoutes.js";
 dotenv.config({ path: "./config/config.env" });
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3002;
 
 // Get the directory name of the current module
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

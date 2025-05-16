@@ -24,10 +24,10 @@ const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
   const [isManageInventoryOpen, setIsManageInventoryOpen] = useState(false);
 
   useEffect(() => {
-    if (itemsStatus === "idle") {
+    
       dispatch(fetchItems());
-    }
-  }, [dispatch, itemsStatus]);
+    
+  }, [dispatch]);
 
   useEffect(() => {
     if (items.length > 0 && !selectedItemId) {

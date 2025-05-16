@@ -84,10 +84,9 @@ router.post("/", verifyToken, async (req, res) => {
 
       // For cheque payments, we don't need to validate account
       if (payment.paymentMethod === "CHEQUE") {
-        // Update distributor balance since it's still a payment promise
+        // No balance update here - will be done at the end
         if (customerDetails) {
-          customerDetails.currentBalance =
-            (customerDetails.currentBalance || 0) + payment.amount;
+          customerDetails.payments.push(paymentDoc._id);
         }
       } else {
         // For non-cheque payments, validate and update account
@@ -105,31 +104,18 @@ router.post("/", verifyToken, async (req, res) => {
 
         // Update account balance
         account.balance += payment.amount;
-
         paymentDoc.accountBalance = account.balance;
-
         await account.save({ session });
 
-        // Update distributor balance if not cash customer
+        // Update customer payments array if not cash customer
         if (customerDetails) {
-          customerDetails.currentBalance =
-            (customerDetails.currentBalance || 0) +
-            (details.grandTotal || 0) -
-            payment.amount;
           customerDetails.payments.push(paymentDoc._id);
         }
       }
 
       await paymentDoc.save({ session });
       newSalesBill.payments.push(paymentDoc._id);
-      // newSalesBill.payment = payment;
-    } else {
-      if (customerDetails) {
-        customerDetails.currentBalance =
-          (customerDetails.currentBalance || 0) + (details.grandTotal || 0);
-      }
     }
-
     // Process inventory updates
     for (const product of details.products) {
       const {
@@ -222,16 +208,23 @@ router.post("/", verifyToken, async (req, res) => {
     const savedSalesBill = await newSalesBill.save({ session });
 
     if (customerDetails) {
+      const previousBalance = customerDetails.currentBalance || 0;
+      // For sales: balance increases by grand total and decreases by payment
+      customerDetails.currentBalance =
+        previousBalance + details.grandTotal - (payment?.amount || 0);
+
       const ledgerEntry = new Ledger({
-        
         customerId: customerDetails._id,
         balance: customerDetails.currentBalance,
-        debit: details.grandTotal,
-        credit: payment?.amount || 0,
+        credit: payment?.amount || 0, // Payment received reduces balance
+        debit: details.grandTotal, // Sales amount increases balance
         invoiceNumber: newSalesBill.invoiceNumber,
         description: "Sales Bill",
       });
       await ledgerEntry.save({ session });
+      if (ledgerEntry?._id) {
+        customerDetails.ledger.push(ledgerEntry._id);
+      }
       await customerDetails.save({ session });
     }
 
@@ -521,10 +514,9 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
 
       // For cheque payments, we don't need to validate account
       if (payment.paymentMethod === "CHEQUE") {
-        // Update customer balance since it's still a payment promise
+        // No balance update here - will be done at the end
         if (customerDetails) {
-          customerDetails.currentBalance =
-            (customerDetails.currentBalance || 0) + payment.amount;
+          customerDetails.payments.push(paymentDoc._id);
         }
       } else {
         // For non-cheque payments, validate and update account
@@ -545,12 +537,8 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
         paymentDoc.accountBalance = account.balance;
         await account.save({ session });
 
-        // Update customer balance if not cash customer
+        // Update customer payments array if not cash customer
         if (customerDetails) {
-          customerDetails.currentBalance =
-            (customerDetails.currentBalance || 0) +
-            (details.grandTotal || 0) -
-            payment.amount;
           customerDetails.payments.push(paymentDoc._id);
         }
       }
@@ -570,15 +558,23 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
         customerDetails.invoices.push(existingInvoice._id);
       }
 
+      const previousBalance = customerDetails.currentBalance || 0;
+      // For edited sales: balance calculation follows same principle
+      customerDetails.currentBalance =
+        previousBalance + details.grandTotal - (payment?.amount || 0);
+
       const ledgerEntry = new Ledger({
         customerId: customerDetails._id,
         balance: customerDetails.currentBalance,
-        debit: details.grandTotal,
-        credit: payment?.amount || 0,
+        credit: payment?.amount || 0, // New payment received
+        debit: details.grandTotal, // New sales amount
         invoiceNumber: existingInvoice.invoiceNumber,
         description: "Sales Bill Edit",
       });
       await ledgerEntry.save({ session });
+      if (ledgerEntry?._id) {
+        customerDetails.ledger.push(ledgerEntry._id);
+      }
       await customerDetails.save({ session });
     }
 
@@ -664,6 +660,36 @@ router.delete("/invoice/:id", verifyToken, async (req, res) => {
 
     // Delete the invoice
     await SalesBill.findByIdAndDelete(id).session(session);
+
+    // Add ledger entry for deletion
+    if (!invoice.is_cash_customer && invoice.customerId) {
+      const customerDetails = await Customer.findById(
+        invoice.customerId
+      ).session(session);
+      if (customerDetails) {
+        // Remove invoice ID from customer invoices array
+        customerDetails.invoices.pull(invoice._id);
+
+        const previousBalance = customerDetails.currentBalance || 0;
+        // For deletion: reverse the original sale's effect on balance
+        customerDetails.currentBalance =
+          previousBalance - (invoice.grandTotal - (invoice.amountPaid || 0));
+
+        const ledgerEntry = new Ledger({
+          customerId: customerDetails._id,
+          balance: customerDetails.currentBalance,
+          debit: invoice.grandTotal, // Full amount is debited as sale is cancelled
+          credit: invoice.amountPaid, // Any payments made are credited back
+          invoiceNumber: invoice.invoiceNumber,
+          description: "Sales Bill Deleted",
+        });
+        await ledgerEntry.save({ session });
+        if (ledgerEntry?._id) {
+          customerDetails.ledger.push(ledgerEntry._id);
+        }
+        await customerDetails.save({ session });
+      }
+    }
 
     await session.commitTransaction();
     res.status(200).json({ message: "Invoice deleted successfully" });

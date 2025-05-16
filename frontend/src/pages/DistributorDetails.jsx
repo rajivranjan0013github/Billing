@@ -42,6 +42,8 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchDistributorDetails,
+  fetchDistributorInvoices,
+  fetchDistributorPayments,
   setTabName,
 } from "../redux/slices/distributorSlice";
 import CreateDistributorDlg from "../components/custom/distributor/CreateDistributorDlg";
@@ -55,6 +57,8 @@ export default function DistributorDetails() {
   const {
     details: distributorDetails,
     status,
+    invoicesStatus,
+    paymentsStatus,
     tabName,
     invoices,
     payments,
@@ -62,11 +66,21 @@ export default function DistributorDetails() {
 
   useEffect(() => {
     if (distributorId) {
-      if (status === "idle" || distributorDetails?._id !== distributorId) {
+      if (distributorDetails?._id !== distributorId) {
         dispatch(fetchDistributorDetails(distributorId));
       }
     }
-  }, [distributorId, dispatch]);
+  }, [distributorId]);
+
+  useEffect(() => {
+    if (distributorId && distributorDetails?._id === distributorId) {
+      if (tabName === "invoices" && distributorId) {
+        dispatch(fetchDistributorInvoices(distributorId));
+      } else if (tabName === "payments" && distributorId) {
+        dispatch(fetchDistributorPayments(distributorId));
+      }
+    }
+  }, [distributorId, tabName]);
 
   const handleEditSuccess = () => {
     dispatch(fetchDistributorDetails(distributorId));
@@ -148,7 +162,7 @@ export default function DistributorDetails() {
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            onClick={() => navigate("/payment/create-payment")}
+            onClick={() => navigate(`/payment/create-payment/${distributorId}`)}
           >
             <Plus className="h-4 w-4" /> Add Payment
           </Button>
@@ -360,45 +374,73 @@ export default function DistributorDetails() {
             </div>
           </TabsContent>
           <TabsContent value="invoices" className="m-0">
-            <div className="border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="font-medium">
-                      <Button
-                        variant="ghost"
-                        className="p-0 h-auto font-medium hover:bg-transparent"
-                      >
-                        Date
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                      </Button>
-                    </TableHead>
-                    <TableHead className="font-medium">Invoice Type</TableHead>
-                    <TableHead className="font-medium">
-                      Invoice Number
-                    </TableHead>
-                    <TableHead className="font-medium text-right">
-                      Items
-                    </TableHead>
-                    <TableHead className="font-medium text-right">
-                      Grand Total
-                    </TableHead>
-                    <TableHead className="font-medium text-right">
-                      Due Amount
-                    </TableHead>
-                    <TableHead className="font-medium">Due Date</TableHead>
-                    <TableHead className="font-medium">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {formatInvoices(invoices).length > 0 ? (
-                    formatInvoices(invoices).map((invoice, index) => (
+            {invoicesStatus === "loading" && (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-900"></div>
+              </div>
+            )}
+            {invoicesStatus === "failed" && (
+              <div className="flex flex-col items-center justify-center py-8 text-red-700">
+                <FileX className="h-12 w-12 mb-3" />
+                <p className="text-lg font-medium">Failed to load invoices.</p>
+              </div>
+            )}
+            {invoicesStatus === "succeeded" && !invoices.length && (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                <FileX className="h-12 w-12 mb-3 text-gray-400" />
+                <p className="text-lg font-medium mb-1">No Invoices Found</p>
+                <p className="text-sm">
+                  There are no invoices available for this distributor.
+                </p>
+              </div>
+            )}
+            {invoicesStatus === "succeeded" && invoices.length > 0 && (
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-medium">
+                        <Button
+                          variant="ghost"
+                          className="p-0 h-auto font-medium hover:bg-transparent"
+                        >
+                          Date
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      </TableHead>
+                      <TableHead className="font-medium">
+                        Invoice Type
+                      </TableHead>
+                      <TableHead className="font-medium">
+                        Invoice Number
+                      </TableHead>
+                      <TableHead className="font-medium text-right">
+                        Items
+                      </TableHead>
+                      <TableHead className="font-medium text-right">
+                        Grand Total
+                      </TableHead>
+                      <TableHead className="font-medium text-right">
+                        Due Amount
+                      </TableHead>
+                      <TableHead className="font-medium">Due Date</TableHead>
+                      <TableHead className="font-medium">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {formatInvoices(invoices).map((invoice, index) => (
                       <TableRow
                         key={index}
                         onClick={() => handleInvoiceClick(invoice)}
                         className="cursor-pointer hover:bg-muted/50"
                       >
-                        <TableCell>{invoice.date}</TableCell>
+                        <TableCell>
+                          {new Date(invoice.date).toLocaleDateString("en-IN", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })}
+                        </TableCell>
                         <TableCell>
                           <span className="text-blue-600">{invoice.type}</span>
                         </TableCell>
@@ -433,57 +475,66 @@ export default function DistributorDetails() {
                           </Badge>
                         </TableCell>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={8}>
-                        <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                          <FileX className="h-12 w-12 mb-3 text-gray-400" />
-                          <p className="text-lg font-medium mb-1">
-                            No Invoices Found
-                          </p>
-                          <p className="text-sm">
-                            There are no invoices available for this
-                            distributor.
-                          </p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </TabsContent>
           <TabsContent value="payments" className="m-0">
-            <div className="border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="font-medium">
-                      <Button
-                        variant="ghost"
-                        className="p-0 h-auto font-medium hover:bg-transparent"
-                      >
-                        Date
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                      </Button>
-                    </TableHead>
-                    <TableHead className="font-medium">Payment Type</TableHead>
-                    <TableHead className="font-medium">
-                      Payment Number
-                    </TableHead>
-                    <TableHead className="font-medium">
-                      Payment Method
-                    </TableHead>
-                    <TableHead className="font-medium text-right">
-                      Amount
-                    </TableHead>
-                    <TableHead className="font-medium">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {payments && payments.length > 0 ? (
-                    payments.map((payment) => (
+            {paymentsStatus === "loading" && (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-900"></div>
+              </div>
+            )}
+            {paymentsStatus === "failed" && (
+              <div className="flex flex-col items-center justify-center py-8 text-red-700">
+                <FileX className="h-12 w-12 mb-3" />
+                <p className="text-lg font-medium">Failed to load payments.</p>
+              </div>
+            )}
+            {paymentsStatus === "succeeded" && !payments.length && (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                <FileX className="h-12 w-12 mb-3 text-gray-400" />
+                <p className="text-lg font-medium mb-1">No Payments Found</p>
+                <p className="text-sm">
+                  There are no payment records available for this distributor.
+                </p>
+              </div>
+            )}
+            {paymentsStatus === "succeeded" && payments.length > 0 && (
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-medium">
+                        <Button
+                          variant="ghost"
+                          className="p-0 h-auto font-medium hover:bg-transparent"
+                        >
+                          Date
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      </TableHead>
+                      <TableHead className="font-medium">
+                        Payment Type
+                      </TableHead>
+                      <TableHead className="font-medium">
+                        Payment Number
+                      </TableHead>
+                      <TableHead className="font-medium">
+                        Payment Method
+                      </TableHead>
+                      <TableHead className="font-medium text-right">
+                        Amount
+                      </TableHead>
+                      <TableHead className="font-medium text-right">
+                        Status
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {payments.map((payment) => (
                       <TableRow
                         key={payment._id}
                         onClick={() => {
@@ -496,7 +547,7 @@ export default function DistributorDetails() {
                             "en-IN",
                             {
                               day: "2-digit",
-                              month: "short",
+                              month: "2-digit",
                               year: "numeric",
                             }
                           )}
@@ -531,26 +582,11 @@ export default function DistributorDetails() {
                           </Badge>
                         </TableCell>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6}>
-                        <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                          <FileX className="h-12 w-12 mb-3 text-gray-400" />
-                          <p className="text-lg font-medium mb-1">
-                            No Payments Found
-                          </p>
-                          <p className="text-sm">
-                            There are no payment records available for this
-                            distributor.
-                          </p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </TabsContent>
           <TabsContent value="ledger" className="m-0">
             <LedgerTabContent

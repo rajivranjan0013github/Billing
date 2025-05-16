@@ -11,6 +11,24 @@ const DistributorSchema = new mongoose.Schema({
   panNumber: { type: String },
   DLNumber: { type: String },
   address: { type: String },
+  invoices: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Invoice",
+    },
+  ],
+  ledger: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Ledger",
+    },
+  ],
+  payments: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Payment",
+    },
+  ],
   bankDetails: {
     name: String,
     accountNumber: String,

@@ -24,6 +24,12 @@ const customerSchema = new mongoose.Schema({
       ref: "Payment",
     },
   ],
+  ledger: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Ledger",
+    },
+  ],
   openBalance: { type: Number, default: 0 },
   currentBalance: { type: Number, default: 0 },
   createdAt: {

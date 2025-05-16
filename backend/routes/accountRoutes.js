@@ -1,8 +1,8 @@
 import express from "express";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import AccountDetails from "../models/AccountDetails.js";
-import {Payment} from "../models/Payment.js";
-import mongoose from "mongoose";  
+import { Payment } from "../models/Payment.js";
+import mongoose from "mongoose";
 
 const router = express.Router();
 
@@ -30,16 +30,16 @@ router.get("/transactions", verifyToken, async (req, res) => {
 
     // Fetch total count of transactions
     const totalCount = await Payment.countDocuments({
-      accountId: new mongoose.Types.ObjectId(accountId)
+      accountId: new mongoose.Types.ObjectId(accountId),
     });
 
     // Fetch paginated transactions for the specified account
-    const transactions = await Payment.find({ 
-      accountId: new mongoose.Types.ObjectId(accountId) 
+    const transactions = await Payment.find({
+      accountId: new mongoose.Types.ObjectId(accountId),
     })
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit);
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     if (!transactions) {
       return res.status(404).json({ message: "No transactions found" });
@@ -51,14 +51,14 @@ router.get("/transactions", verifyToken, async (req, res) => {
         total: totalCount,
         pages: Math.ceil(totalCount / limit),
         currentPage: parseInt(page),
-        limit
-      }
+        limit,
+      },
     });
   } catch (error) {
-    console.error('Transaction fetch error:', error);
-    res.status(500).json({ 
-      message: "Error fetching transactions", 
-      error: error.message 
+    console.error("Transaction fetch error:", error);
+    res.status(500).json({
+      message: "Error fetching transactions",
+      error: error.message,
     });
   }
 });
@@ -169,6 +169,75 @@ router.patch("/:id", verifyToken, async (req, res) => {
     const updatedAccount = await account.save();
     res.json(updatedAccount);
   } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Initialize default accounts
+router.post("/initialize", verifyToken, async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const currentDate = new Date();
+
+    // Create Cash Account
+    const cashAccount = new AccountDetails({
+      accountType: "CASH",
+      balance: 0,
+      cashDetails: {
+        openingBalance: 0,
+        openingBalanceDate: currentDate,
+      },
+      lastUpdated: currentDate,
+    });
+    await cashAccount.save({ session });
+
+    // Create Bank Account
+    const bankAccount = new AccountDetails({
+      accountType: "BANK",
+      balance: 0,
+      bankDetails: {
+        bankName: "",
+        accountNumber: "",
+        ifscCode: "",
+        accountHolderName: "",
+        type: "SAVINGS",
+        openingBalance: 0,
+        openingBalanceDate: currentDate,
+      },
+      lastUpdated: currentDate,
+    });
+    await bankAccount.save({ session });
+
+    // Create UPI Account
+    const upiAccount = new AccountDetails({
+      accountType: "UPI",
+      balance: 0,
+      upiDetails: {
+        upiId: "",
+        upiName: "",
+        openingBalance: 0,
+        openingBalanceDate: currentDate,
+      },
+      lastUpdated: currentDate,
+    });
+    await upiAccount.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(201).json({
+      message: "Default accounts initialized successfully",
+      accounts: {
+        cash: cashAccount,
+        bank: bankAccount,
+        upi: upiAccount,
+      },
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     res.status(400).json({ message: error.message });
   }
 });

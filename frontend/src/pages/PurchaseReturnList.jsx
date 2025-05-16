@@ -12,7 +12,13 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { format, subDays } from "date-fns";
 import { DateRangePicker } from "../components/ui/date-range-picker";
 import { cn } from "../lib/utils";
@@ -37,7 +43,9 @@ const PurchaseReturnList = () => {
       setLoading(true);
       let url = `${Backend_URL}/api/purchase/returns`;
       if (dateRange.from && dateRange.to) {
-        url += `?startDate=${dateRange.from.toISOString()}&endDate=${dateRange.to.toISOString()}`;
+        const fromDate = format(dateRange.from, "yyyy-MM-dd");
+        const toDate = format(dateRange.to, "yyyy-MM-dd");
+        url += `?startDate=${fromDate}&endDate=${toDate}`;
       }
 
       const response = await fetch(url, {
@@ -87,7 +95,10 @@ const PurchaseReturnList = () => {
     (acc, returnItem) => {
       acc.count++;
       acc.totalAmount += returnItem.billSummary.grandTotal || 0;
-      acc.completedAmount += returnItem.paymentStatus === "completed" ? returnItem.billSummary.grandTotal : 0;
+      acc.completedAmount +=
+        returnItem.paymentStatus === "completed"
+          ? returnItem.billSummary.grandTotal
+          : 0;
       return acc;
     },
     { count: 0, totalAmount: 0, completedAmount: 0 }
@@ -104,7 +115,9 @@ const PurchaseReturnList = () => {
         case "distributor":
           return returnItem.distributorName.toLowerCase().includes(searchValue);
         case "invoice":
-          return returnItem.originalInvoiceNumber.toLowerCase().includes(searchValue);
+          return returnItem.originalInvoiceNumber
+            .toLowerCase()
+            .includes(searchValue);
         default:
           return true;
       }
@@ -126,12 +139,18 @@ const PurchaseReturnList = () => {
             <div className="text-sm text-muted-foreground">Total Returns</div>
           </div>
           <div>
-            <div className="font-semibold">{formatCurrency(summary.totalAmount)}</div>
+            <div className="font-semibold">
+              {formatCurrency(summary.totalAmount)}
+            </div>
             <div className="text-sm text-muted-foreground">Total Amount</div>
           </div>
           <div>
-            <div className="font-semibold">{formatCurrency(summary.completedAmount)}</div>
-            <div className="text-sm text-muted-foreground">Completed Amount</div>
+            <div className="font-semibold">
+              {formatCurrency(summary.completedAmount)}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Completed Amount
+            </div>
           </div>
         </div>
       </div>
@@ -231,7 +250,6 @@ const PurchaseReturnList = () => {
                 <TableHead>ORIGINAL INVOICE</TableHead>
                 <TableHead>TOTAL ITEMS</TableHead>
                 <TableHead>TOTAL AMOUNT</TableHead>
-                <TableHead>STATUS</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -245,7 +263,9 @@ const PurchaseReturnList = () => {
                     {returnItem.debitNoteNumber}
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium">{returnItem.distributorName}</div>
+                    <div className="font-medium">
+                      {returnItem.distributorName}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {format(new Date(returnItem.returnDate), "dd/MMM/yy")}
@@ -254,24 +274,6 @@ const PurchaseReturnList = () => {
                   <TableCell>{returnItem.billSummary.productCount}</TableCell>
                   <TableCell className="font-medium">
                     {formatCurrency(returnItem.billSummary.grandTotal)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium",
-                          {
-                            "bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20":
-                              returnItem.paymentStatus === "completed",
-                            "bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-600/20":
-                              returnItem.paymentStatus === "pending"
-                          }
-                        )}
-                      >
-                        {returnItem.paymentStatus.charAt(0).toUpperCase() +
-                          returnItem.paymentStatus.slice(1)}
-                      </span>
-                    </div>
                   </TableCell>
                 </TableRow>
               ))}

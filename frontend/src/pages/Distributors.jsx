@@ -46,10 +46,10 @@ export default function Distributors() {
   const balanceDropdownRef = useRef(null);
 
   useEffect(() => {
-    if (fetchStatus === "idle") {
+   
       dispatch(fetchDistributors());
-    }
-  }, [dispatch, fetchStatus]);
+    
+  }, [dispatch]);
 
   // Add click outside handler
   useEffect(() => {
