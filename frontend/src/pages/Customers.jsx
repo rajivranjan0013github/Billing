@@ -5,11 +5,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "..
 import { Button } from "../components/ui/button";
 import CreateCustomerDialog from "../components/custom/customer/CreateCustomerDialog";
 import { Input } from "../components/ui/input";
-import { Pencil, Trash2, UserPlus, Phone, MapPin, Search, Users, X, ArrowLeft,ChevronLeft,ChevronRight} from "lucide-react";
+import { Pencil, Trash2, UserPlus, Phone, MapPin, Search, Users, X, ArrowLeft,ChevronLeft,ChevronRight, FileDown } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "../components/ui/select";
 import { formatCurrency } from "../utils/Helper";
+import * as XLSX from 'xlsx';
 
 const Customers = () => {
   const dispatch = useDispatch();
@@ -87,6 +88,52 @@ const Customers = () => {
     }
   };
 
+  const exportToExcel = () => {
+    // Prepare data for Excel export
+    const dataToExport = customers.map(customer => ({
+      'Customer Name': customer.name,
+      'Mobile Number': customer.mob,
+      'Address': customer.address,
+      'Balance': customer.currentBalance || 0
+    }));
+
+    // Calculate total balance
+    const totalBalance = customers.reduce((sum, customer) => sum + (customer.currentBalance || 0), 0);
+
+    // Add total row
+    dataToExport.push({
+      'Customer Name': 'Total',
+      'Mobile Number': '',
+      'Address': '',
+      'Balance': totalBalance
+    });
+
+    // Create worksheet and workbook
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Customers");
+
+    // Set column widths
+    worksheet['!cols'] = [
+      { wch: 30 }, // Customer Name
+      { wch: 15 }, // Mobile Number
+      { wch: 40 }, // Address
+      { wch: 15 }  // Balance
+    ];
+
+    // Style the total row (make it bold)
+    const totalRowIndex = dataToExport.length;
+    const range = XLSX.utils.decode_range(worksheet['!ref']);
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const cellRef = XLSX.utils.encode_cell({ r: totalRowIndex - 1, c: C });
+      if (!worksheet[cellRef]) worksheet[cellRef] = { v: '' };
+      worksheet[cellRef].s = { font: { bold: true } };
+    }
+
+    // Generate Excel file and trigger download
+    XLSX.writeFile(workbook, `Customers_List.xlsx`);
+  };
+
   if (status === "loading") {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -143,7 +190,15 @@ const Customers = () => {
           </div>
         </div>
 
-        <div className="ml-auto">
+        <div className="ml-auto flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={exportToExcel}
+            disabled={customers.length === 0}
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            Export
+          </Button>
           <Button onClick={() => setIsOpen(true)}>
             <UserPlus className="h-4 w-4 mr-2" />
             Add Customer

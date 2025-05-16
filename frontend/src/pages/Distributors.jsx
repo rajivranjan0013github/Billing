@@ -75,11 +75,30 @@ export default function Distributors() {
       "Balance": distributor.currentBalance || 0,
     }));
 
+    // Add empty row and total row
+    dataToExport.push({
+      "Distributor Name": "",
+      "Mobile Number": "",
+      "Address": "",
+      "Account Number": "",
+      "IFSC Code": "",
+      "Balance": "",
+    });
+
+    dataToExport.push({
+      "Distributor Name": "Total",
+      "Mobile Number": `Count: ${summary.count}`,
+      "Address": "",
+      "Account Number": "",
+      "IFSC Code": "",
+      "Balance": summary.totalBalance,
+    });
+
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Distributors");
 
-    // Set column widths (optional, but improves readability)
+    // Set column widths
     worksheet["!cols"] = [
       { wch: 25 }, // Distributor Name
       { wch: 15 }, // Mobile Number
@@ -89,13 +108,22 @@ export default function Distributors() {
       { wch: 15 }, // Balance
     ];
 
-    // Format Balance column as currency (optional)
+    // Format Balance column as currency
     dataToExport.forEach((_row, index) => {
-      const cellRef = XLSX.utils.encode_cell({ r: index + 1, c: 5 }); // Updated column index for Balance (0-based)
-      if (worksheet[cellRef]) {
+      const cellRef = XLSX.utils.encode_cell({ r: index + 1, c: 5 }); // Balance column
+      if (worksheet[cellRef] && worksheet[cellRef].v !== "") {
         worksheet[cellRef].z = '"₹"#,##0.00'; // Indian Rupee format
       }
     });
+
+    // Style the total row
+    const totalRowIndex = dataToExport.length - 1;
+    for (let col = 0; col < 6; col++) {
+      const cellRef = XLSX.utils.encode_cell({ r: totalRowIndex, c: col });
+      if (worksheet[cellRef]) {
+        worksheet[cellRef].s = { font: { bold: true } };
+      }
+    }
 
     XLSX.writeFile(workbook, "distributors.xlsx");
   };
