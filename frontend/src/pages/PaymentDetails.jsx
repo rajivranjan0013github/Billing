@@ -1,6 +1,5 @@
-import { ArrowLeft, Pencil, Share2, Trash2, FileX, X } from "lucide-react"
+import { ArrowLeft, Printer, Trash2, FileX, X } from "lucide-react"
 import { Button } from "../components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "../components/ui/dropdown-menu"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table"
 import { useNavigate, useParams } from "react-router-dom"
@@ -75,10 +74,11 @@ export default function PaymentDetails() {
           <Button 
             variant="outline" 
             size="sm" 
-            className="text-sm"
+            className="text-sm gap-2 px-2"
             onClick={() => navigate('/payment/invoice-print', { state: { paymentData: paymentDetails } })}
           >
-            Print PDF
+            <Printer className="h-4 w-4" />
+            Print Receipt
           </Button>
           <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <AlertDialogTrigger asChild>

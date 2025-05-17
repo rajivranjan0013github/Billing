@@ -281,10 +281,10 @@ export default function MakePaymentDlg({ open, onOpenChange, paymentData, showSt
               </div>
               <div>
                 <p className="text-sm font-medium">
-                  {account.accountType === "BANK"
-                    ? account.bankDetails?.bankName
+                  {account.accountType === "BANK" 
+                    ? account.bankDetails?.bankName || "Bank Account"
                     : account.accountType === "UPI"
-                    ? account.upiDetails?.upiName
+                    ? account.upiDetails?.upiName || "UPI Account"
                     : `${account.accountType} Account`}
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -491,9 +491,9 @@ export default function MakePaymentDlg({ open, onOpenChange, paymentData, showSt
                               <div>
                                 <p className="text-sm font-medium">
                                   {account.accountType === "BANK"
-                                    ? account.bankDetails?.bankName
+                                    ? account.bankDetails?.bankName || "Bank Account"
                                     : account.accountType === "UPI"
-                                    ? account.upiDetails?.upiName
+                                    ? account.upiDetails?.upiName || "UPI Account"
                                     : `${account.accountType} Account`}
                                 </p>
                                 <p className="text-xs text-muted-foreground">

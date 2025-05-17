@@ -837,7 +837,7 @@ export default function EditPurchaseInvoice() {
           <div className="text-lg">{formatCurrency(billSummary?.adjustment)}</div>
         </div>
         <div className="py-2">
-          <div className="">(+) Custom Charge</div>
+          <div className="">(+) Custom</div>
           <div className="text-lg">{formatCurrency(0.0)}</div>
         </div>
         <div className="bg-rose-500 py-2">

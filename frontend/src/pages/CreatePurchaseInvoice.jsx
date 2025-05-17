@@ -749,7 +749,7 @@ export default function PurchaseForm() {
           </div>
         </div>
         <div className="py-2">
-          <div className="">(+) Delivery Charge</div>
+          <div className="">(+) Custom</div>
           <div className="text-lg">{formatCurrency(0.0)}</div>
         </div>
         <div className="bg-rose-500 py-2">

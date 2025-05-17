@@ -13,7 +13,7 @@ const PaymentInvoicePrint = () => {
   const printRef = useRef();
   const [pageSize, setPageSize] = useState("A4"); // A4 or A5
   const paymentData = location.state?.paymentData;
-  const hospitalInfo = useSelector((state) => state.hospital.hospitalInfo);
+  const hospitalInfo = useSelector((state) => state.pharmacy.pharmacyInfo);
 
   
 

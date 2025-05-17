@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Check, Search, X, PackageX, Plus } from "lucide-react";
+import { Search, PackageX, Plus } from "lucide-react";
 import {
   Dialog,
   DialogContent,

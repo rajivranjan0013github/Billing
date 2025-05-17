@@ -21,14 +21,14 @@ export default function SelectDistributorDlg({ open, setOpen, search, setSearch,
   const searchRef = useRef();
 
   useEffect(() => {
-    if (!createDistributorOpen) {
+    if (open && !createDistributorOpen) {
       setTimeout(() => {
         if (searchRef?.current) {
           searchRef?.current.focus();
         }
       }, 0);
     }
-  }, [createDistributorOpen]);
+  }, [open, createDistributorOpen]);
 
   useEffect(() => {
     if (fetchStatus === "idle") {

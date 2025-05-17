@@ -101,7 +101,7 @@ export default function VerticalNav() {
     if (itemPath === "/") {
       return location.pathname === "/";
     }
-    return location.pathname === itemPath;
+    return location.pathname.startsWith(itemPath);
   };
 
   const handleLogout = async () => {

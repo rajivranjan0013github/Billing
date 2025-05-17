@@ -725,7 +725,7 @@ export default function EditSaleInvoice() {
           <div className="">
             {formData?.saleType === "return"
               ? "Return Amount"
-              : "(+) Custom Charge"}
+              : "(+) Custom"}
           </div>
           <div className="text-lg">
             {formatCurrency(amountData?.returnAmount)}
