@@ -6,24 +6,6 @@ import { useToast } from "../../../hooks/use-toast";
 import BatchSuggestion from "../sales/BatchSuggestion";
 import { Input } from "../../ui/input";
 
-// Define the order of inputs within the table row
-const tableInputKeys = [
-  "product",
-  "batchNumber",
-  "HSN",
-  "expiry",
-  "pack",
-  "quantity",
-  "free",
-  "mrp",
-  "purchaseRate",
-  "schemeInput1",
-  "schemeInput2",
-  "discount",
-  "gstPer",
-  "addButton",
-];
-
 // Helper function to format expiry date input
 const formatExpiryInput = (currentValue) => {
   let value = currentValue.replace(/\D/g, ""); // Remove all non-digits first
@@ -242,7 +224,7 @@ export default function PurchaseTable({
       }
     }
   };
-
+ 
   // handle add product to list
   const handleAdd = () => {
     if (!newProduct.productName || !newProduct.inventoryId) {
@@ -295,6 +277,7 @@ export default function PurchaseTable({
   };
 
   const handleBatchSelect = (batch) => {
+    if (!batch) return;
     setBatchNumber(batch.batchNumber);
     setNewProduct((prev) => ({
       ...prev,
@@ -307,10 +290,9 @@ export default function PurchaseTable({
       gstPer: batch.gstPer || "",
       HSN: batch.HSN || prev.HSN, // Keep existing HSN if batch doesn't have one
     }));
-
     // Focus HSN field after batch selection
-   
   };
+
   useEffect(() => {
     if (newProduct.productName && newProduct.batchNumber) {
       const syntheticEvent = new KeyboardEvent("keydown", { key: "Enter" });

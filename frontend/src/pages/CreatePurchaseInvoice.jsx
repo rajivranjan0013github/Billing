@@ -693,7 +693,7 @@ export default function PurchaseForm() {
             </div>
           </div>
         </div>
-        <div className="p-4 border rounded-lg">
+        {/* <div className="p-4 border rounded-lg">
           <h3 className="mb-4 text-sm font-medium">CUSTOM CHARGE</h3>
           <div className="flex gap-4">
             <Input
@@ -705,7 +705,7 @@ export default function PurchaseForm() {
               className="appearance-none h-8 border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
             />
           </div>
-        </div>
+        </div> */}
         <div className="flex items-center justify-center p-4 border rounded-lg">
           <div className="text-center">
             <div className="mb-1">Click on Save to Add Payment</div>

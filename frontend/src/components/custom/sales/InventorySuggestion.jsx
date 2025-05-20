@@ -12,7 +12,7 @@ const SearchSuggestion = forwardRef(
   ({ value, setValue, onSuggestionSelect, inputRef }, ref) => {
     const [filteredSuggestions, setFilteredSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
-    const [selectedIndex, setSelectedIndex] = useState(-1);
+    const [selectedIndex, setSelectedIndex] = useState(0);
     const [showAddNewInventoryDialog, setShowAddNewInventoryDialog] =
       useState(false);
     const suggestionListRef = useRef(null);
@@ -46,7 +46,7 @@ const SearchSuggestion = forwardRef(
         suggestion.name.toLowerCase().includes((value || "").toLowerCase())
       );
       setFilteredSuggestions(filtered);
-      setSelectedIndex(-1);
+      setSelectedIndex(0);
     }, [value, suggestions]);
 
     const handleInputChange = (e) => {

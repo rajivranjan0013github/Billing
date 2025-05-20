@@ -6,12 +6,11 @@ import { Label } from "../components/ui/label";
 import { Checkbox } from "../components/ui/checkbox";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { fetchAccounts } from "../redux/slices/accountSlice";
 import SelectDistributorDlg from "../components/custom/distributor/SelectDistributorDlg";
 import ProductSelector from "../components/custom/inventory/SelectInventory";
 import BatchSuggestion from "../components/custom/sales/BatchSuggestion";
-import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
+import { ScrollArea } from "../components/ui/scroll-area";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,18 +20,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "../components/ui/alert-dialog";
-import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select";
-import { format } from "date-fns";
 import RefundDialog from "../components/custom/refund/RefundDialog";
+import { formatCurrency } from "../utils/Helper";
+import { createPurchaseReturn, searchByInvoice } from "../redux/slices/PurchaseBillSlice";
 
 // Helper function for expiry validation (MM/YY)
 const validateExpiry = (value) => {
@@ -62,8 +53,6 @@ const PurchaseReturn = () => {
   );
   const [claimGSTInReturn, setClaimGSTInReturn] = useState(true);
   const [adjustRateForDisc, setAdjustRateForDisc] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
   const [distributorSelectDialog, setdistributorSelectDialog] = useState(false);
   const [distributorName, setdistributorName] = useState("");
   const [itemErrors, setItemErrors] = useState({});
@@ -75,21 +64,9 @@ const PurchaseReturn = () => {
     invoiceDate: "",
   });
   const dispatch = useDispatch();
-  const { accounts, fetchStatus: accountFetchStatus } = useSelector(
-    (state) => state.accounts
-  );
-  const [refundMethod, setRefundMethod] = useState("CASH");
-  const [refundAccountId, setRefundAccountId] = useState("");
-  const [refundChequeDetails, setRefundChequeDetails] = useState({
-    number: "",
-    date: null,
-  });
-  const [refundError, setRefundError] = useState("");
+
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [confirmDialogContent, setConfirmDialogContent] = useState({
-    title: "",
-    description: "",
-  });
+  const [confirmDialogContent, setConfirmDialogContent] = useState({title: "",description: "",});
   const [isRefundDialogOpen, setIsRefundDialogOpen] = useState(false);
   const [refundDialogData, setRefundDialogData] = useState(null);
 
@@ -124,7 +101,6 @@ const PurchaseReturn = () => {
       }
 
       event.preventDefault();
-
       const currentFieldIndex = focusableFields.indexOf(fieldName);
       let targetRowIndex = rowIndex;
       let targetFieldIndex = currentFieldIndex;
@@ -416,13 +392,6 @@ const PurchaseReturn = () => {
   };
   // --- End Batch Suggestion Handler ---
 
-  // Fetch accounts on component mount
-  useEffect(() => {
-    if (accountFetchStatus === "idle") {
-      dispatch(fetchAccounts());
-    }
-  }, [dispatch, accountFetchStatus]);
-
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     const distributorId = queryParams.get("distributorId");
@@ -441,8 +410,7 @@ const PurchaseReturn = () => {
     }
   }, [location.search]);
 
-  // Update handleSearch to directly set items and clear errors
-  // Update handleSearch to populate items with inventoryId/batchId now
+  // Update handleSearch to use the thunk
   const handleSearch = async (distributorIdParam, invoiceNumberParam) => {
     const distId = formData.distributorId || distributorIdParam;
     const invNum = formData.invoiceNumber || invoiceNumberParam;
@@ -455,30 +423,15 @@ const PurchaseReturn = () => {
       return;
     }
 
-    setSearchLoading(true);
     try {
-      const response = await fetch(
-        `${Backend_URL}/api/purchase/search-by-invoice`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            distributorId: distId,
-            invoiceNumber: invNum,
-          }),
-        }
-      );
+      const result = await dispatch(
+        searchByInvoice({
+          distributorId: distId,
+          invoiceNumber: invNum,
+        })
+      ).unwrap();
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to fetch invoice details");
-      }
-
-      const data = await response.json();
-      const { invoiceDetails, products } = data;
+      const { invoiceDetails, products } = result;
 
       // Update form data with invoice details and date
       setFormData((prev) => ({
@@ -497,27 +450,27 @@ const PurchaseReturn = () => {
         const effectivePurRate = adjustRateForDisc
           ? purchaseRate - (purchaseRate * discount) / 100
           : purchaseRate;
-        const packValue = parseFloat(product.pack) || 1; // Default pack to 1 if null/0/undefined
+        const packValue = parseFloat(product.pack) || 1;
         const quantityValue = parseFloat(product.quantity) || 0;
-        const adjustedQty = quantityValue / packValue; // Use base units for internal qty state
+        const adjustedQty = quantityValue / packValue;
         const calculatedAmount = effectivePurRate * adjustedQty;
 
         return {
-          id: product._id || `inv-${index}`, // Use product._id or generate a temp ID
-          inventoryId: product.inventoryId?._id || product.inventoryId, // Handle populated vs non-populated
+          id: product._id || `inv-${index}`,
+          inventoryId: product.inventoryId?._id || product.inventoryId,
           itemName: product.productName,
           batchId: product.batchId,
           batchNo: product.batchNumber,
           pack: packValue,
           expiry: product.expiry || "",
           mrp: product.mrp || "",
-          qty: adjustedQty, // Store quantity in base units
+          qty: adjustedQty,
           pricePerItem: purchaseRate,
           discount: discount,
           effPurRate: effectivePurRate,
-          gst: product.gstPer || "", // Use gstPer from invoice data
+          gst: product.gstPer || "",
           amount: calculatedAmount.toFixed(2),
-          isManual: false, // Mark as loaded from invoice
+          isManual: false,
         };
       });
 
@@ -526,11 +479,9 @@ const PurchaseReturn = () => {
     } catch (error) {
       toast({
         title: "Failed to search invoice",
-        description: error.message || "An unexpected error occurred.", // Provide more context
+        description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       });
-    } finally {
-      setSearchLoading(false);
     }
   };
 
@@ -667,7 +618,6 @@ const PurchaseReturn = () => {
 
   // Function to save the return *with* refund details (called by RefundDialog)
   const handleRefundSubmit = async (refundDetailsFromDialog) => {
-    setLoading(true);
     try {
       const totals = calculateTotals(); // Recalculate totals or pass from proceedWithSave
       const formattedProducts = items.map((item) => ({
@@ -711,23 +661,12 @@ const PurchaseReturn = () => {
         claimGSTInReturn,
         adjustRateForDisc,
         billSummary,
-        refundDetails: refundDetailsFromDialog, // Use details from dialog
+        refundDetails: refundDetailsFromDialog,
       };
 
-      // --- API Call ---
-      const response = await fetch(`${Backend_URL}/api/purchase/return`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(returnData),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message || "Failed to create purchase return"
-        );
-      }
-      // --- Success ---
+      // Use Redux slice instead of direct fetch
+      await dispatch(createPurchaseReturn(returnData)).unwrap();
+      
       toast({
         title: "Purchase return created successfully",
         variant: "success",
@@ -740,14 +679,12 @@ const PurchaseReturn = () => {
         variant: "destructive",
       });
     } finally {
-      setIsRefundDialogOpen(false); // Close dialog regardless of outcome
-      setLoading(false);
+      setIsRefundDialogOpen(false);
     }
   };
 
   // Function to save the return *without* refund details
   const saveReturnWithoutRefund = async () => {
-    setLoading(true);
     try {
       const totals = calculateTotals();
       const formattedProducts = items.map((item) => ({
@@ -791,23 +728,12 @@ const PurchaseReturn = () => {
         claimGSTInReturn,
         adjustRateForDisc,
         billSummary,
-        refundDetails: null, // Explicitly null
+        refundDetails: null,
       };
 
-      // --- API Call ---
-      const response = await fetch(`${Backend_URL}/api/purchase/return`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(returnData),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message || "Failed to create purchase return"
-        );
-      }
-      // --- Success ---
+      // Use Redux slice instead of direct fetch
+      await dispatch(createPurchaseReturn(returnData)).unwrap();
+      
       toast({
         title: "Purchase return created successfully",
         variant: "success",
@@ -820,7 +746,6 @@ const PurchaseReturn = () => {
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
     }
   };
 
@@ -866,7 +791,6 @@ const PurchaseReturn = () => {
 
     // --- Refund Validation (moved here, basic check if refund method exists if needed, full check in RefundDialog/handleRefundSubmit) ---
     const totals = calculateTotals();
-    setRefundError(""); // Clear previous error (might be better in the dialog itself)
 
     // --- Decision Point ---
     if (totals.refundableAmt > 0) {
@@ -960,20 +884,27 @@ const PurchaseReturn = () => {
   };
 
   const totals = calculateTotals();
+  const { isCollapsed } = useSelector((state) => state.loader);
+
+  // Add selector for loading state
+  const { createPurchaseReturnStatus } = useSelector((state) => state.purchaseBill);
+
+  // Add selector for search status
+  const { searchByInvoiceStatus } = useSelector((state) => state.purchaseBill);
 
   return (
-    <div className="relative rounded-lg h-[100vh] pt-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+    <div className="relative h-screen flex flex-col">
+      {/* Header - Fixed */}
+      <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-300 px-4 pt-4">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-medium">Create Purchase Return</h1>
+          <h1 className="text-xl font-bold">Create Purchase Return</h1>
         </div>
-        <div className="flex items-center gap-3">
-          <Button onClick={handleSave} disabled={loading}>
-            {loading ? (
+        <div className="flex items-center ">
+          <Button onClick={handleSave} disabled={createPurchaseReturnStatus === "loading"} size='sm' className='gap-2 px-2'>
+            {createPurchaseReturnStatus === "loading" ? (
               <>
                 <span className="animate-spin">⏳</span>
                 Saving...
@@ -988,502 +919,475 @@ const PurchaseReturn = () => {
         </div>
       </div>
 
-      <div className="grid gap-4">
-        {/* Top Section */}
-        <div className="grid grid-cols-4 gap-4">
-          {/* Left Section - Distributor */}
-          <div className="col-span-3 border rounded-lg p-4 font-semibold">
-            <div className="grid grid-cols-12 gap-4">
-              <div className="col-span-7">
-                <Label className="text-sm font-medium mb-2 block">
-                  DISTRIBUTOR
-                </Label>
-                <Input
-                  type="text"
-                  placeholder="Type or Press space"
-                  value={distributorName}
-                  onChange={handleDistributorNameChange}
-                  className="w-full"
-                />
-              </div>
-              <div className="col-span-3">
-                <Label className="text-sm font-medium mb-2 block">
-                  INVOICE NO
-                </Label>
-                <Input
-                  type="text"
-                  placeholder="Enter Invoice No."
-                  value={formData.invoiceNumber}
-                  onChange={(e) =>
-                    setFormData({ ...formData, invoiceNumber: e.target.value })
-                  }
-                />
-              </div>
-              <div className="col-span-2 flex items-end">
-                <Button
-                  className="w-full h-10"
-                  onClick={handleSearch}
-                  disabled={searchLoading}
-                >
-                  {searchLoading ? (
-                    <span className="animate-spin">⏳</span>
-                  ) : (
-                    "Search"
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Section - Return Info */}
-          <div className="border rounded-lg p-4">
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm font-medium mb-2 block">
-                  RETURN DATE<span className="text-rose-500">*</span>
-                </Label>
-                <Input
-                  type="date"
-                  value={returnDate}
-                  onChange={(e) => setReturnDate(e.target.value)}
-                  className="w-full"
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="claim-gst"
-                    checked={claimGSTInReturn}
-                    onCheckedChange={setClaimGSTInReturn}
-                  />
-                  <Label htmlFor="claim-gst" className="text-sm">
-                    Claim GST in Debit Note
+      {/* Main Content - Scrollable */}
+      <ScrollArea className="flex-1 px-4 pb-20">
+        <div className="space-y-4">
+          {/* Top Section */}
+          <div className="grid grid-cols-4 gap-4">
+            {/* Left Section - Distributor */}
+            <div className="col-span-3 border rounded-lg p-4 font-semibold">
+              <div className="grid grid-cols-12 gap-4">
+                <div className="col-span-7">
+                  <Label className="text-sm font-medium mb-2 block">
+                    DISTRIBUTOR
                   </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="adjust-rate"
-                    checked={adjustRateForDisc}
-                    onCheckedChange={setAdjustRateForDisc}
-                  />
-                  <Label htmlFor="adjust-rate" className="text-sm">
-                    Adjust Rate for Disc, Scheme, Free Qty
-                  </Label>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Items Table */}
-        <div className="w-full border-[1px] border-inherit py-4 rounded-sm space-y-2">
-          {/* Table Headers */}
-          <div className="grid grid-cols-[3fr_2fr_0.75fr_1fr_1fr_0.75fr_1fr_0.5fr_1fr_0.5fr_1fr_50px] w-full gap-1 px-4 items-center">
-            <div>
-              <p className="text-xs font-semibold ">PRODUCT</p>
-            </div>
-            <div className="">
-              <p className="text-xs font-semibold">BATCH NO</p>
-            </div>
-            <div className="">
-              <p className="text-xs font-semibold">PACK</p>
-            </div>
-            <div className="">
-              <p className="text-xs font-semibold">EXPIRY</p>
-            </div>
-            <div className="">
-              <p className="text-xs font-semibold">MRP</p>
-            </div>
-            <div className="">
-              <p className="text-xs font-semibold">QTY</p>
-            </div>
-            <div className="">
-              <p className="text-xs font-semibold">PUR RATE</p>
-            </div>
-            <div className="">
-              <p className="text-xs font-semibold">DISC %</p>
-            </div>
-            <div className="">
-              <p className="text-xs font-semibold">EFF PUR RATE</p>
-            </div>
-            <div className="">
-              <p className="text-xs font-semibold">GST</p>
-            </div>
-            <div className="">
-              <p className="text-xs font-semibold">AMOUNT</p>
-            </div>
-            <div className="">
-              <p className="text-xs font-semibold">ACTION</p>
-            </div>
-          </div>
-
-          {/* Table Body */}
-          <div className="w-full space-y-2 px-4">
-            {items.map((item, index) => (
-              <div
-                key={item.id}
-                // Add data-row-id for easier targeting
-                data-row-id={item.id}
-                className="grid grid-cols-[3fr_2fr_0.75fr_1fr_1fr_0.75fr_1fr_0.5fr_1fr_0.5fr_1fr_50px] w-full gap-1 items-start relative font-semibold" // Changed items-center to items-start for error message positioning
-              >
-                {/* PRODUCT Input */}
-                <div >
                   <Input
                     type="text"
-                    value={
-                      item.id === productSelectorTargetId
-                        ? productSearchTerm
-                        : item.itemName
-                    } // Show search term for target row, else show item name
-                    placeholder="Type or Press Space"
-                    data-row-index={index} // Keep for potential handleKeyDown usage
-                    data-field="itemName"
-                    onKeyDown={(e) => {
-                      if (e.key === " " && e.target.value.length === 0) {
-                        e.preventDefault(); // Prevent space if field is empty
-                        handleProductNameChange(e, item.id);
-                      }
-                      // Add Enter key navigation if needed, careful not to conflict
-                      // else if (e.key === 'Enter') {
-                      //    handleKeyDown(e, index, "itemName");
-                      // }
-                    }}
-                    onChange={(e) => handleProductNameChange(e, item.id)}
-                    className="h-8 w-full border-[1px] border-gray-300 px-1"
-                    // ref={(el) => inputRefs.current[`item-${item.id}-itemName`] = el} // Example ref
+                    placeholder="Type or Press space"
+                    value={distributorName}
+                    onChange={handleDistributorNameChange}
+                    className="w-full"
                   />
                 </div>
-                {/* BATCH NO Input */}
-                <div data-field="batchNo">
-                  {" "}
-                  {/* Wrapper div with data-field */}
-                  <BatchSuggestion
-                    // Use item.id for unique identification if needed by BatchSuggestion internally
-                    inventoryId={item.inventoryId}
-                    value={item.batchNo}
-                    setValue={(value) =>
-                      handleInputChange(item.id, "batchNo", value)
-                    } // Update batchNo for display typing
-                    onSuggestionSelect={(batch) =>
-                      handleBatchSelect(batch, item.id)
-                    }
-                    inputRef={inputRefs} // Pass refs if BatchSuggestion needs them for internal navigation
-                    disabled={!item.inventoryId} // Disable if no product selected
-                    //   ref={(el) => inputRefs.current[`item-${item.id}-batchNo`] = el} // Ref for BatchSuggestion input wrapper if needed
-                    // Add onKeyDown to BatchSuggestion if Enter navigation is needed from it
-                  />
-                </div>
-                {/* PACK Input */}
-                <div>
-                  <Input
-                    type="text" // Keep as text? Or number?
-                    value={item.pack}
-                    data-row-index={index}
-                    data-field="pack"
-                    onKeyDown={(e) => handleKeyDown(e, index, "pack")}
-                    onChange={(e) =>
-                      handleInputChange(item.id, "pack", e.target.value)
-                    }
-                    className="h-8 w-full border-[1px] border-gray-300 px-1"
-                    readOnly={!item.isManual && item.batchId} // Pack usually comes from batch
-                  />
-                </div>
-                {/* EXPIRY Input */}
-                <div className="relative">
-                  {" "}
-                  {/* Relative positioning for error message */}
+                <div className="col-span-3">
+                  <Label className="text-sm font-medium mb-2 block">
+                    INVOICE NO
+                  </Label>
                   <Input
                     type="text"
-                    value={item.expiry}
-                    placeholder="MM/YY"
-                    data-row-index={index}
-                    data-field="expiry"
-                    onKeyDown={(e) => handleKeyDown(e, index, "expiry")}
+                    placeholder="Enter Invoice No."
+                    value={formData.invoiceNumber}
                     onChange={(e) =>
-                      handleInputChange(item.id, "expiry", e.target.value)
+                      setFormData({ ...formData, invoiceNumber: e.target.value })
                     }
-                    className={`h-8 w-full border-[1px] px-1 ${
-                      itemErrors[item.id]?.expiry
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
-                    readOnly={!item.isManual && item.batchId} // Expiry comes from batch
-                  />
-                  {itemErrors[item.id]?.expiry && (
-                    <p className="text-xs text-red-500 absolute -bottom-4 left-0">
-                      {itemErrors[item.id].expiry}
-                    </p>
-                  )}
-                </div>
-                {/* MRP Input */}
-                <div>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs">
-                      ₹
-                    </span>
-                    <Input
-                      type="number"
-                      value={item.mrp}
-                      data-row-index={index}
-                      data-field="mrp"
-                      onKeyDown={(e) => handleKeyDown(e, index, "mrp")}
-                      onChange={(e) =>
-                        handleInputChange(item.id, "mrp", e.target.value)
-                      }
-                      className="h-8 w-full border-[1px] border-gray-300 px-1 pl-5"
-                      step="any"
-                      readOnly={!item.isManual && item.batchId} // MRP comes from batch
-                    />
-                  </div>
-                </div>
-                {/* QTY Input */}
-                <div>
-                  <Input
-                    type="number"
-                    value={item.qty} // Display base unit qty internally
-                    placeholder="Units" // Placeholder clarification
-                    data-row-index={index}
-                    data-field="qty"
-                    onKeyDown={(e) => handleKeyDown(e, index, "qty")}
-                    onChange={(e) =>
-                      handleInputChange(item.id, "qty", e.target.value)
-                    }
-                    className="h-8 w-full border-[1px] border-gray-300 px-1"
-                    step="any"
-                    data-row-id={item.id} // Add data-row-id for easier targeting by focus logic
                   />
                 </div>
-                {/* PUR RATE Input */}
-                <div>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs">
-                      ₹
-                    </span>
-                    <Input
-                      type="number"
-                      value={item.pricePerItem}
-                      data-row-index={index}
-                      data-field="pricePerItem"
-                      onKeyDown={(e) => handleKeyDown(e, index, "pricePerItem")}
-                      onChange={(e) =>
-                        handleInputChange(
-                          item.id,
-                          "pricePerItem",
-                          e.target.value
-                        )
-                      }
-                      className="h-8 w-full border-[1px] border-gray-300 px-1 pl-5"
-                      step="any"
-                      readOnly={!item.isManual && item.batchId} // Rate comes from batch
-                    />
-                  </div>
-                </div>
-                {/* DISC % Input */}
-                <div>
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      value={item.discount}
-                      data-row-index={index}
-                      data-field="discount"
-                      onKeyDown={(e) => handleKeyDown(e, index, "discount")}
-                      onChange={(e) =>
-                        handleInputChange(item.id, "discount", e.target.value)
-                      }
-                      className="h-8 w-full border-[1px] border-gray-300 px-1 pr-5"
-                      step="any"
-                    />
-                  </div>
-                </div>
-                {/* EFF PUR RATE Input */}
-                <div>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs">
-                      ₹
-                    </span>
-                    <Input
-                      type="number"
-                      value={item.effPurRate}
-                      readOnly // Calculated field
-                      className="h-8 w-full border-[1px] border-gray-300 px-1 pl-5 bg-gray-100"
-                      tabIndex={-1}
-                      step="any"
-                    />
-                  </div>
-                </div>
-                {/* GST Input */}
-                <div>
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      value={item.gst}
-                      data-row-index={index}
-                      data-field="gst"
-                      onKeyDown={(e) => handleKeyDown(e, index, "gst")}
-                      onChange={(e) =>
-                        handleInputChange(item.id, "gst", e.target.value)
-                      }
-                      className="h-8 w-full border-[1px] border-gray-300 px-1 pr-5"
-                      step="any"
-                      readOnly={!item.isManual && item.batchId} // GST might come from batch
-                    />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
-                      %
-                    </span>
-                  </div>
-                </div>
-                {/* AMOUNT Input */}
-                <div>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs">
-                      ₹
-                    </span>
-                    <Input
-                      type="text" // Use text as it's formatted
-                      value={item.amount}
-                      readOnly // Calculated field
-                      className="h-8 w-full border-[1px] border-gray-300 px-1 pl-5 bg-gray-100"
-                      tabIndex={-1}
-                    />
-                  </div>
-                </div>
-                {/* ACTION Button */}
-                <div className="flex items-center justify-center">
-                  <button
-                    onClick={() => handleDeleteItem(item.id)}
-                    className="hover:text-red-500"
-                    tabIndex={-1}
+                <div className="col-span-2 flex items-end">
+                  <Button
+                    className="w-full h-10"
+                    onClick={handleSearch}
+                    disabled={searchByInvoiceStatus === "loading"}
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                    {searchByInvoiceStatus === "loading" ? (
+                      <span className="animate-spin">⏳</span>
+                    ) : (
+                      "Search"
+                    )}
+                  </Button>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
 
-          {/* Add Item Button */}
-          <div className="px-4 pt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-              onClick={handleAddItem}
-            >
-              <CirclePlus size={16} /> Add Item
-            </Button>
-          </div>
-        </div>
-
-        {/* Additional Options */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="border rounded-lg p-4">
-            <Label className="text-sm font-medium mb-4 block">DISCOUNT</Label>
-            <div className="flex gap-4">
-              <Input placeholder="Value" className="w-24" />
-              <span className="flex items-center">%</span>
-              <span className="flex items-center px-2">OR</span>
-              <Input placeholder="₹ Value" className="flex-1" />
+            {/* Right Section - Return Info */}
+            <div className="border rounded-lg p-4">
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">
+                    RETURN DATE<span className="text-rose-500">*</span>
+                  </Label>
+                  <Input
+                    type="date"
+                    value={returnDate}
+                    onChange={(e) => setReturnDate(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="claim-gst"
+                      checked={claimGSTInReturn}
+                      onCheckedChange={setClaimGSTInReturn}
+                    />
+                    <Label htmlFor="claim-gst" className="text-sm">
+                      Claim GST in Debit Note
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="adjust-rate"
+                      checked={adjustRateForDisc}
+                      onCheckedChange={setAdjustRateForDisc}
+                    />
+                    <Label htmlFor="adjust-rate" className="text-sm">
+                      Adjust Rate for Disc, Scheme, Free Qty
+                    </Label>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="border rounded-lg p-4">
-            <Label className="text-sm font-medium mb-4 block">
-              REFUNDABLE AMOUNT
-            </Label>
-            <Input placeholder="₹ Value" />
+
+          {/* Items Table */}
+          <div className="w-full border-[1px] border-inherit py-4 rounded-sm space-y-2">
+            {/* Table Headers */}
+            <div className="grid grid-cols-[3fr_2fr_0.75fr_1fr_1fr_0.75fr_1fr_0.5fr_1fr_0.5fr_1fr_50px] w-full gap-1 px-4 items-center">
+              <div>
+                <p className="text-xs font-semibold ">PRODUCT</p>
+              </div>
+              <div className="">
+                <p className="text-xs font-semibold">BATCH NO</p>
+              </div>
+              <div className="">
+                <p className="text-xs font-semibold">PACK</p>
+              </div>
+              <div className="">
+                <p className="text-xs font-semibold">EXPIRY</p>
+              </div>
+              <div className="">
+                <p className="text-xs font-semibold">MRP</p>
+              </div>
+              <div className="">
+                <p className="text-xs font-semibold">QTY</p>
+              </div>
+              <div className="">
+                <p className="text-xs font-semibold">PUR RATE</p>
+              </div>
+              <div className="">
+                <p className="text-xs font-semibold">DISC %</p>
+              </div>
+              <div className="">
+                <p className="text-xs font-semibold">EFF PUR RATE</p>
+              </div>
+              <div className="">
+                <p className="text-xs font-semibold">GST</p>
+              </div>
+              <div className="">
+                <p className="text-xs font-semibold">AMOUNT</p>
+              </div>
+              <div className="">
+                <p className="text-xs font-semibold">ACTION</p>
+              </div>
+            </div>
+
+            {/* Table Body */}
+            <div className="w-full space-y-2 px-4">
+              {items.map((item, index) => (
+                <div
+                  key={item.id}
+                  // Add data-row-id for easier targeting
+                  data-row-id={item.id}
+                  className="grid grid-cols-[3fr_2fr_0.75fr_1fr_1fr_0.75fr_1fr_0.5fr_1fr_0.5fr_1fr_50px] w-full gap-1 items-start relative font-semibold" // Changed items-center to items-start for error message positioning
+                >
+                  {/* PRODUCT Input */}
+                  <div >
+                    <Input
+                      type="text"
+                      value={
+                        item.id === productSelectorTargetId
+                          ? productSearchTerm
+                          : item.itemName
+                      } // Show search term for target row, else show item name
+                      placeholder="Type or Press Space"
+                      data-row-index={index} // Keep for potential handleKeyDown usage
+                      data-field="itemName"
+                      onKeyDown={(e) => {
+                        if (e.key === " " && e.target.value.length === 0) {
+                          e.preventDefault(); // Prevent space if field is empty
+                          handleProductNameChange(e, item.id);
+                        }
+                        // Add Enter key navigation if needed, careful not to conflict
+                        // else if (e.key === 'Enter') {
+                        //    handleKeyDown(e, index, "itemName");
+                        // }
+                      }}
+                      onChange={(e) => handleProductNameChange(e, item.id)}
+                      className="h-8 w-full border-[1px] border-gray-300 px-1"
+                      // ref={(el) => inputRefs.current[`item-${item.id}-itemName`] = el} // Example ref
+                    />
+                  </div>
+                  {/* BATCH NO Input */}
+                  <div data-field="batchNo">
+                    {" "}
+                    {/* Wrapper div with data-field */}
+                    <BatchSuggestion
+                      // Use item.id for unique identification if needed by BatchSuggestion internally
+                      inventoryId={item.inventoryId}
+                      value={item.batchNo}
+                      setValue={(value) =>
+                        handleInputChange(item.id, "batchNo", value)
+                      } // Update batchNo for display typing
+                      onSuggestionSelect={(batch) =>
+                        handleBatchSelect(batch, item.id)
+                      }
+                      inputRef={inputRefs} // Pass refs if BatchSuggestion needs them for internal navigation
+                      disabled={!item.inventoryId} // Disable if no product selected
+                      //   ref={(el) => inputRefs.current[`item-${item.id}-batchNo`] = el} // Ref for BatchSuggestion input wrapper if needed
+                      // Add onKeyDown to BatchSuggestion if Enter navigation is needed from it
+                    />
+                  </div>
+                  {/* PACK Input */}
+                  <div>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs">1 x</span>
+                      <Input
+                        type="text" // Keep as text? Or number?
+                        value={item.pack}
+                        data-row-index={index}
+                        data-field="pack"
+                        onKeyDown={(e) => handleKeyDown(e, index, "pack")}
+                        onChange={(e) =>
+                          handleInputChange(item.id, "pack", e.target.value)
+                        }
+                        className="h-8 w-full border-[1px] border-gray-300 px-1 pl-6"
+                        readOnly={!item.isManual && item.batchId} // Pack usually comes from batch
+                      />
+                    </div>
+                  </div>
+                  {/* EXPIRY Input */}
+                  <div className="relative">
+                    {" "}
+                    {/* Relative positioning for error message */}
+                    <Input
+                      type="text"
+                      value={item.expiry}
+                      placeholder="MM/YY"
+                      data-row-index={index}
+                      data-field="expiry"
+                      onKeyDown={(e) => handleKeyDown(e, index, "expiry")}
+                      onChange={(e) =>
+                        handleInputChange(item.id, "expiry", e.target.value)
+                      }
+                      className={`h-8 w-full border-[1px] px-1 ${
+                        itemErrors[item.id]?.expiry
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
+                      readOnly={!item.isManual && item.batchId} // Expiry comes from batch
+                    />
+                    {itemErrors[item.id]?.expiry && (
+                      <p className="text-xs text-red-500 absolute -bottom-4 left-0">
+                        {itemErrors[item.id].expiry}
+                      </p>
+                    )}
+                  </div>
+                  {/* MRP Input */}
+                  <div>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs">
+                        ₹
+                      </span>
+                      <Input
+                        type="text"
+                        value={item.mrp}
+                        data-row-index={index}
+                        data-field="mrp"
+                        onKeyDown={(e) => handleKeyDown(e, index, "mrp")}
+                        onChange={(e) =>
+                          handleInputChange(item.id, "mrp", e.target.value)
+                        }
+                        className="h-8 w-full border-[1px] border-gray-300 px-1 pl-5"
+                        step="any"
+                        readOnly={!item.isManual && item.batchId} // MRP comes from batch
+                      />
+                    </div>
+                  </div>
+                  {/* QTY Input */}
+                  <div>
+                    <Input
+                      type="text"
+                      value={item.qty} // Display base unit qty internally
+                      placeholder="Units" // Placeholder clarification
+                      data-row-index={index}
+                      data-field="qty"
+                      onKeyDown={(e) => handleKeyDown(e, index, "qty")}
+                      onChange={(e) =>
+                        handleInputChange(item.id, "qty", e.target.value)
+                      }
+                      className="h-8 w-full border-[1px] border-gray-300 px-1"
+                      step="any"
+                      data-row-id={item.id} // Add data-row-id for easier targeting by focus logic
+                    />
+                  </div>
+                  {/* PUR RATE Input */}
+                  <div>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs">
+                        ₹
+                      </span>
+                      <Input
+                        type="text"
+                        value={item.pricePerItem}
+                        data-row-index={index}
+                        data-field="pricePerItem"
+                        onKeyDown={(e) => handleKeyDown(e, index, "pricePerItem")}
+                        onChange={(e) =>
+                          handleInputChange(
+                            item.id,
+                            "pricePerItem",
+                            e.target.value
+                          )
+                        }
+                        className="h-8 w-full border-[1px] border-gray-300 px-1 pl-5"
+                        step="any"
+                        readOnly={!item.isManual && item.batchId} // Rate comes from batch
+                      />
+                    </div>
+                  </div>
+                  {/* DISC % Input */}
+                  <div>
+                    <div className="relative">
+                      <Input
+                        type="text"
+                        value={item.discount}
+                        data-row-index={index}
+                        data-field="discount"
+                        onKeyDown={(e) => handleKeyDown(e, index, "discount")}
+                        onChange={(e) =>
+                          handleInputChange(item.id, "discount", e.target.value)
+                        }
+                        className="h-8 w-full border-[1px] border-gray-300 px-1 pr-5"
+                        step="any"
+                      />
+                    </div>
+                  </div>
+                  {/* EFF PUR RATE Input */}
+                  <div>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs">
+                        ₹
+                      </span>
+                      <Input
+                        type="text"
+                        value={item.effPurRate}
+                        readOnly // Calculated field
+                        className="h-8 w-full border-[1px] border-gray-300 px-1 pl-5 bg-gray-100"
+                        tabIndex={-1}
+                        step="any"
+                      />
+                    </div>
+                  </div>
+                  {/* GST Input */}
+                  <div>
+                    <div className="relative">
+                      <Input
+                        type="text"
+                        value={item.gst}
+                        data-row-index={index}
+                        data-field="gst"
+                        onKeyDown={(e) => handleKeyDown(e, index, "gst")}
+                        onChange={(e) =>
+                          handleInputChange(item.id, "gst", e.target.value)
+                        }
+                        className="h-8 w-full border-[1px] border-gray-300 px-1 pr-5"
+                        step="any"
+                        readOnly={!item.isManual && item.batchId} // GST might come from batch
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+                        %
+                      </span>
+                    </div>
+                  </div>
+                  {/* AMOUNT Input */}
+                  <div>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs">
+                        ₹
+                      </span>
+                      <Input
+                        type="text" // Use text as it's formatted
+                        value={item.amount}
+                        readOnly // Calculated field
+                        className="h-8 w-full border-[1px] border-gray-300 px-1 pl-5 bg-gray-100"
+                        tabIndex={-1}
+                      />
+                    </div>
+                  </div>
+                  {/* ACTION Button */}
+                  <div className="flex items-center justify-center">
+                    <button
+                      onClick={() => handleDeleteItem(item.id)}
+                      className="hover:text-red-500"
+                      tabIndex={-1}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Add Item Button */}
+            <div className="px-4 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+                onClick={handleAddItem}
+              >
+                <CirclePlus size={16} /> Add Item
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center justify-center p-4 border rounded-lg">
-            <div className="text-center">
-              <div className="mb-1">Click on Save to Process Return</div>
-              <div className="text-sm text-muted-foreground">
-                Use 'Alt+S' Key
+
+          {/* Additional Options */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="border rounded-lg p-4">
+              <Label className="text-sm font-medium mb-4 block">DISCOUNT</Label>
+              <div className="flex gap-4">
+                <Input placeholder="Value" className="w-24" />
+                <span className="flex items-center">%</span>
+                <span className="flex items-center px-2">OR</span>
+                <Input placeholder="₹ Value" className="flex-1" />
+              </div>
+            </div>
+            <div className="border rounded-lg p-4">
+              <Label className="text-sm font-medium mb-4 block">
+                REFUNDABLE AMOUNT
+              </Label>
+              <Input placeholder="₹ Value" />
+            </div>
+            <div className="flex items-center justify-center p-4 border rounded-lg">
+              <div className="text-center">
+                <div className="mb-1">Click on Save to Process Return</div>
+                <div className="text-sm text-muted-foreground">
+                  Use 'Alt+S' Key
+                </div>
               </div>
             </div>
           </div>
         </div>
+      </ScrollArea>
 
-        {/* Add the RefundDialog instance */}
-        <RefundDialog
-          open={isRefundDialogOpen}
-          onOpenChange={setIsRefundDialogOpen}
-          refundData={refundDialogData}
-          onSubmit={handleRefundSubmit}
-          loadingStatus={loading} // Pass loading status
-        />
-        {/* Placeholder ^ We'll create this component next */}
-
-        {/* Confirmation Dialog */}
-        <AlertDialog
-          open={isConfirmDialogOpen}
-          onOpenChange={setIsConfirmDialogOpen}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{confirmDialogContent.title}</AlertDialogTitle>
-              <AlertDialogDescription>
-                {confirmDialogContent.description}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>No, Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={proceedWithSave}>
-                Yes, Continue
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-
-      {/* Footer */}
-      <div className="fixed bottom-0 w-[calc(100%-200px)] grid grid-cols-8 gap-4 p-4 text-sm text-white bg-gray-800 rounded-lg">
-        <div>
-          <div className="mb-1 text-gray-400">
-            Total Products: {totals.products}
-          </div>
-          <div className="text-gray-400">
-            Total Quantity: {totals.totalQuantity} {/* This is base quantity */}
-          </div>
+      {/* Footer - Fixed */}
+      <div
+        className={`fixed bottom-0 ${
+          isCollapsed ? "w-[calc(100%-95px)]" : "w-[calc(100%-225px)]"
+        } text-sm grid grid-cols-8 gap-4 text-white bg-gray-900 rounded-lg transition-all duration-300 text-center`}
+      >
+        <div className="py-2">
+          <div>Total Products: {totals.products}</div>
+          <div>Total Quantity: {totals.totalQuantity}</div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">Taxable</div>
-          <div>₹{totals.taxableAmount.toFixed(2)}</div>
+        <div className="py-2">
+          <div>Taxable</div>
+          <div className="text-lg">{formatCurrency(totals.taxableAmount)}</div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">(-) Discount</div>
-          <div>₹{totals.discount.toFixed(2)}</div>
+        <div className="py-2">
+          <div className="">(-) Discount</div>
+          <div className="text-lg">{formatCurrency(totals.discount)}</div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">(+) GST Amount</div>
-          <div>₹{totals.cgstSgst.toFixed(2)}</div>
+        <div className="py-2">
+          <div className="">(+) GST Amount</div>
+          <div className="text-lg">{formatCurrency(totals.cgstSgst)}</div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">Round Off</div>
-          <div>₹{totals.roundOff.toFixed(2)}</div>
+        <div className="py-2">
+          <div className="">Round Off</div>
+          <div className="text-lg">{formatCurrency(totals.roundOff)}</div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">Refundable Amt</div>
-          <div>₹{totals.refundableAmt.toFixed(2)}</div>
+        <div className="py-2">
+          <div className="">Refundable Amt</div>
+          <div className="text-lg">{formatCurrency(totals.refundableAmt)}</div>
         </div>
-        <div>
-          <div className="mb-1 text-gray-400">Balance</div>
-          <div>₹{totals.total.toFixed(2)}</div>
+        <div className="py-2">
+          <div className="">Balance</div>
+          <div className="text-lg">{formatCurrency(totals.total)}</div>
         </div>
-        <div className="bg-rose-500 -m-4 p-4 rounded-r-lg">
-          <div className="mb-1">Total Amount</div>
-          <div>₹{totals.total.toFixed(2)}</div>
+        <div className="bg-rose-500 py-2">
+          <div className="">Total Amount</div>
+          <div className="text-lg">{formatCurrency(totals.total)}</div>
         </div>
       </div>
 
-      {/* Add ProductSelector Dialog */}
+      {/* Dialogs */}
       <ProductSelector
         open={productSelectorOpen}
         onOpenChange={setProductSelectorOpen}
         onSelect={handleProductSelect}
         search={productSearchTerm}
         setSearch={setProductSearchTerm}
-        // Pass current items if needed for filtering/display?
       />
 
-      {/* Add SelectDistributorDlg */}
       <SelectDistributorDlg
         open={distributorSelectDialog}
         setOpen={setdistributorSelectDialog}
@@ -1492,15 +1396,33 @@ const PurchaseReturn = () => {
         onSelect={handleDistributorSelect}
       />
 
-      {/* Add the RefundDialog instance */}
       <RefundDialog
         open={isRefundDialogOpen}
         onOpenChange={setIsRefundDialogOpen}
         refundData={refundDialogData}
         onSubmit={handleRefundSubmit}
-        loadingStatus={loading} // Pass loading status
+        loadingStatus={createPurchaseReturnStatus}
       />
-      {/* Placeholder ^ We'll create this component next */}
+
+      <AlertDialog
+        open={isConfirmDialogOpen}
+        onOpenChange={setIsConfirmDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmDialogContent.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDialogContent.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No, Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={proceedWithSave}>
+              Yes, Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

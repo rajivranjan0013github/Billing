@@ -27,7 +27,7 @@ const BatchSuggestion = forwardRef(
   ) => {
     const [filteredSuggestions, setFilteredSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
-    const [selectedIndex, setSelectedIndex] = useState(-1);
+    const [selectedIndex, setSelectedIndex] = useState(0);
     const suggestionListRef = useRef(null);
     const suggestionContainerRef = useRef(null);
     const { toast } = useToast();
@@ -79,7 +79,7 @@ const BatchSuggestion = forwardRef(
 
     useEffect(() => {
       setFilteredSuggestions(filtered);
-      setSelectedIndex(-1);
+      setSelectedIndex(0);
     }, [filtered]);
 
     const handleInputChange = useCallback(
@@ -120,7 +120,7 @@ const BatchSuggestion = forwardRef(
           }
           return;
         }
-        if (selectedIndex >= 0) {
+        if (selectedIndex >= 0 && filteredSuggestions.length > 0) {
           e.preventDefault();
           setValue(filteredSuggestions[selectedIndex]?.batchNumber);
           setShowSuggestions(false);
@@ -128,6 +128,9 @@ const BatchSuggestion = forwardRef(
             onSuggestionSelect(filteredSuggestions[selectedIndex]);
           }
         }
+        // if (inputRef?.current?.["packs"]) {
+        //   inputRef.current["packs"].focus();
+        // }
       }
     };
 

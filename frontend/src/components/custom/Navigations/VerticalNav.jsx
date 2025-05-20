@@ -57,36 +57,36 @@ export const navItems = [
 
 export const ColorfulLogo = ({ className }) => (
   <svg
-    className={className}
-    viewBox="0 0 100 100"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
+  className={className}
+  viewBox="0 0 100 100"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  {/* Blue circular background */}
+  <circle cx="50" cy="50" r="45" fill="#4299E1" />
+
+  {/* Receipt shape */}
+  <rect x="35" y="30" width="30" height="40" rx="3" fill="#F6E05E" />
+  <path
+    d="M35 40H65M35 48H65M35 56H50"
+    stroke="#4299E1"
+    strokeWidth="3"
+    strokeLinecap="round"
+  />
+
+  {/* Green currency symbol */}
+  <text
+    x="50"
+    y="70"
+    textAnchor="middle"
+    fill="#48BB78"
+    fontSize="16"
+    fontWeight="bold"
+    fontFamily="Arial"
   >
-    <circle cx="50" cy="50" r="45" fill="#4299E1" /> {/* Blue background */}
-    <path
-      d="M30 50H70"
-      stroke="white"
-      strokeWidth="8"
-      strokeLinecap="round"
-    />{" "}
-    {/* White horizontal line */}
-    <path
-      d="M50 30V70"
-      stroke="#48BB78"
-      strokeWidth="8"
-      strokeLinecap="round"
-    />{" "}
-    {/* Green vertical line */}
-    <circle cx="50" cy="50" r="15" fill="#F6E05E" />{" "}
-    {/* Yellow center circle */}
-    <path
-      d="M50 42V58M42 50H58"
-      stroke="#4299E1"
-      strokeWidth="4"
-      strokeLinecap="round"
-    />{" "}
-    {/* Blue cross in yellow circle */}
-  </svg>
+    ₹
+  </text>
+</svg>
 );
 
 export default function VerticalNav() {

@@ -144,7 +144,7 @@ export default function AddStaff() {
             description: "Staff member has been added successfully.",
           });
         }
-        navigate("/reports"); // Or a more relevant page
+        navigate("/staff"); // Or a more relevant page
       } catch (err) {
         // Changed error variable name
         toast({

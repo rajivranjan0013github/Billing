@@ -17,6 +17,7 @@ import { formatCurrency } from "../utils/Helper";
 import { fetchSettings } from '../redux/slices/settingsSlice'
 import { editSaleInvoice } from '../redux/slices/SellBillSlice';
 import MakePaymentDlg from "../components/custom/payment/MakePaymentDlg";
+import SearchSuggestion from "../components/custom/custom-fields/CustomSearchSuggestion";
 
 // Helper function to round to 2 decimal places
 const roundToTwo = (num) => {
@@ -48,6 +49,7 @@ export default function EditSaleInvoice() {
   const {settings, status } = useSelector(state => state.settings)
   const { isCollapsed } = useSelector((state) => state.loader);
   const { invoiceId } = useParams();
+  const doctors = useSelector((state) => state.staff?.doctors);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState(true);
   const [invoiceDate, setInvoiceDate] = useState();
@@ -62,6 +64,12 @@ export default function EditSaleInvoice() {
   const [paymentOutDialogOpen, setPaymentOutDialogOpen] = useState(false);
   const [editedPayments, setEditedPayments] = useState({});
   const { editBillStatus } = useSelector((state) => state.bill);
+
+  // Convert doctors array to the format expected by SearchSuggestion
+  const doctorSuggestions = doctors.map((doctor, index) => ({
+    _id: index + 1,
+    name: doctor.name?.includes("Dr") ? doctor.name : `Dr. ${doctor.name}`,
+  }));
 
   const [formData, setFormData] = useState({
     saleType: "invoice",
@@ -95,7 +103,7 @@ export default function EditSaleInvoice() {
         }
         const data = await response.json();
         setCompleteData(data);
-        const {customerName,customerId,invoiceNumber,products,invoiceDate,paymentDueDate,withGst,amountPaid,payments,saleType,is_cash_customer,} = data;
+        const {customerName,customerId,invoiceNumber,products,invoiceDate,paymentDueDate,withGst,amountPaid,payments,saleType,is_cash_customer,doctorName} = data;
         const fomateProduct = products.map((item) => {
           const temp = convertQuantityValue(item.quantity, item.pack);
           return { ...item, ...temp };
@@ -113,6 +121,7 @@ export default function EditSaleInvoice() {
           invoiceNumber,
           saleType,
           withGst: withGst ? "yes" : "no",
+          doctorName,
         });
         setCustomerName(customerName);
         setIsCashCounter(is_cash_customer);
@@ -206,6 +215,7 @@ export default function EditSaleInvoice() {
         is_cash_customer: isCashCounter,
         invoiceDate: invoiceDate,
         paymentDueDate: amountData?.grandTotal > amountPaid  ? dueDate : null,
+        doctorName: formData.doctorName,
         products: formattedProducts,
         withGst: formData.withGst === "yes",
         grandTotal: amountData.grandTotal,
@@ -394,7 +404,7 @@ export default function EditSaleInvoice() {
 
       {/* Form Content */}
       <div className="grid gap-2">
-        <div className="grid gap-4 grid-cols-5 w-full">
+        <div className="grid gap-4 grid-cols-6 w-full">
           <div className="flex gap-8">
             <div>
               <Label className="text-sm font-medium">SALE TYPE</Label>
@@ -469,6 +479,24 @@ export default function EditSaleInvoice() {
               />
               Cash/Counter Sale
             </div>
+          </div>
+          <div>
+            <Label className="text-sm font-medium">DOCTOR NAME</Label>
+            <SearchSuggestion
+              suggestions={doctorSuggestions}
+              placeholder="Enter or select doctor name"
+              value={formData.doctorName}
+              setValue={(value) => handleInputChange("doctorName", value)}
+              onSuggestionSelect={(selected) => {
+                handleInputChange("doctorName", selected.name);
+                // Focus on the product input after selecting a doctor
+                if (inputRef.current["product"]) {
+                  inputRef.current["product"].focus();
+                }
+              }}
+              onKeyDown={(e) => handleKeyDown(e, "doctorName")}
+              ref={(el) => (inputRef.current["doctorName"] = el)}
+            />
           </div>
           <div>
             <Label className="text-sm font-medium">

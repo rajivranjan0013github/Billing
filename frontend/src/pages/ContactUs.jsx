@@ -156,11 +156,11 @@ export default function ContactPage() {
                     <div className="space-y-4">
                       <div className="flex items-center space-x-4">
                         <Phone className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 flex-shrink-0" />
-                        <span className="text-sm sm:text-base">+91 9097849090</span>
+                        <span className="text-sm sm:text-base">+91 9942000425</span>
                       </div>
                       <div className="flex items-center space-x-4">
                         <Mail className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 flex-shrink-0" />
-                        <span className="text-sm sm:text-base">support@thebilling.com</span>
+                        <span className="text-sm sm:text-base">support@thebilling.in</span>
                       </div>
                       <div className="flex items-start space-x-4">
                         <MapPin className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 flex-shrink-0 mt-1" />
@@ -174,7 +174,7 @@ export default function ContactPage() {
                 <div className="space-y-4">
                   <h3 className="text-lg sm:text-xl font-bold">Follow Us</h3>
                   <div className="flex space-x-4">
-                    <Link href="#" className="text-gray-500 hover:text-blue-600">
+                    <Link href="https://www.facebook.com/people/thehospitalin/61573546403108/" className="text-gray-500 hover:text-blue-600">
                       <Facebook className="h-5 w-5 sm:h-6 sm:w-6" />
                       <span className="sr-only">Facebook</span>
                     </Link>

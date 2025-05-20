@@ -2,47 +2,31 @@ import { useState, useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchAccounts } from "../../../redux/slices/accountSlice";
 import { roundToTwo } from "../../../pages/CreatePurchaseInvoice";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "../../ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../ui/dialog";
 import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
 import { ScrollArea } from "../../ui/scroll-area";
 import { format } from "date-fns";
-import {
-  Clock,
-  CheckCircle2,
-  BanknoteIcon,
-  CreditCard,
-  Building2,
-  Wallet,
-  Landmark,
-  ArrowLeft,
-} from "lucide-react";
+import { Clock, CheckCircle2, BanknoteIcon, CreditCard, Building2, Wallet, Landmark, ArrowLeft} from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
 import { Separator } from "../../ui/separator";
 import { formatCurrency } from "../../../utils/Helper";
 
-export default function PaymentDialog({
-  open,
-  onOpenChange,
-  invoiceData,
-  onSubmit,
-  billStatus,
-}) {
+export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmit, billStatus}) {
   const dispatch = useDispatch();
   const { accounts, fetchStatus } = useSelector((state) => state.accounts);
   const [step, setStep] = useState(1);
-  const [paymentStatus, setPaymentStatus] = useState("due");
+  const [paymentStatus, setPaymentStatus] = useState("paid");
   const [dueDate, setDueDate] = useState();
   const [showDetails, setShowDetails] = useState(false);
   const [selectedMethodIndex, setSelectedMethodIndex] = useState(1);
   const inputRef = useRef({});
+
+  console.log('step', step);
+  console.log('selectedMethodIndex', selectedMethodIndex);
+  
 
   const [paymentData, setPaymentData] = useState({
     amount: "",
@@ -56,9 +40,7 @@ export default function PaymentDialog({
 
   useEffect(() => {
     if (fetchStatus === "idle") {
-      dispatch(fetchAccounts())
-        .unwrap()
-        .catch((err) => setError(err.message));
+      dispatch(fetchAccounts()).unwrap().catch((err) => setError(err.message));
     }
   }, [dispatch, fetchStatus]);
 
@@ -92,22 +74,17 @@ export default function PaymentDialog({
 
       // For new invoices, default to paid if it's cash counter, otherwise due
       // For existing invoices, start with paid status
-      const initialStatus = invoiceData?.isNewInvoice
-        ? invoiceData?.isCashCounter
-          ? "paid"
-          : "due"
-        : "paid";
-      setPaymentStatus(initialStatus);
+      // const initialStatus = invoiceData?.isNewInvoice ? invoiceData?.isCashCounter ? "paid"  : "due": "paid";
+      // setPaymentStatus(initialStatus);
 
       setShowDetails(false);
       setSelectedMethodIndex(1);
 
       // Calculate initial amount based on remaining due and payment status
-      const remainingDue =
-        (invoiceData?.grandTotal || 0) - (invoiceData?.alreadyPaid || 0);
+      const remainingDue = (invoiceData?.grandTotal || 0) - (invoiceData?.alreadyPaid || 0);
 
       setPaymentData({
-        amount: initialStatus === "due" ? 0 : roundToTwo(remainingDue),
+        amount: roundToTwo(remainingDue),
         paymentMethod: "",
         accountId: "",
         chequeNumber: "",
@@ -117,7 +94,7 @@ export default function PaymentDialog({
       });
 
       // If there are accounts, automatically select the first account
-      if (accounts && accounts.length > 0 && initialStatus === "paid") {
+      if (accounts && accounts.length > 0 && paymentStatus === "paid") {
         const firstAccount = accounts[0];
         setPaymentData((prev) => ({
           ...prev,
@@ -130,8 +107,7 @@ export default function PaymentDialog({
 
   // Add effect to update amount when payment status changes
   useEffect(() => {
-    const remainingDue =
-      (invoiceData?.grandTotal || 0) - (invoiceData?.alreadyPaid || 0);
+    const remainingDue = (invoiceData?.grandTotal || 0) - (invoiceData?.alreadyPaid || 0);
     setPaymentData((prev) => ({
       ...prev,
       amount: paymentStatus === "due" ? 0 : roundToTwo(remainingDue),
@@ -234,13 +210,9 @@ export default function PaymentDialog({
       amount: paymentData.amount === "" ? 0 : Number(paymentData.amount),
       status: paymentStatus,
       dueDate:
-        paymentStatus === "due" ||
-        Number(paymentData.amount) < Number(invoiceData?.grandTotal)
-          ? dueDate
-          : null,
+        paymentStatus === "due" || Number(paymentData.amount) < Number(invoiceData?.grandTotal)? dueDate: null,
       paymentType: "Purchase Invoice",
-      totalPaid:
-        (invoiceData?.alreadyPaid || 0) + Number(paymentData.amount || 0), // Add this to track cumulative payment
+      totalPaid: (invoiceData?.alreadyPaid || 0) + Number(paymentData.amount || 0), // Add this to track cumulative payment
     };
 
     if (paymentStatus === "due") {
@@ -335,16 +307,9 @@ export default function PaymentDialog({
             <Label>Cheque Date</Label>
             <Input
               type="date"
-              value={
-                paymentData.chequeDate
-                  ? format(paymentData.chequeDate, "yyyy-MM-dd")
-                  : ""
-              }
+              value={paymentData.chequeDate? format(paymentData.chequeDate, "yyyy-MM-dd"): ""}
               onChange={(e) =>
-                setPaymentData({
-                  ...paymentData,
-                  chequeDate: new Date(e.target.value),
-                })
+                setPaymentData({...paymentData,chequeDate: new Date(e.target.value),})
               }
               className="w-full"
               onKeyDown={(e) => handleKeyDown(e, "nextField")}
@@ -356,10 +321,7 @@ export default function PaymentDialog({
       );
     }
 
-    if (
-      paymentData.paymentMethod === "BANK" ||
-      paymentData.paymentMethod === "UPI"
-    ) {
+    if ( paymentData.paymentMethod === "BANK" || paymentData.paymentMethod === "UPI") {
       const account = accounts.find((acc) => acc._id === paymentData.accountId);
       if (!account) return null;
 
@@ -418,44 +380,45 @@ export default function PaymentDialog({
     }
   };
 
-  // Update the handleKeyDown function to handle RadioGroup
+  // Update the handleKeyDown function to prevent double-triggering of steps when pressing Enter
   const handleKeyDown = (e, nextInputId, isRadioGroup = false) => {
     if (e.key === "Enter") {
       e.preventDefault();
+      e.stopPropagation();
+      
       if (isRadioGroup) {
         // If it's the radio group, determine next input based on payment status
         const nextInput = paymentStatus === "due" ? "dueDate" : "amount";
         if (inputRef.current[nextInput]) {
           inputRef.current[nextInput].focus();
         }
-      } else if (
-        nextInputId === "dueSubmitButton" ||
-        nextInputId === "nextButton"
-      ) {
-        // If we're on the last input field, trigger submit
-        if (paymentStatus === "due") {
-          if (dueDate) {
-            handleSubmit();
-          }
-        } else if (step === 1) {
-          setStep(2);
-        } else if (step === 2) {
-          // Explicitly call handlePaymentMethodChange based on the selected index
-          if (selectedMethodIndex === 0) {
-            handlePaymentMethodChange("CHEQUE");
-          } else if (
-            selectedMethodIndex > 0 &&
-            accounts[selectedMethodIndex - 1]
-          ) {
-            const selectedAccount = accounts[selectedMethodIndex - 1];
-            handlePaymentMethodChange(`ACCOUNT_${selectedAccount._id}`);
-          }
-        } else if (step === 3 && canSubmitPayment()) {
+      } else if (nextInputId === "dueSubmitButton") {
+        if (paymentStatus === "due" && dueDate) {
           handleSubmit();
+        }
+      } else if (nextInputId === "nextButton") {
+        // Only focus the next button, don't trigger any action
+        if (inputRef.current["nextButton"]) {
+          inputRef.current["nextButton"].focus();
         }
       } else if (nextInputId && inputRef.current[nextInputId]) {
         inputRef.current[nextInputId].focus();
       }
+    }
+  };
+
+  const handleNextStep = () => {
+    if (step === 1) {
+      setStep(2);
+    } else if (step === 2) {
+      if (selectedMethodIndex === 0) {
+        handlePaymentMethodChange("CHEQUE");
+      } else if (selectedMethodIndex > 0 && accounts[selectedMethodIndex - 1]) {
+        const selectedAccount = accounts[selectedMethodIndex - 1];
+        handlePaymentMethodChange(`ACCOUNT_${selectedAccount._id}`);
+      }
+    } else if (step === 3 && canSubmitPayment()) {
+      handleSubmit();
     }
   };
 
@@ -593,9 +556,7 @@ export default function PaymentDialog({
                 <div className="grid grid-cols-2 gap-2 py-2 px-4 bg-gray-50 rounded-lg">
                   <div className="col-span-2">
                     <Label className="">
-                      {invoiceData?.invoiceType === "sales"
-                        ? "Customer Name"
-                        : "Distributor Name"}
+                      {invoiceData?.invoiceType === "sales" ? "Customer Name" : "Distributor Name"}
                     </Label>
                     <Input
                       value={invoiceData?.distributorName}
@@ -614,14 +575,7 @@ export default function PaymentDialog({
                   <div>
                     <Label className="text-sm ">Invoice Date</Label>
                     <Input
-                      value={
-                        invoiceData?.invoiceDate
-                          ? format(
-                              new Date(invoiceData.invoiceDate),
-                              "dd/MM/yyyy"
-                            )
-                          : "-"
-                      }
+                      value={invoiceData?.invoiceDate? format(new Date(invoiceData.invoiceDate),"dd/MM/yyyy"): "-"}
                       disabled={true}
                       className="font-bold border-gray-500"
                     />
@@ -640,6 +594,20 @@ export default function PaymentDialog({
                       ref={(el) => (inputRef.current["paymentStatus"] = el)}
                       onKeyDown={(e) => handleKeyDown(e, null, true)}
                     >
+                       <div>
+                        <RadioGroupItem
+                          value="paid"
+                          id="paid"
+                          className="peer sr-only"
+                        />
+                        <Label
+                          htmlFor="paid"
+                          className="flex  items-center  justify-center gap-1  border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                        >
+                          <CheckCircle2 className="h-6 w-6 text-green-500" />
+                          <div className="space-y-1 text-center">Paid/Cash</div>
+                        </Label>
+                      </div>
                       <div>
                         <RadioGroupItem
                           value="due"
@@ -657,20 +625,7 @@ export default function PaymentDialog({
                         </Label>
                       </div>
 
-                      <div>
-                        <RadioGroupItem
-                          value="paid"
-                          id="paid"
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor="paid"
-                          className="flex  items-center  justify-center gap-1  border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                        >
-                          <CheckCircle2 className="h-6 w-6 text-green-500" />
-                          <div className="space-y-1 text-center">Paid/Cash</div>
-                        </Label>
-                      </div>
+                     
                     </RadioGroup>
                     <p className="text-xs">use arrow key ← →</p>
                   </div>
@@ -683,13 +638,8 @@ export default function PaymentDialog({
                         value={dueDate ? format(dueDate, "yyyy-MM-dd") : ""}
                         onChange={(e) => {
                           const enteredValue = e.target.value;
-                          const potentialDate = enteredValue
-                            ? new Date(enteredValue)
-                            : null;
-                          if (
-                            potentialDate &&
-                            !isNaN(potentialDate.getTime())
-                          ) {
+                          const potentialDate = enteredValue? new Date(enteredValue): null;
+                          if (potentialDate &&!isNaN(potentialDate.getTime())) {
                             setDueDate(potentialDate);
                           } else {
                             setDueDate(null); // Set to null if date is invalid
@@ -710,16 +660,10 @@ export default function PaymentDialog({
                             placeholder="Enter amount"
                             value={paymentData.amount}
                             onChange={(e) =>
-                              setPaymentData({
-                                ...paymentData,
-                                amount: e.target.value,
-                              })
+                              setPaymentData({...paymentData,amount: e.target.value,})
                             }
                             onKeyDown={(e) => {
-                              if (
-                                Number(paymentData.amount) <
-                                Number(invoiceData?.grandTotal)
-                              ) {
+                              if (Number(paymentData.amount) <Number(invoiceData?.grandTotal)) {
                                 handleKeyDown(e, "dueDate2");
                               } else {
                                 handleKeyDown(e, "nextButton");
@@ -733,18 +677,11 @@ export default function PaymentDialog({
                             <Label>Payment Due Date</Label>
                             <Input
                               type="date"
-                              value={
-                                dueDate ? format(dueDate, "yyyy-MM-dd") : ""
-                              }
+                              value={dueDate ? format(dueDate, "yyyy-MM-dd") : ""}
                               onChange={(e) => {
                                 const enteredValue = e.target.value;
-                                const potentialDate = enteredValue
-                                  ? new Date(enteredValue)
-                                  : null;
-                                if (
-                                  potentialDate &&
-                                  !isNaN(potentialDate.getTime())
-                                ) {
+                                const potentialDate = enteredValue ? new Date(enteredValue) : null;
+                                if (potentialDate && !isNaN(potentialDate.getTime())) {
                                   setDueDate(potentialDate);
                                 } else {
                                   setDueDate(null); // Set to null if date is invalid
@@ -878,11 +815,7 @@ export default function PaymentDialog({
           <div>
             <p className="text-sm text-gray-500">BALANCE DUE</p>
             <p className="font-bold">
-              {dueAmount > 0
-                ? formatCurrency(dueAmount)
-                : dueAmount === 0
-                ? "-"
-                : `-${formatCurrency(Math.abs(dueAmount))}`}
+              {dueAmount > 0 ? formatCurrency(dueAmount) : dueAmount === 0 ? "-" : `-${formatCurrency(Math.abs(dueAmount))}`}
             </p>
           </div>
         </div>
@@ -911,45 +844,26 @@ export default function PaymentDialog({
               <Button
                 size="sm"
                 ref={(el) => (inputRef.current["nextButton"] = el)}
-                onClick={() => {
-                  if (step === 1) {
-                    setStep(2);
-                    // Optional: Add focus logic for the first item in step 2 if needed
-                  } else if (step === 2) {
-                    // Explicitly call handlePaymentMethodChange based on the selected index
-                    if (selectedMethodIndex === 0) {
-                      // Cheque selected
-                      handlePaymentMethodChange("CHEQUE");
-                    } else if (
-                      selectedMethodIndex > 0 &&
-                      accounts[selectedMethodIndex - 1]
-                    ) {
-                      // Account selected
-                      const selectedAccount = accounts[selectedMethodIndex - 1];
-                      handlePaymentMethodChange(
-                        `ACCOUNT_${selectedAccount._id}`
-                      );
-                    }
-                    // handlePaymentMethodChange already sets step = 3 and showDetails = true
-                  } else if (step === 3 && canSubmitPayment()) {
-                    handleSubmit();
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleNextStep();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleNextStep();
                   }
                 }}
                 disabled={
-                  (step === 1 &&
-                    !paymentData.amount &&
-                    paymentStatus !== "due") || // Step 1: Disable if amount is zero/empty when status is 'paid'
-                  (step === 3 && !canSubmitPayment()) || // Step 3: Disable if payment details are incomplete
+                  (step === 1 && !paymentData.amount && paymentStatus !== "due") ||
+                  (step === 3 && !canSubmitPayment()) ||
                   billStatus === "loading"
-                  // Step 2 should always be enabled if not loading, as a selection is implicitly tracked
                 }
                 className="bg-blue-600 text-white hover:bg-blue-700"
               >
-                {billStatus === "loading"
-                  ? "Submitting..."
-                  : step === 3
-                  ? "Submit"
-                  : "Next"}
+                {billStatus === "loading" ? "Submitting..." : step === 3 ? "Submit" : "Next"}
               </Button>
             )}
           </div>

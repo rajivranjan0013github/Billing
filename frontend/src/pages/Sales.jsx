@@ -51,9 +51,7 @@ export default function SalesTransactions() {
   const isInitialDebounceEffectRun = useRef(true);
 
   // Get data from Redux
-  const { bills, fetchStatus, searchStatus, error } = useSelector(
-    (state) => state.bill
-  );
+  const { bills } = useSelector((state) => state.bill);
 
   // Local state for filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -163,11 +161,6 @@ export default function SalesTransactions() {
             prev.delete("filter");
           }
           return prev;
-        });
-
-        fetchBillsData({
-          startDate: fromDate,
-          endDate: toDate,
         });
       } catch (err) {
         toast({
@@ -501,7 +494,12 @@ export default function SalesTransactions() {
               from={dateRange.from}
               to={dateRange.to}
               onSelect={handleDateSelect}
-              onSearch={() => {}}
+              onSearch={() => {
+                fetchBillsData({
+                  startDate: dateRange.from,
+                  endDate: dateRange.to,
+                });
+              }}
               onCancel={() => {
                 setDateRange({ from: new Date(), to: new Date() });
                 setDateFilterType("today");
@@ -601,7 +599,7 @@ export default function SalesTransactions() {
             <TableBody className="border">
               {filteredBills.map((bill, index) => (
                 <TableRow
-                  key={bill._id}
+                  key={bill?._id}
                   className="group cursor-pointer"
                   onClick={() => navigate(`/sales/${bill._id}`)}
                 >
@@ -612,24 +610,24 @@ export default function SalesTransactions() {
                     )}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {bill.invoiceNumber}
+                    {bill?.invoiceNumber}
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium">{bill.customerName}</div>
+                    <div className="font-medium capitalize">{bill?.customerName}</div>
                     <div className="text-sm text-muted-foreground">
-                      {bill.mob}
+                      {bill?.mob}
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">
                     <p>
-                      {new Date(bill.invoiceDate).toLocaleDateString("en-IN", {
+                      {new Date(bill?.invoiceDate).toLocaleDateString("en-IN", {
                         day: "2-digit",
                         month: "short",
                         year: "2-digit",
                       })}
                     </p>
                     <p className="text-xs text-gray-500">
-                      By : {bill.createdByName}
+                      By : {bill?.createdByName}
                     </p>
                   </TableCell>
                   {/* <TableCell>
@@ -637,7 +635,7 @@ export default function SalesTransactions() {
                   </TableCell> */}
                   <TableCell>
                     <div className="font-medium">
-                      {new Date(bill.createdAt).toLocaleDateString("en-IN", {
+                      {new Date(bill?.createdAt).toLocaleDateString("en-IN", {
                         day: "2-digit",
                         month: "short",
                         year: "2-digit",
@@ -645,18 +643,18 @@ export default function SalesTransactions() {
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">
-                    {formatCurrency(bill.billSummary?.grandTotal || 0)}
+                    {formatCurrency(bill?.billSummary?.grandTotal || 0)}
                   </TableCell>
                   <TableCell>
                     <div className="font-medium">
                       {formatCurrency(
-                        (bill.billSummary?.grandTotal || 0) -
-                          (bill.amountPaid || 0)
+                        (bill?.billSummary?.grandTotal || 0) -
+                          (bill?.amountPaid || 0)
                       )}
                     </div>
-                    {bill.paymentDueDate && (
+                    {bill?.paymentDueDate && (
                       <div className="text-sm text-muted-foreground">
-                        {new Date(bill.paymentDueDate).toLocaleDateString(
+                        {new Date(bill?.paymentDueDate).toLocaleDateString(
                           "en-IN",
                           {
                             day: "2-digit",
@@ -671,12 +669,12 @@ export default function SalesTransactions() {
                     <div className="flex items-center gap-2">
                       <Badge
                         variant={
-                          bill.paymentStatus === "paid"
+                          bill?.paymentStatus === "paid"
                             ? "success"
                             : "destructive"
                         }
                       >
-                        {bill.paymentStatus === "paid" ? "Paid" : "Due"}
+                        {bill?.paymentStatus === "paid" ? "Paid" : "Due"}
                       </Badge>
                     </div>
                   </TableCell>

@@ -5,6 +5,32 @@ import { setAccountsStatusIdle } from "./accountSlice";
 import { setDistributorStatusIdle } from "./distributorSlice";
 import { setItemStatusIdle } from "./inventorySlice";
 
+// Create purchase return
+export const createPurchaseReturn = createLoadingAsyncThunk(
+  "purchaseBill/createPurchaseReturn",
+  async (returnData, { dispatch }) => {
+    const response = await fetch(`${Backend_URL}/api/purchase/return`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(returnData),
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to create purchase return");
+    }
+    const result = await response.json();
+    await dispatch(setAccountsStatusIdle());
+    await dispatch(setDistributorStatusIdle());
+    await dispatch(setItemStatusIdle());
+    return result;
+  },
+  { useGlobalLoader: true }
+);
+
 // Create new purchase bill
 export const createPurchaseBill = createLoadingAsyncThunk(
   "purchaseBill/createPurchaseBill",
@@ -91,27 +117,65 @@ export const deletePurchaseBill = createLoadingAsyncThunk(
   { useGlobalLoader: true }
 );
 
+// Search purchase bills by invoice
+export const searchByInvoice = createLoadingAsyncThunk(
+  "purchaseBill/searchByInvoice",
+  async ({ distributorId, invoiceNumber }) => {
+    const response = await fetch(`${Backend_URL}/api/purchase/search-by-invoice`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ distributorId, invoiceNumber }),
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to fetch invoice details");
+    }
+    return response.json();
+  }
+);
+
 const purchaseBillSlice = createSlice({
   name: "purchaseBill",
   initialState: {
     purchaseBills: [],
     fetchStatus: "idle",
     createPurchaseBillStatus: "idle",
+    createPurchaseReturnStatus: "idle",
     searchStatus: "idle",
+    searchByInvoiceStatus: "idle",
     deleteStatus: "idle",
     error: null,
+    invoiceDetails: null,
   },
   reducers: {
     resetStatus: (state) => {
       state.fetchStatus = "idle";
       state.createPurchaseBillStatus = "idle";
+      state.createPurchaseReturnStatus = "idle";
       state.searchStatus = "idle";
+      state.searchByInvoiceStatus = "idle";
       state.deleteStatus = "idle";
       state.error = null;
     },
   },
   extraReducers: (builder) => {
     builder
+      .addCase(createPurchaseReturn.pending, (state) => {
+        state.createPurchaseReturnStatus = "loading";
+        state.error = null;
+      })
+      .addCase(createPurchaseReturn.fulfilled, (state, action) => {
+        state.createPurchaseReturnStatus = "succeeded";
+        state.error = null;
+      })
+      .addCase(createPurchaseReturn.rejected, (state, action) => {
+        state.createPurchaseReturnStatus = "failed";
+        state.error = action.error.message;
+      })
       .addCase(createPurchaseBill.pending, (state) => {
         state.createPurchaseBillStatus = "loading";
         state.error = null;
@@ -162,6 +226,19 @@ const purchaseBillSlice = createSlice({
       .addCase(deletePurchaseBill.rejected, (state, action) => {
         state.deleteStatus = "failed";
         state.error = action.payload;
+      })
+      .addCase(searchByInvoice.pending, (state) => {
+        state.searchByInvoiceStatus = "loading";
+        state.error = null;
+      })
+      .addCase(searchByInvoice.fulfilled, (state, action) => {
+        state.searchByInvoiceStatus = "succeeded";
+        state.invoiceDetails = action.payload;
+        state.error = null;
+      })
+      .addCase(searchByInvoice.rejected, (state, action) => {
+        state.searchByInvoiceStatus = "failed";
+        state.error = action.error.message;
       });
   },
 });

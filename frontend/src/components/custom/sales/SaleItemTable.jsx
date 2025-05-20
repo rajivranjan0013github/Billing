@@ -94,10 +94,7 @@ export default function SaleTable({
     }
 
     // Calculate amount if we have quantity and pricing info
-    if (
-      (updatedProduct?.packs || updatedProduct?.loose) &&
-      updatedProduct?.mrp
-    ) {
+    if ((updatedProduct?.packs || updatedProduct?.loose) && updatedProduct?.mrp) {
       // const discount = Number(updatedProduct?.discount) || 0;
       // const gstPer = Number(updatedProduct?.gstPer) || 0;
       const packs = Number(updatedProduct?.packs || 0); // for quantity
@@ -144,7 +141,7 @@ export default function SaleTable({
           if (inputRef.current[prevField]) {
             inputRef.current[prevField].focus();
           }
-        }
+        } 
         return;
       }
 
@@ -273,8 +270,6 @@ export default function SaleTable({
       inputRef.current["product"].focus();
     }
   };
-  // edit all product togather
-  const handleInputChangeEditMode = (index, field, value) => {};
 
   const handleDeleteProduct = (indexToDelete) => {
     const updatedProducts = products.filter(
