@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Search, Users, X, ArrowLeft, Plus } from "lucide-react";
+import { Search, Users, X, ArrowLeft, Plus, EllipsisVertical, Download } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
@@ -42,6 +42,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
+import ExportDataDlg from "../components/custom/mirgration/ExportDataDlg";
 
 export default function PurchasesTransactions() {
   const navigate = useNavigate();
@@ -49,6 +50,7 @@ export default function PurchasesTransactions() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const isInitialDebounceEffectRun = useRef(true);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
   // Get data from Redux
   const { purchaseBills: initialPurchaseBills, fetchStatus, searchStatus, error } = useSelector((state) => state.purchaseBill);
@@ -499,7 +501,7 @@ export default function PurchasesTransactions() {
         </div>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 border-b border-slate-200 pb-2">
         <div className="relative">
           <div className="relative flex items-center bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
             <div className="relative flex items-center border-r border-slate-200">
@@ -595,6 +597,19 @@ export default function PurchasesTransactions() {
             <Plus className="h-4 w-4 mr-2" />
             Create Purchase Invoice
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <EllipsisVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}>
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -720,6 +735,32 @@ export default function PurchasesTransactions() {
           </Table>
         )}
       </div>
+
+      <ExportDataDlg
+        open={isExportDialogOpen}
+        onOpenChange={setIsExportDialogOpen}
+        data={getFilteredBills()}
+        columns={[
+          { header: "Invoice No", field: "invoiceNumber", width: 15 },
+          { header: "Distributor Name", field: "distributorName", width: 25 },
+          { header: "Mobile", field: "mob", width: 15 },
+          { header: "Invoice Date", field: "invoiceDate", width: 15 },
+          { header: "Created By", field: "createdByName", width: 20 },
+          { header: "GST Type", field: "withGst", width: 15 },
+          { header: "Bill Total", field: "billSummary.grandTotal", width: 15, format: "currency", addTotal: true },
+          { header: "Amount Paid", field: "amountPaid", width: 15, format: "currency", addTotal: true },
+          { header: "Due Amount", field: "dueAmount", width: 15, format: "currency", addTotal: true },
+          { header: "Payment Status", field: "paymentStatus", width: 15 }
+        ]}
+        formatters={{
+          "Invoice Date": (value) => new Date(value).toLocaleDateString("en-IN"),
+          "GST Type": (value) => value ? "With GST" : "Without GST",
+          "Due Amount": (value, row) => (row.billSummary?.grandTotal || 0) - (row.amountPaid || 0),
+          "Payment Status": (value) => value?.charAt(0).toUpperCase() + value?.slice(1) || "-"
+        }}
+        fileName="purchase_transactions"
+        title="Export Purchase Transactions"
+      />
     </div>
   );
 }

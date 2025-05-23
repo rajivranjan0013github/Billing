@@ -24,10 +24,6 @@ export default function PaymentDialog({ open, onOpenChange, invoiceData, onSubmi
   const [selectedMethodIndex, setSelectedMethodIndex] = useState(1);
   const inputRef = useRef({});
 
-  console.log('step', step);
-  console.log('selectedMethodIndex', selectedMethodIndex);
-  
-
   const [paymentData, setPaymentData] = useState({
     amount: "",
     paymentMethod: "",

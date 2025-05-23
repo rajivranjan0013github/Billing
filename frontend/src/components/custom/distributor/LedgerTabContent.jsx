@@ -13,6 +13,7 @@ import { useDispatch } from "react-redux";
 import * as XLSX from "xlsx";
 import { fetchLedgerEntries } from "../../../redux/slices/distributorSlice";
 import { fetchCustomerLedgerEntries } from "../../../redux/slices/CustomerSlice";
+import ExportDataDlg from "../mirgration/ExportDataDlg";
 
 export default function LedgerTabContent({
   isActive,
@@ -22,6 +23,7 @@ export default function LedgerTabContent({
   const [ledgerEntries, setLedgerEntries] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -55,41 +57,55 @@ export default function LedgerTabContent({
     fetchLedger();
   }, [distributorId, customerId, isActive, dispatch]);
 
-  const exportToExcel = () => {
-    const entityType = distributorId ? "Distributor" : "Customer";
-    const entityId = distributorId || customerId;
+  const exportColumns = [
+    { 
+      header: "Date", 
+      field: "createdAt", 
+      width: 15,
+      format: "date" 
+    },
+    { 
+      header: "Description", 
+      field: "description", 
+      width: 40 
+    },
+    { 
+      header: "Invoice No.", 
+      field: "invoiceNumber", 
+      width: 15 
+    },
+    { 
+      header: "Credit", 
+      field: "credit", 
+      width: 15, 
+      format: "currency",
+      addTotal: true 
+    },
+    { 
+      header: "Debit", 
+      field: "debit", 
+      width: 15, 
+      format: "currency",
+      addTotal: true 
+    },
+    { 
+      header: "Balance", 
+      field: "balance", 
+      width: 15, 
+      format: "currency"
+    }
+  ];
 
-    // Prepare data for Excel export
-    const dataToExport = ledgerEntries.map((entry) => ({
-      Date: new Date(entry.createdAt).toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }),
-      Description: entry.description,
-      "Invoice No.": entry.invoiceNumber || "-",
-      Credit: entry.credit ? entry.credit : 0,
-      Debit: entry.debit ? entry.debit : 0,
-      Balance: entry.balance,
-    }));
-
-    // Create worksheet and workbook
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "LedgerEntries");
-
-    // Set column widths
-    worksheet["!cols"] = [
-      { wch: 12 },
-      { wch: 40 },
-      { wch: 15 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 15 },
-    ];
-
-    // Generate Excel file and trigger download
-    XLSX.writeFile(workbook, `${entityType}_Ledger_${entityId}.xlsx`);
+  const formatters = {
+    "Date": (value) => new Date(value).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }),
+    "Credit": (value) => value || 0,
+    "Debit": (value) => value || 0,
+    "Balance": (value) => value || 0,
+    "Invoice No.": (value) => value || "-"
   };
 
   if (isLoading) {
@@ -147,7 +163,7 @@ export default function LedgerTabContent({
     <div className="space-y-4">
       <div className="flex justify-end">
         <Button
-          onClick={exportToExcel}
+          onClick={() => setIsExportDialogOpen(true)}
           disabled={!ledgerEntries || ledgerEntries.length === 0}
           variant="outline"
           size="sm"
@@ -201,6 +217,16 @@ export default function LedgerTabContent({
           </TableBody>
         </Table>
       </div>
+
+      <ExportDataDlg
+        open={isExportDialogOpen}
+        onOpenChange={setIsExportDialogOpen}
+        data={ledgerEntries}
+        columns={exportColumns}
+        formatters={formatters}
+        fileName={`ledger_${distributorId || customerId}`}
+        title="Export Ledger Data"
+      />
     </div>
   );
 }

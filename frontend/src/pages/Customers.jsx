@@ -5,12 +5,36 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "..
 import { Button } from "../components/ui/button";
 import CreateCustomerDialog from "../components/custom/customer/CreateCustomerDialog";
 import { Input } from "../components/ui/input";
-import { Pencil, Trash2, UserPlus, Phone, MapPin, Search, Users, X, ArrowLeft,ChevronLeft,ChevronRight, FileDown } from "lucide-react";
+import { Pencil, Trash2, UserPlus, Phone, MapPin, Search, Users, X, ArrowLeft,ChevronLeft,ChevronRight, FileDown, Upload, EllipsisVertical } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "../components/ui/select";
 import { formatCurrency } from "../utils/Helper";
-import * as XLSX from 'xlsx';
+import ExportDataDlg from "../components/custom/mirgration/ExportDataDlg";
+import ImportDataDlg from "../components/custom/mirgration/ImportDataDlg";
+import { importCustomers } from "../redux/slices/exportImportSlice";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
+import Loader from "../components/ui/loader";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
+
+const columns = [
+  { header: "Customer Name", field: "name", width: 30 },
+  { header: "Mobile Number", field: "mob", width: 15, required: false },
+  { header: "Address", field: "address", width: 40, required: false },
+  { header: "Open Balance", field: "openBalance", width: 15, format: "currency", required: false },
+  { header: "Balance", field: "currentBalance", width: 15, format: "currency", required: false }
+]
 
 const Customers = () => {
   const dispatch = useDispatch();
@@ -19,17 +43,23 @@ const Customers = () => {
   const status = useSelector((state) => state.customers.status);
   const { currentPage, totalPages } = useSelector((state) => state.customers.pagination);
   const { query: searchQuery, type: searchType } = useSelector((state) => state.customers.search);
+  const { importStatus } = useSelector((state) => state.exportImport);
   const { toast } = useToast();
 
   const [isOpen, setIsOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState(null);
+  const [deleteStatus, setDeleteStatus] = useState('idle');
 
   useEffect(() => {
-   
+    if( status === "idle" || importStatus === "succeeded" ) {
       dispatch(fetchCustomers({ page: currentPage, searchQuery, searchType }));
-    
-  }, [ dispatch, currentPage, searchQuery, searchType]);
+    }
+  }, [ dispatch, currentPage, searchQuery, searchType, status, importStatus]);
 
   const handleEdit = (customer) => {
     setEditingCustomer(customer);
@@ -37,21 +67,31 @@ const Customers = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this customer?")) {
-      try {
-        await dispatch(deleteCustomer(id)).unwrap();
-        toast({
-          title: "Success",
-          description: "Customer deleted successfully",
-          variant: "success",
-        });
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: error.message || "An error occurred",
-          variant: "destructive",
-        });
-      }
+    setCustomerToDelete(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!customerToDelete) return;
+    
+    setDeleteStatus('loading');
+    try {
+      await dispatch(deleteCustomer(customerToDelete)).unwrap();
+      toast({
+        title: "Success",
+        description: "Customer deleted successfully",
+        variant: "success",
+      });
+      setIsDeleteDialogOpen(false);
+      setCustomerToDelete(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "An error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteStatus('idle');
     }
   };
 
@@ -88,51 +128,6 @@ const Customers = () => {
     }
   };
 
-  const exportToExcel = () => {
-    // Prepare data for Excel export
-    const dataToExport = customers.map(customer => ({
-      'Customer Name': customer.name,
-      'Mobile Number': customer.mob,
-      'Address': customer.address,
-      'Balance': customer.currentBalance || 0
-    }));
-
-    // Calculate total balance
-    const totalBalance = customers.reduce((sum, customer) => sum + (customer.currentBalance || 0), 0);
-
-    // Add total row
-    dataToExport.push({
-      'Customer Name': 'Total',
-      'Mobile Number': '',
-      'Address': '',
-      'Balance': totalBalance
-    });
-
-    // Create worksheet and workbook
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Customers");
-
-    // Set column widths
-    worksheet['!cols'] = [
-      { wch: 30 }, // Customer Name
-      { wch: 15 }, // Mobile Number
-      { wch: 40 }, // Address
-      { wch: 15 }  // Balance
-    ];
-
-    // Style the total row (make it bold)
-    const totalRowIndex = dataToExport.length;
-    const range = XLSX.utils.decode_range(worksheet['!ref']);
-    for (let C = range.s.c; C <= range.e.c; C++) {
-      const cellRef = XLSX.utils.encode_cell({ r: totalRowIndex - 1, c: C });
-      if (!worksheet[cellRef]) worksheet[cellRef] = { v: '' };
-      worksheet[cellRef].s = { font: { bold: true } };
-    }
-
-    // Generate Excel file and trigger download
-    XLSX.writeFile(workbook, `Customers_List.xlsx`);
-  };
 
   if (status === "loading") {
     return (
@@ -191,20 +186,41 @@ const Customers = () => {
         </div>
 
         <div className="ml-auto flex gap-2">
-          <Button 
-            variant="outline"
-            onClick={exportToExcel}
-            disabled={customers.length === 0}
-          >
-            <FileDown className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button onClick={() => setIsOpen(true)}>
+        <Button onClick={() => setIsOpen(true)}>
             <UserPlus className="h-4 w-4 mr-2" />
             Add Customer
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <EllipsisVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setIsImportDialogOpen(true)} disabled={importStatus === 'loading'}>
+                <Upload className="h-4 w-4 mr-2" />
+                Import
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setIsExportDialogOpen(true)}
+                disabled={customers.length === 0}
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                Export
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
         </div>
       </div>
+
+      {importStatus === 'loading' && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 shadow-xl">
+            <Loader text="Importing customers..." />
+          </div>
+        </div>
+      )}
 
       <CreateCustomerDialog
         open={isOpen}
@@ -215,6 +231,66 @@ const Customers = () => {
           dispatch(fetchCustomers());
         }}
       />
+
+      <ExportDataDlg
+        open={isExportDialogOpen}
+        onOpenChange={setIsExportDialogOpen}
+        data={customers}
+        columns={columns}
+        formatters={{
+          "Balance": (value) => value || 0
+        }}
+        fileName="customers"
+        title="Export Customers Data"
+      />
+
+      <ImportDataDlg
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        importFunction={importCustomers}
+        title="Import Customers"
+        columns={columns}
+      />
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="max-w-xl p-0 gap-0">
+          <AlertDialogHeader className="px-4 py-2.5 flex flex-row items-center justify-between bg-gray-100 border-b">
+            <AlertDialogTitle className="text-base font-semibold">Delete Customer</AlertDialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </AlertDialogHeader>
+          <div className="p-6">
+            <AlertDialogDescription>
+              Are you sure you want to delete this customer? This action will permanently delete all associated records and cannot be undone.
+            </AlertDialogDescription>
+          </div>
+          <div className="p-3 bg-gray-100 border-t flex items-center justify-end gap-2">
+            <Button 
+              onClick={() => setIsDeleteDialogOpen(false)} 
+              variant="outline" 
+              size="sm"
+              disabled={deleteStatus === "loading"}
+              className='px-4'
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={confirmDelete}
+              size="sm"
+              className='px-4 bg-red-500 text-white hover:bg-red-600'
+              disabled={deleteStatus === "loading"}
+            >
+              {deleteStatus === "loading" ? "Deleting..." : "Delete"}
+            </Button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="relative overflow-x-auto">
         {customers.length === 0 ? (

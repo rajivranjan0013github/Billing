@@ -21,16 +21,39 @@ import {
   X,
   ArrowLeft,
   Plus,
-  FileInput,
   ChevronDown,
+  Upload,
+  Download,
+  EllipsisVertical,
 } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchDistributors } from "../redux/slices/distributorSlice";
+import { importDistributors } from "../redux/slices/exportImportSlice";
 import { useNavigate } from "react-router-dom";
 import CreateDistributorDlg from "../components/custom/distributor/CreateDistributorDlg";
+import ExportDataDlg from "../components/custom/mirgration/ExportDataDlg";
+import ImportDataDlg from "../components/custom/mirgration/ImportDataDlg";
 import { formatCurrency } from "../utils/Helper";
-import * as XLSX from "xlsx";
+import Loader from "../components/ui/loader";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
+
+const columnsArray = [
+  { header: "Distributor Name", field: "name", width: 25, required: true },
+  { header: "Mobile Number", field: "mob", width: 15, required: false },
+  { header: "Address", field: "address", width: 30, required: false },
+  { header: "Account Number", field: "bankDetails.accountNumber", width: 20, required: false },
+  { header: "IFSC Code", field: "bankDetails.ifsc", width: 15, required: false },
+  { header: "Balance", field: "currentBalance", width: 15, format: "currency", required: false },
+  { header: "GSTIN", field: "gstin", required: false },
+  { header: "PAN Number", field: "panNumber", required: false },
+  { header: "DL Number", field: "DLNumber", required: false }
+];
 
 export default function Distributors() {
   const dispatch = useDispatch();
@@ -43,13 +66,16 @@ export default function Distributors() {
   const [balanceFilter, setBalanceFilter] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isBalanceDropdownOpen, setIsBalanceDropdownOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const balanceDropdownRef = useRef(null);
+  const { importStatus } = useSelector((state) => state.exportImport);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
   useEffect(() => {
-   
+    if(fetchStatus === 'idle') {
       dispatch(fetchDistributors());
-    
-  }, [dispatch]);
+    }
+  }, [dispatch, fetchStatus]);
 
   // Add click outside handler
   useEffect(() => {
@@ -120,69 +146,6 @@ export default function Distributors() {
     return filtered;
   };
 
-  // Function to handle exporting data to Excel
-  const handleExport = () => {
-    const dataToExport = getFilteredDistributors().map((distributor) => ({
-      "Distributor Name": distributor.name,
-      "Mobile Number": distributor.mob || "-",
-      Address: distributor.address || "-",
-      "Account Number": distributor.bankDetails?.accountNumber || "-",
-      "IFSC Code": distributor.bankDetails?.ifsc || "-",
-      Balance: distributor.currentBalance || 0,
-    }));
-
-    // Add empty row and total row
-    dataToExport.push({
-      "Distributor Name": "",
-      "Mobile Number": "",
-      "Address": "",
-      "Account Number": "",
-      "IFSC Code": "",
-      "Balance": "",
-    });
-
-    dataToExport.push({
-      "Distributor Name": "Total",
-      "Mobile Number": `Count: ${summary.count}`,
-      "Address": "",
-      "Account Number": "",
-      "IFSC Code": "",
-      "Balance": summary.totalBalance,
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Distributors");
-
-    // Set column widths
-    worksheet["!cols"] = [
-      { wch: 25 }, // Distributor Name
-      { wch: 15 }, // Mobile Number
-      { wch: 30 }, // Address
-      { wch: 20 }, // Account Number
-      { wch: 15 }, // IFSC Code
-      { wch: 15 }, // Balance
-    ];
-
-    // Format Balance column as currency
-    dataToExport.forEach((_row, index) => {
-      const cellRef = XLSX.utils.encode_cell({ r: index + 1, c: 5 }); // Balance column
-      if (worksheet[cellRef] && worksheet[cellRef].v !== "") {
-        worksheet[cellRef].z = '"₹"#,##0.00'; // Indian Rupee format
-      }
-    });
-
-    // Style the total row
-    const totalRowIndex = dataToExport.length - 1;
-    for (let col = 0; col < 6; col++) {
-      const cellRef = XLSX.utils.encode_cell({ r: totalRowIndex, c: col });
-      if (worksheet[cellRef]) {
-        worksheet[cellRef].s = { font: { bold: true } };
-      }
-    }
-
-    XLSX.writeFile(workbook, "distributors.xlsx");
-  };
 
   // Replace the Select component with this dropdown menu
   const balanceFilterOptions = [
@@ -192,8 +155,21 @@ export default function Distributors() {
     { value: "zero", label: "Zero Balance" },
   ];
 
+  // Custom validation if needed
+  const customValidation = (data) => {
+    // Add any additional validation logic here
+    return null;
+  };
+
   return (
     <div className="relative p-4 space-y-4">
+      {importStatus === 'loading' && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 shadow-xl">
+            <Loader text="Importing distributors..." />
+          </div>
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
@@ -314,14 +290,26 @@ export default function Distributors() {
             <Plus className="mr-2 h-4 w-4" />
             Create Distributor
           </Button>
-          <Button
-            variant="outline"
-            onClick={handleExport}
-            disabled={getFilteredDistributors().length === 0}
-          >
-            <FileInput className="mr-2 h-4 w-4" />
-            Export to Excel
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <EllipsisVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setIsImportDialogOpen(true)} disabled={importStatus === 'loading'}>
+                <Upload className="h-4 w-4 mr-2" />
+                Import
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setIsExportDialogOpen(true)}
+                disabled={getFilteredDistributors().length === 0}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -398,6 +386,27 @@ export default function Distributors() {
       <CreateDistributorDlg
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
+      />
+
+      <ImportDataDlg
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        importFunction={importDistributors}
+        title="Import Distributors"
+        columns={columnsArray}
+        customValidation={customValidation}
+      />
+
+      <ExportDataDlg
+        open={isExportDialogOpen}
+        onOpenChange={setIsExportDialogOpen}
+        data={getFilteredDistributors()}
+        columns={columnsArray}
+        formatters={{
+          "Balance": (value) => value || 0
+        }}
+        fileName="distributors"
+        title="Export Distributors Data"
       />
     </div>
   );

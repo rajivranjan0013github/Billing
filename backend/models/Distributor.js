@@ -8,7 +8,9 @@ const DistributorSchema = new mongoose.Schema({
   openBalance: { type: Number, default: 0 },
   currentBalance: { type: Number, default: 0 },
   gstin: { type: String },
-  panNumber: { type: String },
+  state: { type: String },
+  district: { type: String },
+  stateCode: { type: String },
   DLNumber: { type: String },
   address: { type: String },
   invoices: [

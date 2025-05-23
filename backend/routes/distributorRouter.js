@@ -1,8 +1,6 @@
 import express from "express";
 import { Distributor } from "../models/Distributor.js";
 import mongoose from "mongoose";
-import { InvoiceSchema } from "../models/InvoiceSchema.js";
-import { Payment } from "../models/Payment.js";
 import { Ledger } from "../models/ledger.js";
 
 const router = express.Router();
@@ -142,6 +140,16 @@ router.get("/ledger/:distributorId", async (req, res) => {
       return res.status(404).json({ message: "Ledger not found" });
     }
     res.status(200).json(ledger.ledger);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.delete("/delete/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await Distributor.findByIdAndDelete(id);
+    res.status(200).json({ message: "Distributor deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -51,6 +51,7 @@ const inventorySlice = createSlice({
     setItemStatusIdle: (state) => {
       state.itemsStatus = "idle";
       state.manageItemStatus = 'idle';
+      state.items = [];
       state.error = null;
     },
   },

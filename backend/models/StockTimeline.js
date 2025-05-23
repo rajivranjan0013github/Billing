@@ -21,6 +21,7 @@ const stockTimelineSchema = new mongoose.Schema(
         "PURCHASE_EDIT",
         "SALE_DELETE",
         "PURCHASE_DELETE",
+        "IMPORT",
       ],
     },
     invoiceNumber: String,

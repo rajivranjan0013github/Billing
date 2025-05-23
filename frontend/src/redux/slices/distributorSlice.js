@@ -169,12 +169,30 @@ export const updateDistributor = createLoadingAsyncThunk(
   { useGlobalLoader: true }
 );
 
+// delete distributor
+export const deleteDistributor = createLoadingAsyncThunk(
+  "distributor/deleteDistributor",
+  async (id, { rejectWithValue }) => {
+    const response = await fetch(`${Backend_URL}/api/distributor/delete/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to delete distributor");
+    }
+
+    return await response.json();
+  }
+);
+
 const distributorSlice = createSlice({
   name: "distributor",
   initialState: {
     distributors: [],
     createDistributorStatus: "idle",
     updateDistributorStatus: "idle",
+    deleteDistributorStatus: "idle",
     fetchStatus: "idle",
     error: null,
     currentDistributor: {
@@ -186,6 +204,7 @@ const distributorSlice = createSlice({
       paymentsStatus: "idle",
       tabName: "profile",
       scrollIndex: "",
+      deleteDistributorStatus: "idle",
     },
   },
   reducers: {
@@ -280,6 +299,19 @@ const distributorSlice = createSlice({
       })
       .addCase(updateDistributor.rejected, (state, action) => {
         state.updateDistributorStatus = "failed";
+        state.error = action.payload;
+      })
+      .addCase(deleteDistributor.pending, (state) => {
+        state.currentDistributor.deleteDistributorStatus = "loading";
+      })
+      .addCase(deleteDistributor.fulfilled, (state, action) => {
+        state.currentDistributor.deleteDistributorStatus = "succeeded";
+        state.distributors = state.distributors.filter(
+          (distributor) => distributor._id !== action.meta.arg
+        );
+      })
+      .addCase(deleteDistributor.rejected, (state, action) => {
+        state.currentDistributor.deleteDistributorStatus = "failed";
         state.error = action.payload;
       });
   },

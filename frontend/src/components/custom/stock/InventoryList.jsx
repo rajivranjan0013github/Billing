@@ -6,28 +6,72 @@ import { ScrollArea } from "../../ui/scroll-area";
 import { Badge } from "../../ui/badge";
 import {
   Search,
-  Filter,
-  ArrowUpDown,
   Plus,
-  CircleCheckBig,
+  EllipsisVertical,
+  Upload,
+  Download,
+  ArrowLeft
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../ui/dropdown-menu";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchItems } from "../../../redux/slices/inventorySlice";
+import { exportInventory } from "../../../redux/slices/exportImportSlice";
 import ManageInventory from "../inventory/ManageInventory";
+import ExportDataDlg from "../mirgration/ExportDataDlg";
+import ImportDataDlg from "../mirgration/ImportDataDlg";
 import { convertQuantity } from "../../../assets/Data";
-import { formatCurrency } from "../../../utils/Helper"; 
+import { useNavigate } from "react-router-dom";
+import { importInventory } from "../../../redux/slices/exportImportSlice";
+
+// Export configuration
+const exportColumns = [
+  { header: 'Name', field: 'name', width: 30, required: true },
+  { header: 'Pack', field: 'pack', width: 15},
+  { header: 'Unit', field: 'unit', width: 15},
+  { header: 'Category', field: 'category', width: 20 },
+  { header: 'Manufacturer', field: 'mfcName', width: 25 },
+  { header: 'Composition', field: 'composition', width: 30 },
+  { header: 'Location', field: 'location', width: 20 },
+  { header: 'Batch Number', field: 'batchNumber', width: 20 },
+  { header: 'HSN', field: 'HSN', width: 15 },
+  { header: 'Quantity', field: 'quantity', width: 15 },
+  { header: 'Expiry', field: 'expiry', width: 15 },
+  { header: 'MRP', field: 'mrp', width: 15, format: 'currency' },
+  { header: 'GST', field: 'gstPer', width: 15 },
+  { header: 'Purchase Rate', field: 'purchaseRate', width: 20, format: 'currency' },
+  { header: 'Sale Rate', field: 'saleRate', width: 20, format: 'currency' },
+];
+
+const exportFormatters = {
+  'MRP': (value) => `₹${value}`,
+  'Purchase Rate': (value) => `₹${value}`,
+  'Sale Rate': (value) => `₹${value}`,
+};
 
 const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const dispatch = useDispatch();
-  const { items, itemsStatus } = useSelector((state) => state.inventory);
+  const navigate = useNavigate();
+  const { items} = useSelector((state) => state.inventory);
   const [isManageInventoryOpen, setIsManageInventoryOpen] = useState(false);
+  const { importStatus } = useSelector((state) => state.exportImport);
 
   useEffect(() => {
-    
       dispatch(fetchItems());
-    
   }, [dispatch]);
+
+  useEffect(() => {
+    if(importStatus === "succeeded") {
+      dispatch(fetchItems());
+    }
+  }, [importStatus, dispatch]);
 
   useEffect(() => {
     if (items.length > 0 && !selectedItemId) {
@@ -51,31 +95,56 @@ const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
     );
   });
 
-  return (
-    <div className="flex flex-col h-full p-4">
-      {/* Search and Filter Section */}
-      <div className="space-y-3 mb-2">
-        <Button
-          onClick={() => setIsManageInventoryOpen(true)}
-          className="w-full h-9"
-          variant='outline'
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Create New Item
-        </Button>
-      </div>
+  // Custom validation for inventory import
+  const customValidation = (data) => {
+    if (!Array.isArray(data) || data.length === 0) {
+      return "No data found in the Excel file";
+    }
 
+    // Add any specific validation rules here
+    return null;
+  };
+
+  return (
+    <div className="flex flex-col h-full p-2">
       {/* Search Bar */}
-      <div className="mb-4">
-        <div className="relative">
+      <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-xl font-medium">Inventory</h1>
+      </div>
+      <div className="mb-4 flex flex-row gap-4 items-center">
+        <div className="relative w-[95%]">
           <Input
-            placeholder="Search by name, manufacturer, expiry..."
+            placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pr-8"
           />
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <EllipsisVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setIsManageInventoryOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setIsImportOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setIsExportOpen(true)}>
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Inventory Items List */}
@@ -102,7 +171,6 @@ const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1 mb-0.5">
                       <span className="font-medium truncate capitalize">{item?.name}</span>
-                      <CircleCheckBig className="h-3 w-3 text-blue-500 shrink-0" />
                     </div>
                     <p className="text-xs text-muted-foreground truncate font-semibold">
                       {item?.mfcName}
@@ -140,6 +208,26 @@ const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
         }}
         batchDetails={null}
         setUpdateBatchDetails={null}
+      />
+
+      <ExportDataDlg
+        open={isExportOpen}
+        onOpenChange={setIsExportOpen}
+        columns={exportColumns}
+        fileName="inventory_report"
+        title="Export Inventory"
+        formatters={exportFormatters}
+        fetchData={exportInventory}
+        isFetchData={true}
+      />
+
+      <ImportDataDlg
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        importFunction={importInventory}
+        title="Import Inventory"
+        columns={exportColumns}
+        customValidation={customValidation}
       />
     </div>
   );

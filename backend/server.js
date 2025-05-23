@@ -19,6 +19,7 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import customerRoutes from "./routes/customerRoutes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
+import exportImportRoutes from "./routes/exportImportRoutes.js";
 dotenv.config({ path: "./config/config.env" });
 
 const app = express();
@@ -62,7 +63,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/settings", settingsRoutes);
-
+app.use("/api/export-import", exportImportRoutes);
 // Serve index.html for any other routes
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/build/", "index.html"));

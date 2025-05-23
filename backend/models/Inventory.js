@@ -5,7 +5,7 @@ const inventorySchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     unit: String,
-    pack: Number,
+    pack: {type : Number, default : 1},
     secondary_unit: String,
     quantity: { type: Number, default: 0 },
     category: String,
@@ -16,6 +16,7 @@ const inventorySchema = new mongoose.Schema(
     composition: String,
     location: String,
     HSN: String,
+    code : {type : Number, unique : true},
     timeline: [{ type: mongoose.Schema.Types.ObjectId, ref: "StockTimeline" }],
     batch: [{ type: mongoose.Schema.Types.ObjectId, ref: "InventoryBatch" }],
   },

@@ -17,16 +17,14 @@ import {
 } from "../components/ui/select";
 import { Input } from "../components/ui/input";
 import {
-  MessageSquare,
   Search,
-  Settings,
   ArrowLeft,
   Plus,
   TrendingUp,
   TrendingDown,
   ArrowRightLeft,
-  Loader2,
   X,
+  FileInput,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
@@ -49,6 +47,7 @@ import {
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import { Card, CardContent } from "../components/ui/card";
+import ExportDataDlg from "../components/custom/mirgration/ExportDataDlg";
 
 const Payments = () => {
   const navigate = useNavigate();
@@ -115,7 +114,7 @@ const Payments = () => {
     };
 
     handleDebouncedSearch();
-  }, [debouncedSearchQuery]);
+  }, [debouncedSearchQuery, dispatch, dateRange.from, dateRange.to, paymentTypeFilter, toast]);
 
   const handleDateSelect = (range) => {
     if (range?.from && range?.to) {
@@ -357,7 +356,7 @@ const Payments = () => {
         variant: "destructive",
       });
     }
-  }, []);
+  }, [dispatch, searchParams, toast]);
 
   const handleFilterChange = (value) => {
     setPaymentTypeFilter(value);
@@ -424,6 +423,8 @@ const Payments = () => {
       return acc;
     }, {});
   }, [paymentInMethodTotals, paymentOutMethodTotals]);
+
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
   return (
     <div className="w-full p-4 space-y-2">
@@ -507,7 +508,7 @@ const Payments = () => {
             </div>
           </div>
           <Select value={paymentTypeFilter} onValueChange={handleFilterChange}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[130px]">
               <SelectValue placeholder="Filter by type" />
             </SelectTrigger>
             <SelectContent>
@@ -517,7 +518,7 @@ const Payments = () => {
             </SelectContent>
           </Select>
           <Select value={dateFilterType} onValueChange={handleDateFilterChange}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="Select date filter" />
             </SelectTrigger>
             <SelectContent>
@@ -544,13 +545,23 @@ const Payments = () => {
             </div>
           )}
         </div>
-        <Button
-          variant="outline"
-          onClick={() => navigate("/payment/create-payment")}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Create Payment
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setIsExportDialogOpen(true)}
+            disabled={filteredPayments.length === 0}
+          >
+            <FileInput className="mr-2 h-4 w-4" />
+            Export
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => navigate("/payment/create-payment")}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Create Payment
+          </Button>
+        </div>
       </div>
 
       {/* Payment Summary Cards */}
@@ -739,6 +750,33 @@ const Payments = () => {
           </TableBody>
         </Table>
       </div>
+
+      <ExportDataDlg
+        open={isExportDialogOpen}
+        onOpenChange={setIsExportDialogOpen}
+        data={filteredPayments}
+        columns={[
+          { header: "Date", field: "paymentDate", width: 15 },
+          { header: "Payment Number", field: "paymentNumber", width: 20 },
+          { header: "Name", field: "distributorName", width: 25 },
+          { header: "Payment Type", field: "paymentType", width: 15 },
+          { header: "Payment Method", field: "paymentMethod", width: 15 },
+          { header: "Remarks", field: "remarks", width: 30 },
+          { header: "Amount", field: "amount", width: 15, format: "currency", addTotal: true }
+        ]}
+        formatters={{
+          "Date": (value) => new Date(value).toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          }),
+          "Name": (value) => value || "-",
+          "Remarks": (value) => value || "-",
+          "Amount": (value) => value || 0
+        }}
+        fileName="payments"
+        title="Export Payments Data"
+      />
     </div>
   );
 };

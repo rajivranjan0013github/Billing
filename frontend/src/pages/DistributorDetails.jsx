@@ -1,13 +1,11 @@
 import {
   ArrowLeft,
-  FileText,
   Plus,
-  Printer,
   Trash2,
   ArrowUpDown,
-  Calendar,
   FileX,
   Pen,
+  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../components/ui/button";
@@ -17,12 +15,6 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "../components/ui/dropdown-menu";
 import {
   Tabs,
   TabsContent,
@@ -45,15 +37,26 @@ import {
   fetchDistributorInvoices,
   fetchDistributorPayments,
   setTabName,
+  deleteDistributor,
 } from "../redux/slices/distributorSlice";
 import CreateDistributorDlg from "../components/custom/distributor/CreateDistributorDlg";
 import LedgerTabContent from "../components/custom/distributor/LedgerTabContent";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
+import { useToast } from "../hooks/use-toast";
 
 export default function DistributorDetails() {
   const navigate = useNavigate();
   const { distributorId } = useParams();
   const dispatch = useDispatch();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const { toast } = useToast();
   const {
     details: distributorDetails,
     status,
@@ -62,6 +65,7 @@ export default function DistributorDetails() {
     tabName,
     invoices,
     payments,
+    deleteDistributorStatus,
   } = useSelector((state) => state.distributor.currentDistributor);
 
   useEffect(() => {
@@ -70,7 +74,7 @@ export default function DistributorDetails() {
         dispatch(fetchDistributorDetails(distributorId));
       }
     }
-  }, [distributorId]);
+  }, [distributorId, dispatch, distributorDetails?._id]);
 
   useEffect(() => {
     if (distributorId && distributorDetails?._id === distributorId) {
@@ -80,10 +84,27 @@ export default function DistributorDetails() {
         dispatch(fetchDistributorPayments(distributorId));
       }
     }
-  }, [distributorId, tabName]);
+  }, [distributorId, tabName, dispatch, distributorDetails?._id]);
 
   const handleEditSuccess = () => {
     dispatch(fetchDistributorDetails(distributorId));
+  };
+
+  const handleDelete = async () => {
+    try {
+      await dispatch(deleteDistributor(distributorId)).unwrap();
+      toast({
+        title: "Distributor deleted successfully",
+        variant: "success",
+      });
+      navigate(-1);
+    } catch (error) {
+      toast({
+        title: "Failed to delete distributor",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   if (!distributorDetails || status === "loading") {
@@ -166,9 +187,6 @@ export default function DistributorDetails() {
           >
             <Plus className="h-4 w-4" /> Add Payment
           </Button>
-          <Button variant="outline" size="icon">
-            <Trash2 className="h-4 w-4" />
-          </Button>
           <Button
             variant="outline"
             size="icon"
@@ -176,6 +194,15 @@ export default function DistributorDetails() {
           >
             <Pen className="h-4 w-4" />
           </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="bg-red-500 text-white hover:bg-red-600"
+            onClick={() => setIsDeleteDialogOpen(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          
         </div>
       </header>
       <Tabs
@@ -602,6 +629,45 @@ export default function DistributorDetails() {
         onSuccess={handleEditSuccess}
         distributorToEdit={distributorDetails}
       />
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="max-w-xl p-0 gap-0">
+          <AlertDialogHeader className="px-4 py-2.5 flex flex-row items-center justify-between bg-gray-100 border-b">
+            <AlertDialogTitle className="text-base font-semibold">Delete Distributor</AlertDialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </AlertDialogHeader>
+          <div className="p-6">
+            <AlertDialogDescription>
+              Are you sure you want to delete this distributor? This action will permanently delete all associated records and cannot be undone.
+            </AlertDialogDescription>
+          </div>
+          <div className="p-3 bg-gray-100 border-t flex items-center justify-end gap-2">
+            <Button 
+              onClick={() => setIsDeleteDialogOpen(false)} 
+              variant="outline" 
+              size="sm"
+              disabled={deleteDistributorStatus === "loading"}
+              className='px-4'
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleDelete}
+              size="sm"
+              className='px-4 bg-red-500 text-white hover:bg-red-600'
+              disabled={deleteDistributorStatus === "loading"}
+            >
+              {deleteDistributorStatus === "loading" ? "Deleting..." : "Delete"}
+            </Button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

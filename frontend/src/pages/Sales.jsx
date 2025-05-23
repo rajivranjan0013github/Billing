@@ -6,8 +6,10 @@ import {
   ArrowLeft,
   Calendar,
   Plus,
-  Loader2,
   Filter,
+  EllipsisVertical,
+  FileInput,
+  Download
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -26,7 +28,6 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { Input } from "../components/ui/input";
-import { cn } from "../lib/utils";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   format,
@@ -38,10 +39,10 @@ import {
 } from "date-fns";
 import { DateRangePicker } from "../components/ui/date-range-picker";
 import { formatCurrency } from "../utils/Helper";
-import { Backend_URL } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchBills, searchBills } from "../redux/slices/SellBillSlice";
+import ExportDataDlg from "../components/custom/mirgration/ExportDataDlg";
 
 export default function SalesTransactions() {
   const navigate = useNavigate();
@@ -49,6 +50,7 @@ export default function SalesTransactions() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const isInitialDebounceEffectRun = useRef(true);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
   // Get data from Redux
   const { bills } = useSelector((state) => state.bill);
@@ -59,7 +61,6 @@ export default function SalesTransactions() {
   const [searchType, setSearchType] = useState("invoice");
 
   // Get params from URL or use defaults
-  const urlFilter = searchParams.get("filter") || "all";
   const urlDateFilter = searchParams.get("dateFilter") || "today";
   const urlFromDate = searchParams.get("from");
   const urlToDate = searchParams.get("to");
@@ -114,7 +115,7 @@ export default function SalesTransactions() {
     };
 
     handleDebouncedSearch();
-  }, [debouncedSearchQuery]);
+  }, [debouncedSearchQuery, dispatch, dateRange.from, dateRange.to, saleTypeFilter, toast]);
 
   const fetchBillsData = async (params) => {
     try {
@@ -324,7 +325,7 @@ export default function SalesTransactions() {
         variant: "destructive",
       });
     }
-  }, []);
+  }, [dispatch, searchParams, toast]);
 
   const handleSearch = (value) => {
     setSearchQuery(value);
@@ -555,6 +556,23 @@ export default function SalesTransactions() {
             <Plus className="h-4 w-4" />
             Create Sales Invoice
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <EllipsisVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}>
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <FileInput className="mr-2 h-4 w-4" />
+                Import
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -684,6 +702,30 @@ export default function SalesTransactions() {
           </Table>
         )}
       </div>
+
+      <ExportDataDlg
+        open={isExportDialogOpen}
+        onOpenChange={setIsExportDialogOpen}
+        data={filteredBills}
+        columns={[
+          { header: "Invoice No", field: "invoiceNumber", width: 15 },
+          { header: "Customer Name", field: "customerName", width: 25 },
+          { header: "Mobile", field: "mob", width: 15 },
+          { header: "Invoice Date", field: "invoiceDate", width: 15 },
+          { header: "Created By", field: "createdByName", width: 20 },
+          { header: "Bill Total", field: "billSummary.grandTotal", width: 15, format: "currency", addTotal: true },
+          { header: "Amount Paid", field: "amountPaid", width: 15, format: "currency", addTotal: true },
+          { header: "Due Amount", field: "dueAmount", width: 15, format: "currency", addTotal: true },
+          { header: "Payment Status", field: "paymentStatus", width: 15 }
+        ]}
+        formatters={{
+          "Invoice Date": (value) => new Date(value).toLocaleDateString("en-IN"),
+          "Due Amount": (value, row) => (row.billSummary?.grandTotal || 0) - (row.amountPaid || 0),
+          "Payment Status": (value) => value?.charAt(0).toUpperCase() + value?.slice(1) || "-"
+        }}
+        fileName="sales_transactions"
+        title="Export Sales Transactions"
+      />
     </div>
   );
 }
