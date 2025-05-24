@@ -513,11 +513,11 @@ router.post("/edit", verifyToken, async (req, res) => {
       // Store timeline reference in the product
       product.timeline = timeline._id;
       // Recalculate timeline balances after this new entry
-      await Inventory.recalculateTimelineBalancesAfter(
-        inventoryId,
-        timeline.createdAt,
-        session
-      );
+      // await Inventory.recalculateTimelineBalancesAfter(
+      //   inventoryId,
+      //   timeline.createdAt,
+      //   session
+      // );
     }
 
     // Update the invoice with new details
@@ -1096,6 +1096,11 @@ router.delete("/:id", verifyToken, async (req, res) => {
         _id: { $in: invoice.payments },
       }).session(session);
 
+       // Update distributor balance
+       const distributor = await Distributor.findById(
+        invoice.distributorId
+      ).session(session);
+
       // Process each payment
       for (const payment of payments) {
         // For non-cheque payments, update account balance
@@ -1120,10 +1125,7 @@ router.delete("/:id", verifyToken, async (req, res) => {
         session
       );
 
-      // Update distributor balance
-      const distributor = await Distributor.findById(
-        invoice.distributorId
-      ).session(session);
+     
       if (distributor) {
         const previousBalance = distributor.currentBalance || 0;
         const dueAmount =

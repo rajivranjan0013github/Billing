@@ -35,6 +35,7 @@ export default function PurchaseTable({
   setProducts,
   viewMode,
   gstMode = "exclusive",
+  calculateProductAmount,
 }) {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(true);
@@ -47,46 +48,12 @@ export default function PurchaseTable({
   const [editBatchNumbers, setEditBatchNumbers] = useState({});
   // Add useEffect to recalculate current product amount when gstMode changes
   useEffect(() => {
-    if (newProduct?.quantity && newProduct?.purchaseRate) {
-      const quantity = Number(newProduct?.quantity || 0);
-      const purchaseRate = Number(newProduct?.purchaseRate || 0);
-      const discount = Number(newProduct?.discount || 0);
-      const gstPer = Number(newProduct?.gstPer || 0);
-      let billableQuantity = quantity;
-
-      // Recalculate billable quantity based on scheme inputs in newProduct state
-      if (newProduct.schemeInput1 && newProduct.schemeInput2) {
-        const s1 = Number(newProduct.schemeInput1);
-        const s2 = Number(newProduct.schemeInput2);
-        if (s1 > 0 && s1 + s2 > 0) {
-          // Ensure valid scheme
-          const schemeRatio = s1 / (s1 + s2);
-          billableQuantity = quantity * schemeRatio;
-        }
-      }
-
-      // Calculate rate after discount
-      const discountedRate = purchaseRate * (1 - discount / 100);
-      const effectiveRate = purchaseRate - (purchaseRate * discount) / 100;
-      // Calculate GST amount per unit
-      const gstAmountPerUnit = discountedRate * (gstPer / 100);
-
-      let amount;
-      switch (gstMode) {
-        case "exclusive":
-          amount = purchaseRate * quantity;
-          break;
-        case "inclusive_all":
-          amount = effectiveRate * quantity;
-          break;
-        case "inclusive_gst":
-          amount = (effectiveRate + gstAmountPerUnit) * quantity;
-          break;
-      }
+    if (newProduct?.quantity && newProduct?.purchaseRate && typeof calculateProductAmount === 'function') {
+      // For newProduct, we pass it directly to the calculation function
+      const amount = calculateProductAmount(newProduct, gstMode);
       setNewProduct((prev) => ({
         ...prev,
         amount: convertToFraction(amount),
-        // schemePercent is already set by handleInputChange if needed
       }));
     }
   }, [
@@ -97,65 +64,37 @@ export default function PurchaseTable({
     newProduct?.schemeInput1,
     newProduct?.schemeInput2,
     newProduct?.gstPer,
+    calculateProductAmount, // Added to dependency array
   ]);
 
   // Input changes handler
   const handleInputChange = (field, value) => {
-    const updatedProduct = { ...newProduct, [field]: value };
-    if (updatedProduct?.quantity && updatedProduct?.purchaseRate) {
-      const quantity = Number(updatedProduct?.quantity || 0);
-      const purchaseRate = Number(updatedProduct?.purchaseRate || 0);
-      const discount = Number(updatedProduct?.discount || 0);
-      const gstPer = Number(updatedProduct?.gstPer || 0);
-      let billableQuantity = quantity; // Default to actual quantity
+    const updatedProductInterim = { ...newProduct, [field]: value };
 
-      // Calculate billable quantity based on scheme
-      if (updatedProduct.schemeInput1 && updatedProduct.schemeInput2) {
-        const s1 = Number(updatedProduct.schemeInput1);
-        const s2 = Number(updatedProduct.schemeInput2);
+    // Handle schemePercent display separately if scheme inputs change
+    if (field === "schemeInput1" || field === "schemeInput2") {
+      if (updatedProductInterim.schemeInput1 && updatedProductInterim.schemeInput2) {
+        const s1 = Number(updatedProductInterim.schemeInput1);
+        const s2 = Number(updatedProductInterim.schemeInput2);
         if (s1 > 0 && s1 + s2 > 0) {
-          // Avoid division by zero or invalid schemes
-          // Calculate the effective quantity ratio based on the scheme
-          const schemeRatio = s1 / (s1 + s2);
-          billableQuantity = quantity * schemeRatio;
-
-          // Also store the scheme percentage for display
           const schemePercent = (s2 / (s1 + s2)) * 100;
-          updatedProduct.schemePercent = convertToFraction(schemePercent);
+          updatedProductInterim.schemePercent = convertToFraction(schemePercent);
         } else {
-          updatedProduct.schemePercent = ""; // Reset if scheme is invalid
+          updatedProductInterim.schemePercent = "";
         }
       } else {
-        updatedProduct.schemePercent = ""; // Reset if no scheme
+        updatedProductInterim.schemePercent = "";
       }
-
-      // Calculate rate after discount
-      const discountedRate = purchaseRate * (1 - discount / 100);
-
-      // Calculate GST amount per unit based on discounted rate
-      const gstAmountPerUnit = discountedRate * (gstPer / 100);
-
-      // Calculate amount based on mode using billableQuantity
-      let amount;
-      switch (gstMode) {
-        case "exclusive":
-          // Rate × Billable Quantity
-          amount = purchaseRate * billableQuantity;
-          break;
-        case "inclusive_all":
-          // (Rate - Discount) × Billable Quantity
-          amount = discountedRate * billableQuantity;
-          break;
-        case "inclusive_gst":
-          // (Rate - Discount + GST) × Billable Quantity
-          amount = (discountedRate + gstAmountPerUnit) * quantity;
-          break;
-      }
-      updatedProduct.amount = convertToFraction(amount);
-    } else {
-      updatedProduct.amount = "";
     }
-    setNewProduct(updatedProduct);
+
+    // Recalculate amount using the prop function
+    if (updatedProductInterim?.quantity && updatedProductInterim?.purchaseRate && typeof calculateProductAmount === 'function') {
+      const amount = calculateProductAmount(updatedProductInterim, gstMode);
+      updatedProductInterim.amount = convertToFraction(amount);
+    } else {
+      updatedProductInterim.amount = "";
+    }
+    setNewProduct(updatedProductInterim);
   };
 
   // Internal keydown handler for the table's input row
@@ -313,57 +252,27 @@ export default function PurchaseTable({
         field === "schemeInput2" ||
         field === "gstPer"
       ) {
-        const quantity = Number(productToUpdate.quantity || 0);
-        const purchaseRate = Number(productToUpdate.purchaseRate || 0);
-        const discount = Number(productToUpdate.discount || 0);
-        const gstPer = Number(productToUpdate.gstPer || 0);
-        let billableQuantity = quantity;
-
-        // Calculate billable quantity and schemePercent based on current scheme inputs
-        if (productToUpdate.schemeInput1 && productToUpdate.schemeInput2) {
-          const s1 = Number(productToUpdate.schemeInput1);
-          const s2 = Number(productToUpdate.schemeInput2);
-          if (s1 > 0 && s1 + s2 > 0) {
-            // Check for valid scheme
-            const schemeRatio = s1 / (s1 + s2);
-            billableQuantity = quantity * schemeRatio;
-            const schemePercent = (s2 / (s1 + s2)) * 100;
-            productToUpdate.schemePercent = convertToFraction(schemePercent);
-          } else {
-            // Invalid scheme (e.g., 0+0, 0+5)
-            billableQuantity = quantity;
-            productToUpdate.schemePercent = "";
-          }
-        } else {
-          // No scheme inputs
-          billableQuantity = quantity;
-          productToUpdate.schemePercent = "";
+        // Recalculate amount using the prop function
+        if (typeof calculateProductAmount === 'function') {
+            const amount = calculateProductAmount(productToUpdate, gstMode);
+            productToUpdate.amount = convertToFraction(amount);
         }
 
-        // Calculate rate after discount
-        const discountedRate = purchaseRate * (1 - discount / 100);
-        const effectiveRate = purchaseRate - (purchaseRate * discount) / 100;
-
-        // Calculate GST amount per unit
-        const gstAmountPerUnit = discountedRate * (gstPer / 100);
-
-        // Calculate amount based on mode using billableQuantity
-        let amount;
-        switch (gstMode) {
-          case "exclusive":
-            // Just Rate × Quantity
-            amount = purchaseRate * quantity;
-            break;
-          case "inclusive_all":
-            // (Rate - Rate×Discount%) × Quantity
-            amount = effectiveRate * quantity;
-            break;
-          case "inclusive_gst":
-            // (Rate - Rate×Discount% + (Rate - Rate×Discount%)×GST%) × Quantity
-            amount = (effectiveRate + gstAmountPerUnit) * quantity;
-            break;
+        // Handle schemePercent display separately if scheme inputs change
+        if (field === "schemeInput1" || field === "schemeInput2") {
+            if (productToUpdate.schemeInput1 && productToUpdate.schemeInput2) {
+                const s1 = Number(productToUpdate.schemeInput1);
+                const s2 = Number(productToUpdate.schemeInput2);
+                if (s1 > 0 && s1 + s2 > 0) {
+                    const schemePercent = (s2 / (s1 + s2)) * 100;
+                    productToUpdate.schemePercent = convertToFraction(schemePercent);
+                } else {
+                    productToUpdate.schemePercent = "";
+                }
+            } else {
+                productToUpdate.schemePercent = "";
+            }
         }
-        productToUpdate.amount = convertToFraction(amount);
       }
 
       updatedProducts[index] = productToUpdate;
@@ -417,54 +326,26 @@ export default function PurchaseTable({
         // Keep existing quantity, free, discount, scheme, gst, amount for now
       };
 
-      // Now, recalculate amount based on the updated product state
-      const quantity = Number(productToUpdate.quantity || 0);
-      const purchaseRate = Number(productToUpdate.purchaseRate || 0); // Use updated rate
-      const discount = Number(productToUpdate.discount || 0);
-      const gstPer = Number(productToUpdate.gstPer || 0);
-      let billableQuantity = quantity;
+      // Now, recalculate amount based on the updated product state using the prop function
+      if (typeof calculateProductAmount === 'function') {
+        const amount = calculateProductAmount(productToUpdate, gstMode);
+        productToUpdate.amount = convertToFraction(amount);
+      }
 
-      // Calculate billable quantity and schemePercent based on current scheme inputs
+      // Always recalculate schemePercent based on current schemeInput1 and schemeInput2
+      // as these are part of the productToUpdate from existingProduct, not directly from batch
       if (productToUpdate.schemeInput1 && productToUpdate.schemeInput2) {
         const s1 = Number(productToUpdate.schemeInput1);
         const s2 = Number(productToUpdate.schemeInput2);
         if (s1 > 0 && s1 + s2 > 0) {
-          // Check for valid scheme
-          const schemeRatio = s1 / (s1 + s2);
-          billableQuantity = quantity * schemeRatio;
           const schemePercent = (s2 / (s1 + s2)) * 100;
-          productToUpdate.schemePercent = convertToFraction(schemePercent); // Update scheme% display
+          productToUpdate.schemePercent = convertToFraction(schemePercent);
         } else {
-          // Invalid scheme
-          billableQuantity = quantity;
           productToUpdate.schemePercent = "";
         }
       } else {
-        // No scheme inputs
-        billableQuantity = quantity;
         productToUpdate.schemePercent = "";
       }
-
-      // Calculate rate after discount
-      const discountedRate = purchaseRate * (1 - discount / 100);
-
-      // Calculate GST amount per unit
-      const gstAmountPerUnit = discountedRate * (gstPer / 100);
-
-      // Calculate amount based on mode using billableQuantity
-      let amount;
-      switch (gstMode) {
-        case "exclusive":
-          amount = purchaseRate * billableQuantity;
-          break;
-        case "inclusive_all":
-          amount = discountedRate * billableQuantity;
-          break;
-        case "inclusive_gst":
-          amount = (discountedRate + gstAmountPerUnit) * billableQuantity;
-          break;
-      }
-      productToUpdate.amount = convertToFraction(amount); // Update amount
 
       updatedProducts[index] = productToUpdate; // Put the final updated product back
       return updatedProducts;
@@ -854,7 +735,11 @@ export default function PurchaseTable({
                   <Input
                     disabled={!editAll && editingIndex !== index}
                     onChange={(e) =>
-                      handleInputChangeEditMode(index, "mrp", e.target.value)
+                      handleInputChangeEditMode(
+                        index,
+                        "mrp",
+                        e.target.value
+                      )
                     }
                     value={product?.mrp || ""}
                     type="text"

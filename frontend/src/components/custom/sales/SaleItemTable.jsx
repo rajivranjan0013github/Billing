@@ -314,20 +314,38 @@ export default function SaleTable({
       );
     }
 
-    setNewProduct((prev) => ({
-      ...prev,
-      batchNumber: batch.batchNumber,
-      batchId: batch._id,
-      mrp: batch.mrp || prev.mrp,
-      expiry: batch.expiry || prev.expiry,
-      saleRate: tempSaleRate,
-      gstPer: batch.gstPer || prev.gstPer,
-      HSN: batch.HSN || prev.HSN, // Keep existing HSN if batch doesn't have one
-      pack: batch.pack || prev.pack, // Keep existing pack if batch doesn't have one
-      currentStocks: batch.quantity,
-      discount: tempDiscount,
-      types: prev.types || (saleType === "return" ? "return" : "sale"), // Maintain sale/return type
-    }));
+    setNewProduct((prev) => {
+      // Get existing quantities
+      const packs = Number(prev?.packs || 0);
+      const loose = Number(prev?.loose || 0);
+      const pack = batch.pack || prev.pack || 1;
+      
+      // Calculate new amount if quantities exist
+      let amount = "";
+      if (packs || loose) {
+        const quantity = pack * packs + loose;
+        const subtotal = quantity * (tempSaleRate / pack);
+        const total = subtotal;
+        amount = (prev.types === "return" ? -1 : 1) * convertToFraction(total);
+      }
+
+      return {
+        ...prev,
+        batchNumber: batch.batchNumber,
+        batchId: batch._id,
+        mrp: batch.mrp || prev.mrp,
+        expiry: batch.expiry || prev.expiry,
+        saleRate: tempSaleRate,
+        gstPer: batch.gstPer || prev.gstPer,
+        HSN: batch.HSN || prev.HSN,
+        pack: pack,
+        currentStocks: batch.quantity,
+        discount: tempDiscount,
+        types: prev.types || (saleType === "return" ? "return" : "sale"),
+        amount: amount,
+        quantity: packs || loose ? pack * packs + loose : undefined
+      };
+    });
   };
 
   // Add useEffect to handle focus change after batch selection

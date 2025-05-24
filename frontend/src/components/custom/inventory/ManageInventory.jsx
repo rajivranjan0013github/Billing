@@ -68,11 +68,17 @@ export default function ManageInventory({
 
   useEffect(() => {
     if (inventoryDetails && open) {
-      setFormData({ ...formData, inventoryId: inventoryDetails?._id });
+      setFormData({ ...formData, inventoryId: inventoryDetails?._id, pack: inventoryDetails?.pack || "" });
       setProductSearch(inventoryDetails?.name);
       setTimeout(() => {
         if (inputRef?.current?.['batchNumber']) {
           inputRef.current['batchNumber'].focus();
+        }
+      }, 100);
+    } else {
+      setTimeout(() => {
+        if (inputRef?.current?.['productName']) {
+          inputRef.current['productName'].focus();
         }
       }, 100);
     }
@@ -227,11 +233,14 @@ export default function ManageInventory({
     setFormData((prev) => ({
       ...prev,
       inventoryId: product?._id,
+      pack: product?.pack || "",
     }));
     setProductSearch(product?.name);
-    if (inputRef?.current?.['batchNumber']) {
-      inputRef.current['batchNumber'].focus();
-    }
+    setTimeout(() => {
+      if (inputRef?.current?.['batchNumber']) {
+        inputRef.current['batchNumber'].focus();
+      }
+    }, 100);
   };
 
   return (
@@ -250,7 +259,6 @@ export default function ManageInventory({
             </Label>
             <Input
               id="productName"
-              autoFocus={!inventoryDetails}
               placeholder="Type to search products"
               value={productSearch}
               onChange={(e) => {

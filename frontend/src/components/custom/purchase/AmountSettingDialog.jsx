@@ -16,51 +16,22 @@ const AmountSettingsDialog = ({
   onChange,
   products,
   setProducts,
+  calculateProductAmount,
 }) => {
   const handleModeChange = (newMode) => {
     // First update the mode
     onChange(newMode);
 
-    // Then recalculate amounts for all existing products
-    if (products && products.length > 0) {
+    // Then recalculate amounts for all existing products using the passed function
+    if (products && products.length > 0 && typeof calculateProductAmount === 'function') {
       setProducts(
         products.map((product) => {
-          const quantity = Number(product?.quantity || 0);
-          const purchaseRate = Number(product?.purchaseRate || 0);
-          const discount = Number(product?.discount || 0);
-          let schemePercent = 0;
-
-          if (product.schemeInput1 && product.schemeInput2) {
-            const temp1 = Number(product.schemeInput1);
-            const temp2 = Number(product.schemeInput2);
-            schemePercent = (temp2 / (temp1 + temp2)) * 100;
-          }
-
-          const totalDiscountPercent = discount + schemePercent;
-          const effectiveRate =
-            purchaseRate - (purchaseRate * totalDiscountPercent) / 100;
-          const gstAmount =
-            (effectiveRate * Number(product?.gstPer || 0)) / 100;
-
-          let amount;
-          switch (newMode) {
-            case "exclusive":
-              // Just Rate × Quantity
-              amount = purchaseRate * quantity;
-              break;
-            case "inclusive_all":
-              // (Rate - Rate×Discount%) × Quantity
-              amount = effectiveRate * quantity;
-              break;
-            case "inclusive_gst":
-              // (Rate - Rate×Discount% + (Rate - Rate×Discount%)×GST%) × Quantity
-              amount = (effectiveRate + gstAmount) * quantity;
-              break;
-          }
-
+          // The calculateProductAmount function now expects the product and the new mode
+          const newAmount = calculateProductAmount(product, newMode);
           return {
             ...product,
-            amount: convertToFraction(amount),
+            // convertToFraction should be applied here if the main function returns a raw number
+            amount: convertToFraction(newAmount),
           };
         })
       );

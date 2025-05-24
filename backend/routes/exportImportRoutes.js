@@ -29,87 +29,122 @@ router.post('/import-customers', verifyToken, async (req, res) => {
 });
 
 router.post('/import-inventory', verifyToken, async (req, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
     try {
         const { inventory } = req.body;
-        
-        for (const item of inventory) {
-            if(!item?.name) continue;
+        const BATCH_SIZE = 50; // Process 50 items at a time
+        const results = {
+            success: 0,
+            failed: 0,
+            errors: []
+        };
+
+        // Process inventory in batches
+        for (let i = 0; i < inventory.length; i += BATCH_SIZE) {
+            const batch = inventory.slice(i, i + BATCH_SIZE);
+            const session = await mongoose.startSession();
             
-            // Find inventory
-            let inventoryItem = await Inventory.findOne({ name: item?.name, code: item?.code }).session(session);
-            
-            if (!inventoryItem) {
-                // For new inventory, create with all details
-                inventoryItem = new Inventory({
-                    ...item,
-                    quantity:  0
+            try {
+                await session.withTransaction(async () => {
+                    for (const item of batch) {
+                        try {
+                            if(!item?.name) {
+                                results.failed++;
+                                results.errors.push(`Item at index ${i} has no name`);
+                                continue;
+                            }
+
+                            // Find or create inventory
+                            let inventoryItem = await Inventory.findOne({ 
+                                name: item?.name, 
+                                code: item?.code 
+                            }).session(session);
+                            
+                            if (!inventoryItem) {
+                                inventoryItem = new Inventory({
+                                    ...item,
+                                    quantity: 0
+                                });
+                            } else {
+                                const { quantity, ...updateData } = item;
+                                Object.assign(inventoryItem, updateData);
+                            }
+
+                            if(!item?.batchNumber) {
+                                await inventoryItem.save({ session });
+                                results.success++;
+                                continue;
+                            }
+
+                            // Handle batch
+                            let batch = await InventoryBatch.findOne({
+                                inventoryId: inventoryItem._id,
+                                batchNumber: item?.batchNumber
+                            }).session(session);
+
+                            if (!batch) {
+                                batch = new InventoryBatch({...item, inventoryId: inventoryItem._id});
+                                inventoryItem.batch.push(batch._id);
+                            } else {
+                                Object.assign(batch, {...item, quantity: batch.quantity + item.quantity});
+                            }
+                            
+                            inventoryItem.quantity = inventoryItem.quantity + item.quantity;
+
+                            // Save batch
+                            await batch.save({ session });
+
+                            // Create timeline entry
+                            const timeline = new StockTimeline({
+                                inventoryId: inventoryItem._id,
+                                invoiceId: null,
+                                type: "IMPORT",
+                                invoiceNumber: null,
+                                credit: item.quantity,
+                                balance: inventoryItem.quantity,
+                                batchNumber: item.batchNumber,
+                                expiry: item.expiry,
+                                mrp: item.mrp,
+                                purchaseRate: item.purchaseRate,
+                                gstPer: item.gstPer,
+                                saleRate: item.saleRate,
+                                pack: item.pack,
+                                HSN: item.HSN || null,
+                                createdBy: req.user._id,
+                                createdByName: req.user.name,
+                            });
+                            await timeline.save({ session });
+
+                            inventoryItem.timeline.push(timeline._id);
+                            await inventoryItem.save({ session });
+                            
+                            results.success++;
+                        } catch (itemError) {
+                            results.failed++;
+                            results.errors.push(`Error processing item: ${itemError.message}`);
+                        }
+                    }
                 });
-            } else {
-                // For existing inventory, update everything except quantity
-                const { quantity, ...updateData } = item;
-                Object.assign(inventoryItem, updateData);
+            } catch (batchError) {
+                results.errors.push(`Batch error: ${batchError.message}`);
+            } finally {
+                session.endSession();
             }
-
-            if(!item?.batchNumber) {
-                await inventoryItem.save({ session });
-                continue;
-            }
-
-            // Handle batch
-            let batch = await InventoryBatch.findOne({
-                inventoryId: inventoryItem._id,
-                batchNumber: item?.batchNumber
-            }).session(session);
-
-            if (!batch) {
-                batch = new InventoryBatch({...item, inventoryId: inventoryItem._id});
-                inventoryItem.batch.push(batch._id);
-            } else {
-                Object.assign(batch, {...item, quantity : batch.quantity + item.quantity});
-            }
-            
-            inventoryItem.quantity = inventoryItem.quantity + item.quantity;
-
-            // Save batch first
-            await batch.save({ session });
-
-            // Create and save timeline entry
-            const timeline = new StockTimeline({
-                inventoryId: inventoryItem._id,
-                invoiceId: null,
-                type: "IMPORT",
-                invoiceNumber: null,
-                credit: item.quantity,
-                balance: inventoryItem.quantity,
-                batchNumber: item.batchNumber,
-                expiry: item.expiry,
-                mrp: item.mrp,
-                purchaseRate: item.purchaseRate,
-                gstPer: item.gstPer,
-                saleRate: item.saleRate,
-                pack: item.pack,
-                HSN: item.HSN || null,
-                createdBy: req.user._id,
-                createdByName: req.user.name,
-            });
-            await timeline.save({ session });
-
-            // Update inventory timeline array and save
-            // inventoryItem.timeline = inventoryItem.timeline || [];
-            // inventoryItem.batch = inventoryItem.batch || [];
-            inventoryItem.timeline.push(timeline._id);
-            await inventoryItem.save({ session });
         }
 
-        await session.commitTransaction();
-        res.status(200).json({ message: 'Inventory imported successfully' });
+        res.status(200).json({ 
+            message: 'Inventory import completed',
+            results: {
+                totalProcessed: results.success + results.failed,
+                successful: results.success,
+                failed: results.failed,
+                errors: results.errors
+            }
+        });
     } catch (error) {
-        await session.abortTransaction();
-        res.status(500).json({ message: 'Error importing inventory', error: error.message });
-    } finally {
-        session.endSession();
+        res.status(500).json({ 
+            message: 'Error importing inventory', 
+            error: error.message 
+        });
     }
 });
 

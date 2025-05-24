@@ -197,11 +197,11 @@ router.post("/", verifyToken, async (req, res) => {
       await inventorySchema.save({ session });
 
       // Recalculate timeline balances after this new entry
-      await Inventory.recalculateTimelineBalancesAfter(
-        inventoryId,
-        timeline.createdAt,
-        session
-      );
+      // await Inventory.recalculateTimelineBalancesAfter(
+      //   inventoryId,
+      //   timeline.createdAt,
+      //   session
+      // );
     }
 
     // Save the sales bill

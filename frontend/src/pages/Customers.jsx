@@ -29,11 +29,11 @@ import {
 } from "../components/ui/alert-dialog";
 
 const columns = [
-  { header: "Customer Name", field: "name", width: 30 },
-  { header: "Mobile Number", field: "mob", width: 15, required: false },
-  { header: "Address", field: "address", width: 40, required: false },
-  { header: "Open Balance", field: "openBalance", width: 15, format: "currency", required: false },
-  { header: "Balance", field: "currentBalance", width: 15, format: "currency", required: false }
+  { header: "Customer Name", field: "name", width: 30, required: true },
+  { header: "Mobile Number", field: "mob", width: 15, },
+  { header: "Address", field: "address", width: 40, },
+  { header: "Open Balance", field: "openBalance", width: 15, format: "currency",  },
+  { header: "Balance", field: "currentBalance", width: 15, format: "currency",  }
 ]
 
 const Customers = () => {

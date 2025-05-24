@@ -37,10 +37,53 @@ export const roundToTwo = (num) => {
   return Math.round((num + Number.EPSILON) * 100) / 100;
 };
 
-export const calculateTotals = (products, amountType) => {
+// Renamed and refined from calculateProductAmount
+const calculateLineItemAmountDetails = (product, amountType) => {
+  const quantity = Number(product?.quantity || 0);
+  const purchaseRate = Number(product?.purchaseRate || 0);
+  const discountPercent = Number(product?.discount || 0); // Explicit discount
+  const gstPer = Number(product?.gstPer || 0);
+  const s1 = Number(product?.schemeInput1 || 0);
+  const s2 = Number(product?.schemeInput2 || 0);
+
+  let billableQuantity = quantity;
+  if (s1 > 0 && s1 + s2 > 0) {
+    const schemeRatio = s1 / (s1 + s2);
+    billableQuantity = quantity * schemeRatio;
+  }
+
+  const discountedRate = (purchaseRate * (1 - discountPercent / 100));
+
+  let amount;
+  switch (amountType) {
+    case "exclusive":
+      // As per dialog: "Shows pure rate × quantity"
+      // Interpreted: Original Purchase Rate * Billable Quantity (to account for scheme)
+      amount = (purchaseRate * billableQuantity);
+      break;
+    case "inclusive_all":
+      // As per dialog: "Shows rate after applying discount × quantity"
+      // Interpreted: Discounted Rate (after explicit disc) * Billable Quantity
+      amount = (discountedRate * billableQuantity);
+      break;
+    case "inclusive_gst":
+      // As per dialog: "Shows rate after discount and GST × quantity"
+      // Interpreted: (Discounted Rate (after explicit disc) + GST on it) * Billable Quantity
+      const gstOnDiscountedRate = (discountedRate * (gstPer / 100));
+      amount = ((discountedRate + gstOnDiscountedRate) * billableQuantity);
+      break;
+    default: // Default to exclusive logic
+      amount = (purchaseRate * billableQuantity);
+      break;
+  }
+  return roundToTwo(amount); // Returns raw number; convertToFraction applied by caller if needed
+};
+
+// calculateTotals should NOT depend on amountType for its core financial calculations.
+// amountType is for line item display only.
+export const calculateTotals = (products) => {
   // Calculate the sums using reduce
-  const totals = products.reduce(
-    (acc, product) => {
+  const totals = products.reduce((acc, product) => {
       const quantity = Number(product?.quantity || 0);
       const free = Number(product?.free || 0);
       const purchaseRate = Number(product?.purchaseRate || 0);
@@ -55,41 +98,23 @@ export const calculateTotals = (products, amountType) => {
         billableQuantity = quantity * schemeRatio;
       }
 
-      const discountedRate = roundToTwo(
-        purchaseRate * (1 - discountPercent / 100)
-      );
-      const baseAmountForSubtotal = roundToTwo(quantity * purchaseRate);
+      const discountedRate = (purchaseRate * (1 - discountPercent / 100));
+      const baseAmountForSubtotal = (quantity * purchaseRate);
 
       let taxable;
       let gstAmount;
-      switch (amountType) {
-        case "exclusive":
-          taxable = roundToTwo(discountedRate * billableQuantity);
-          gstAmount = roundToTwo((taxable * gstPer) / 100);
-          break;
-        case "inclusive_all":
-          taxable = roundToTwo(discountedRate * billableQuantity);
-          gstAmount = roundToTwo(taxable - taxable / (1 + gstPer / 100));
-          taxable = roundToTwo(taxable - gstAmount);
-          break;
-        case "inclusive_gst":
-          const rateInclGst = roundToTwo(discountedRate * (1 + gstPer / 100));
-          const totalAmountInclGst = roundToTwo(rateInclGst * billableQuantity);
-          taxable = roundToTwo(totalAmountInclGst / (1 + gstPer / 100));
-          gstAmount = roundToTwo(totalAmountInclGst - taxable);
-          break;
-        default:
-          taxable = roundToTwo(discountedRate * billableQuantity);
-          gstAmount = roundToTwo((taxable * gstPer) / 100);
-          break;
-      }
 
+      // Standardized calculation for taxable and GST, equivalent to former 'exclusive' mode.
+      // This ensures grandTotal is not affected by the display amountType.
+      taxable = (discountedRate * billableQuantity);
+      gstAmount = ((taxable * gstPer) / 100);
+      
       acc.productCount += 1;
       acc.totalQuantity += quantity + free;
-      acc.subtotal = roundToTwo(acc.subtotal + baseAmountForSubtotal);
-      acc.taxable = roundToTwo(acc.taxable + taxable);
-      acc.gstAmount = roundToTwo(acc.gstAmount + gstAmount);
-      acc.grandTotal = roundToTwo(acc.grandTotal + taxable + gstAmount);
+      acc.subtotal = (acc.subtotal + baseAmountForSubtotal);
+      acc.taxable = (acc.taxable + taxable);
+      acc.gstAmount = (acc.gstAmount + gstAmount);
+      acc.grandTotal = (acc.grandTotal + taxable + gstAmount);
 
       return acc;
     },
@@ -103,6 +128,10 @@ export const calculateTotals = (products, amountType) => {
       grandTotal: 0,
     }
   );
+
+  totals.subtotal = roundToTwo(totals.subtotal);
+  totals.taxable = roundToTwo(totals.taxable);
+  totals.gstAmount = roundToTwo(totals.gstAmount);
 
   // Calculate the total discount amount after summing subtotal and taxable
   totals.discountAmount = roundToTwo(totals.subtotal - totals.taxable);
@@ -125,17 +154,12 @@ export default function PurchaseForm() {
   const [distributorSelectDialog, setdistributorSelectDialog] = useState(false);
   const [distributorName, setdistributorName] = useState("");
   const { toast } = useToast();
-  const { createPurchaseBillStatus } = useSelector(
-    (state) => state.purchaseBill
-  );
+  const { createPurchaseBillStatus } = useSelector((state) => state.purchaseBill);
   const { isCollapsed } = useSelector((state) => state.loader);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [invoiceForPayment, setInvoiceForPayment] = useState(null);
-  const [additionalDiscount, setAdditionalDiscount] = useState({
-    per: "",
-    value: "",
-  });
+  const [additionalDiscount, setAdditionalDiscount] = useState({per: "",value: "",});
 
   const [formData, setFormData] = useState({
     purchaseType: "invoice",
@@ -149,10 +173,7 @@ export default function PurchaseForm() {
   });
 
   // caculating total of the product
-  const amountData = useMemo(
-    () => calculateTotals(products, formData.amountType),
-    [products, formData.amountType]
-  );
+  const amountData = useMemo(() => calculateTotals(products),[products]);
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -442,14 +463,16 @@ export default function PurchaseForm() {
       prevProducts.map((product) => {
         const newDiscount =
           Number(product.discount || 0) + additionalDiscountTemp;
-        return {
+        // Product with the new discount to be passed for amount calculation
+        const productWithNewDiscount = {
           ...product,
           discount: newDiscount,
-          amount: calculateProductAmount(
-            {
-              ...product,
-              discount: newDiscount,
-            },
+        };
+        return {
+          ...product,
+          discount: newDiscount, // Apply the new discount to the product state
+          amount: calculateLineItemAmountDetails( // Use the standardized function
+            productWithNewDiscount,
             formData.amountType
           ),
         };
@@ -458,55 +481,6 @@ export default function PurchaseForm() {
 
     // Reset additional discount after applying
     setAdditionalDiscount({ per: "", value: "" });
-  };
-
-  // Helper function to calculate product amount with updated discount/scheme
-  const calculateProductAmount = (product, amountType) => {
-    const quantity = Number(product?.quantity || 0);
-    const purchaseRate = Number(product?.purchaseRate || 0);
-    const discountPercent = Number(product?.discount || 0); // Use only explicit discount
-    const gstPer = Number(product?.gstPer || 0);
-    const s1 = Number(product?.schemeInput1 || 0);
-    const s2 = Number(product?.schemeInput2 || 0);
-
-    // Calculate billable quantity based on scheme
-    let billableQuantity = quantity;
-    if (s1 > 0 && s1 + s2 > 0) {
-      const schemeRatio = s1 / (s1 + s2);
-      billableQuantity = quantity * schemeRatio;
-    }
-
-    // Calculate discounted rate per unit
-    const discountedRate = roundToTwo(
-      purchaseRate * (1 - discountPercent / 100)
-    );
-
-    // Calculate GST amount per unit based on discounted rate
-    const gstAmountPerUnit = roundToTwo(discountedRate * (gstPer / 100));
-
-    // Calculate amount based on mode using BILLABLE quantity
-    let amount;
-    switch (amountType) {
-      case "exclusive":
-        // Rate × Billable Quantity
-        amount = roundToTwo(purchaseRate * billableQuantity);
-        break;
-      case "inclusive_all":
-        // (Rate - Discount) × Billable Quantity
-        amount = roundToTwo(discountedRate * billableQuantity);
-        break;
-      case "inclusive_gst":
-        // (Rate - Discount + GST) × Billable Quantity
-        amount = roundToTwo(
-          (discountedRate + gstAmountPerUnit) * billableQuantity
-        );
-        break;
-      default:
-        // Default to exclusive logic
-        amount = roundToTwo(purchaseRate * billableQuantity);
-    }
-
-    return amount;
   };
 
   return (
@@ -648,6 +622,7 @@ export default function PurchaseForm() {
           products={products}
           setProducts={setProducts}
           gstMode={formData.amountType}
+          calculateProductAmount={calculateLineItemAmountDetails}
         />
       </div>
 
@@ -773,6 +748,7 @@ export default function PurchaseForm() {
         onChange={(value) => handleInputChange("amountType", value)}
         products={products}
         setProducts={setProducts}
+        calculateProductAmount={calculateLineItemAmountDetails}
       />
       <PaymentDialog
         open={paymentDialogOpen}

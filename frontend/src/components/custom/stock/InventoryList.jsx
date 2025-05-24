@@ -33,6 +33,7 @@ const exportColumns = [
   { header: 'Name', field: 'name', width: 30, required: true },
   { header: 'Pack', field: 'pack', width: 15},
   { header: 'Unit', field: 'unit', width: 15},
+  { header: 'Code', field: 'code', width: 15},
   { header: 'Category', field: 'category', width: 20 },
   { header: 'Manufacturer', field: 'mfcName', width: 25 },
   { header: 'Composition', field: 'composition', width: 30 },
@@ -93,6 +94,17 @@ const InventoryList = ({ onItemSelect, selectedItemId, setHasItems }) => {
       item?.mrp?.toString().includes(searchTerm) ||
       item?.pack?.toString().includes(searchTerm)
     );
+  }).sort((a, b) => {
+    // If both items have quantity <= 0 or both have quantity > 0, maintain original order
+    if ((a.quantity <= 0 && b.quantity <= 0) || (a.quantity > 0 && b.quantity > 0)) {
+      return 0;
+    }
+    // If a has quantity <= 0, move it to the end
+    if (a.quantity <= 0) {
+      return 1;
+    }
+    // If b has quantity <= 0, move it to the end
+    return -1;
   });
 
   // Custom validation for inventory import

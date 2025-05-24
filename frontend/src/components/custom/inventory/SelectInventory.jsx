@@ -39,14 +39,14 @@ export default function ProductSelector({
   const searchRef = useRef();
 
   useEffect(() => {
-    if (!newItemDialogOpen) {
+    if (!newItemDialogOpen || !open) {
       setTimeout(() => {
         if (searchRef?.current) {
           searchRef?.current.focus();
         }
       }, 0);
     }
-  }, [newItemDialogOpen]);
+  }, [open, newItemDialogOpen]);
 
   useEffect(() => {
     if (itemsStatus === "idle") {

@@ -106,7 +106,7 @@ export default function Timeline({ inventoryId }) {
                     <TableHead>TXN DATE</TableHead>
                     <TableHead>TXN TYPE</TableHead>
                     <TableHead>TXN NO</TableHead>
-                    <TableHead>distributor NAME</TableHead>
+                    <TableHead>DISTRIBUTOR/CUSTOMER</TableHead>
                     <TableHead>BATCH NO</TableHead>
                     <TableHead className="text-right">CREDIT</TableHead>
                     <TableHead className="text-right">DEBIT</TableHead>
@@ -168,40 +168,40 @@ export default function Timeline({ inventoryId }) {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          {transaction.invoiceNumber || "-"}
+                          {transaction?.invoiceNumber || "-"}
                         </div>
                         <div className="text-xs text-gray-500">
-                          User: {transaction.createdByName || "-"}
+                          User: {transaction?.createdByName || "-"}
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          {transaction.distributorName || "-"}
+                          {transaction?.distributorName || transaction?.customerName || "-"}
                         </div>
                         <div className="text-xs text-gray-500">
-                          Mob: {transaction.distributorMob || "-"}
+                          Mob: {transaction?.distributorMob || transaction?.customerMob || "-"}
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm font-medium">
-                          {transaction.batchNumber}
+                          {transaction?.batchNumber || "-"}
                         </div>
                         <div className="text-xs text-gray-500">
-                          Exp: {transaction.expiry}
+                          Exp: {transaction?.expiry || "-"}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="text-green-600 font-medium">
-                          {transaction.credit || "-"}
+                          {transaction?.credit || "-"}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="text-red-600 font-medium">
-                          {transaction.debit || "-"}
+                          {transaction?.debit || "-"}
                         </span>
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        {transaction.balance}
+                        {transaction?.balance || "-"}
                       </TableCell>
                       <TableCell>
                         <Popover>
@@ -219,7 +219,8 @@ export default function Timeline({ inventoryId }) {
                                 Transaction Remarks
                               </h4>
                               <div className="text-sm text-gray-500">
-                                {(transaction.remarks || "No remarks available")
+                                {(transaction?.remarks ||
+                                  "No remarks available")
                                   .split("\n")
                                   .map((line, index) => (
                                     <p key={index}>{line || "\u00A0"}</p>

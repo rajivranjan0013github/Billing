@@ -85,6 +85,7 @@ router.post("/manage-batch", verifyToken, async (req, res) => {
     }
 
     timeline.balance = Number(inventoryDetails.quantity);
+    inventoryDetails.timeline.push(timeline._id);
     await timeline.save({ session });
     await inventoryDetails.save({ session });
     const updatedItem = await Inventory.findById(inventoryId)

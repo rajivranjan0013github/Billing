@@ -25,6 +25,10 @@ import { formatCurrency } from "../utils/Helper";
 import SearchSuggestion from "../components/custom/custom-fields/CustomSearchSuggestion";
 import { fetchSettings } from "../redux/slices/settingsSlice";
 
+const roundToTwo = (num) => {
+  return Math.round((num + Number.EPSILON) * 100) / 100;
+};
+
 // for sale only
 export const calculateTotals = (products, adjustment = false) => {
   const total = products.reduce(
@@ -32,34 +36,33 @@ export const calculateTotals = (products, adjustment = false) => {
       const quantity = Number(product?.quantity || 0);
       const pack = Number(product?.pack || 1);
       const free = Number(product?.free || 0);
-      const purchaseRate = Number(product?.saleRate || 0);
       const discountPercent =
         Number(product?.discount || 0) + Number(product?.schemePercent || 0);
       const gstPer = Number(product?.gstPer || 0);
       const amount = Number(product?.amount || 0);
 
       if (product.types === "return") {
-        total.returnAmount += roundToTwo(amount);
-        total.grandTotal += roundToTwo(amount);
+        total.returnAmount += (amount);
+        total.grandTotal += (amount);
         return total;
       }
 
-      const subtotal = roundToTwo((quantity * product?.mrp) / pack);
-      const discount = roundToTwo(
+      const subtotal = ((quantity * product?.mrp) / pack);
+      const discount = (
         (((product?.quantity * product?.mrp) / pack) * discountPercent) / 100
       );
-      const taxable = roundToTwo(
+      const taxable = (
         ((subtotal - discount) * 100) / (100 + gstPer)
       );
-      const gstAmount = roundToTwo((taxable * gstPer) / 100);
+      const gstAmount = ((taxable * gstPer) / 100);
 
-      total.grandTotal = roundToTwo(total.grandTotal + taxable + gstAmount);
+      total.grandTotal = (total.grandTotal + taxable + gstAmount);
       total.productCount += 1;
       total.totalQuantity += quantity + free;
-      total.subtotal = roundToTwo(total.subtotal + subtotal);
-      total.discountAmount = roundToTwo(total.discountAmount + discount);
-      total.taxable = roundToTwo(total.taxable + taxable);
-      total.gstAmount = roundToTwo(total.gstAmount + gstAmount);
+      total.subtotal = (total.subtotal + subtotal);
+      total.discountAmount = (total.discountAmount + discount);
+      total.taxable = (total.taxable + taxable);
+      total.gstAmount = (total.gstAmount + gstAmount);
       return total;
     },
     {
@@ -78,12 +81,16 @@ export const calculateTotals = (products, adjustment = false) => {
     total.grandTotal = Math.round(grandTotal);
     total.adjustment = total.grandTotal - grandTotal;
   }
+  total.subtotal = roundToTwo(total.subtotal);
+  total.discountAmount = roundToTwo(total.discountAmount);
+  total.taxable = roundToTwo(total.taxable);
+  total.gstAmount = roundToTwo(total.gstAmount);
+  total.grandTotal = roundToTwo(total.grandTotal);
+  total.returnAmount = roundToTwo(total.returnAmount);
+  total.adjustment = roundToTwo(total.adjustment);
   return total;
 };
 
-const roundToTwo = (num) => {
-  return Math.round((num + Number.EPSILON) * 100) / 100;
-};
 
 const inputKeys = [
   "customerName",
@@ -504,10 +511,10 @@ export default function CreateSellInvoice() {
     const discountPercent = Number(product?.discount || 0);
     const gstPer = Number(product?.gstPer || 0);
 
-    const subtotal = roundToTwo((quantity * mrp) / pack);
-    const discount = roundToTwo((subtotal * discountPercent) / 100);
-    const taxable = roundToTwo(((subtotal - discount) * 100) / (100 + gstPer));
-    const gstAmount = roundToTwo((taxable * gstPer) / 100);
+    const subtotal = ((quantity * mrp) / pack);
+    const discount = ((subtotal * discountPercent) / 100);
+    const taxable = (((subtotal - discount) * 100) / (100 + gstPer));
+    const gstAmount = ((taxable * gstPer) / 100);
 
     return roundToTwo(taxable + gstAmount);
   };
