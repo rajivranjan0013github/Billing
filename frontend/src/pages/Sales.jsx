@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   Search,
   Users,
@@ -83,28 +83,22 @@ export default function SalesTransactions() {
 
   // Handle debounced search
   useEffect(() => {
-    const handleDebouncedSearch = async () => {
-      if (isInitialDebounceEffectRun.current) {
-        isInitialDebounceEffectRun.current = false;
-        if (!debouncedSearchQuery.trim()) {
-          return;
-        }
-      }
-
-      if (!debouncedSearchQuery.trim()) {
-        await fetchBillsData({
+    if (!debouncedSearchQuery.trim()) {
+      if (!isInitialDebounceEffectRun.current) {
+        fetchBillsData({
           startDate: dateRange.from,
           endDate: dateRange.to,
         });
-        return;
       }
+      return;
+    }
 
+    const handleSearch = async () => {
       try {
-        await dispatch(
-          searchBills({
-            query: debouncedSearchQuery,
-          })
-        ).unwrap();
+        await dispatch(searchBills({
+          query: debouncedSearchQuery,
+          searchType
+        })).unwrap();
       } catch (err) {
         toast({
           title: "Error",
@@ -114,18 +108,17 @@ export default function SalesTransactions() {
       }
     };
 
-    handleDebouncedSearch();
-  }, [debouncedSearchQuery, dispatch, dateRange.from, dateRange.to, saleTypeFilter, toast]);
+    handleSearch();
+    isInitialDebounceEffectRun.current = false;
+  }, [debouncedSearchQuery, searchType, dispatch]);
 
-  const fetchBillsData = async (params) => {
+  const fetchBillsData = useCallback(async (params) => {
     try {
-      await dispatch(
-        fetchBills({
-          startDate: format(params.startDate, "yyyy-MM-dd"),
-          endDate: format(params.endDate, "yyyy-MM-dd"),
-          filter: saleTypeFilter !== "all" ? saleTypeFilter : undefined,
-        })
-      ).unwrap();
+      await dispatch(fetchBills({
+        startDate: format(params.startDate, "yyyy-MM-dd"),
+        endDate: format(params.endDate, "yyyy-MM-dd"),
+        filter: saleTypeFilter !== "all" ? saleTypeFilter : undefined
+      })).unwrap();
     } catch (err) {
       toast({
         title: "Error fetching bills",
@@ -133,9 +126,82 @@ export default function SalesTransactions() {
         variant: "destructive",
       });
     }
-  };
+  }, [dispatch, saleTypeFilter]);
 
-  const handleDateSelect = (range) => {
+  // Initialize with URL parameters or defaults
+  useEffect(() => {
+    const fromParam = searchParams.get("from");
+    const toParam = searchParams.get("to");
+    const dateFilterParam = searchParams.get("dateFilter");
+
+    // If no params, set to today's date
+    if (!fromParam || !toParam) {
+      const today = new Date();
+      const todayFormatted = format(today, "yyyy-MM-dd");
+      
+      setSearchParams(prev => {
+        prev.set("from", todayFormatted);
+        prev.set("to", todayFormatted);
+        prev.set("dateFilter", "today");
+        return prev;
+      });
+
+      setDateRange({ from: today, to: today });
+      setDateFilterType("today");
+      
+      fetchBillsData({
+        startDate: today,
+        endDate: today
+      });
+      return;
+    }
+
+    try {
+      const fromDate = new Date(fromParam);
+      const toDate = new Date(toParam);
+
+      if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+        throw new Error("Invalid date in URL parameters");
+      }
+
+      setDateRange({ from: fromDate, to: toDate });
+      
+      if (dateFilterParam) {
+        setDateFilterType(dateFilterParam);
+      }
+
+      fetchBillsData({
+        startDate: fromDate,
+        endDate: toDate
+      });
+    } catch (err) {
+      const today = new Date();
+      const todayFormatted = format(today, "yyyy-MM-dd");
+      
+      setSearchParams(prev => {
+        prev.set("from", todayFormatted);
+        prev.set("to", todayFormatted);
+        prev.set("dateFilter", "today");
+        return prev;
+      });
+
+      setDateRange({ from: today, to: today });
+      setDateFilterType("today");
+      
+      fetchBillsData({
+        startDate: today,
+        endDate: today
+      });
+
+      toast({
+        title: "Invalid date parameters",
+        description: "Reset to today's date",
+        variant: "destructive",
+      });
+    }
+  }, []);
+
+  const handleDateSelect = useCallback((range) => {
     if (range?.from && range?.to) {
       try {
         const fromDate = new Date(range.from);
@@ -147,21 +213,20 @@ export default function SalesTransactions() {
 
         const newFromDate = format(fromDate, "yyyy-MM-dd");
         const newToDate = format(toDate, "yyyy-MM-dd");
-
+        
         setDateRange({ from: fromDate, to: toDate });
         setDateFilterType("custom");
-
-        // Update URL with date range and filter
-        setSearchParams((prev) => {
+        
+        setSearchParams(prev => {
           prev.set("from", newFromDate);
           prev.set("to", newToDate);
           prev.set("dateFilter", "custom");
-          if (saleTypeFilter !== "all") {
-            prev.set("filter", saleTypeFilter);
-          } else {
-            prev.delete("filter");
-          }
           return prev;
+        });
+
+        fetchBillsData({
+          startDate: fromDate,
+          endDate: toDate,
         });
       } catch (err) {
         toast({
@@ -171,17 +236,12 @@ export default function SalesTransactions() {
         });
       }
     }
-  };
+  }, [fetchBillsData, setSearchParams]);
 
-  const handleDatePresetChange = (value) => {
+  const handleDateFilterChange = useCallback((value) => {
     setDateFilterType(value);
 
     if (value === "custom") {
-      // For custom, we keep existing from/to dates if they exist
-      setSearchParams((prev) => {
-        prev.set("dateFilter", "custom");
-        return prev;
-      });
       return;
     }
 
@@ -215,21 +275,13 @@ export default function SalesTransactions() {
 
       const newFromDate = format(newRange.from, "yyyy-MM-dd");
       const newToDate = format(newRange.to, "yyyy-MM-dd");
-
+      
       setDateRange(newRange);
 
-      // Update URL parameters
-      setSearchParams((prev) => {
-        // Set new date parameters
+      setSearchParams(prev => {
         prev.set("from", newFromDate);
         prev.set("to", newToDate);
         prev.set("dateFilter", value);
-
-        // Keep sale type filter if it exists and isn't 'all'
-        if (saleTypeFilter === "all") {
-          prev.delete("filter");
-        }
-
         return prev;
       });
 
@@ -244,88 +296,7 @@ export default function SalesTransactions() {
         variant: "destructive",
       });
     }
-  };
-
-  // Initialize with URL params or defaults
-  useEffect(() => {
-    const fromParam = searchParams.get("from");
-    const toParam = searchParams.get("to");
-    const dateFilterParam = searchParams.get("dateFilter");
-
-    // If no params, set to today's date
-    if (!fromParam || !toParam) {
-      const today = new Date();
-      const todayFormatted = format(today, "yyyy-MM-dd");
-
-      // Update URL with today's date
-      setSearchParams((prev) => {
-        prev.set("from", todayFormatted);
-        prev.set("to", todayFormatted);
-        prev.set("dateFilter", "today");
-        return prev;
-      });
-
-      setDateRange({ from: today, to: today });
-      setDateFilterType("today");
-
-      fetchBillsData({
-        startDate: today,
-        endDate: today,
-      });
-      return;
-    }
-
-    try {
-      // Parse dates and validate them
-      const fromDate = new Date(fromParam);
-      const toDate = new Date(toParam);
-
-      if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
-        throw new Error("Invalid date in URL parameters");
-      }
-
-      const paramRange = {
-        from: fromDate,
-        to: toDate,
-      };
-
-      setDateRange(paramRange);
-
-      if (dateFilterParam) {
-        setDateFilterType(dateFilterParam);
-      }
-
-      fetchBillsData({
-        startDate: fromDate,
-        endDate: toDate,
-      });
-    } catch (err) {
-      // If dates are invalid, reset to today
-      const today = new Date();
-      const todayFormatted = format(today, "yyyy-MM-dd");
-
-      setSearchParams((prev) => {
-        prev.set("from", todayFormatted);
-        prev.set("to", todayFormatted);
-        prev.set("dateFilter", "today");
-        return prev;
-      });
-
-      setDateRange({ from: today, to: today });
-      setDateFilterType("today");
-
-      fetchBillsData({
-        startDate: today,
-        endDate: today,
-      });
-
-      toast({
-        title: "Invalid date parameters",
-        description: "Reset to today's date",
-        variant: "destructive",
-      });
-    }
-  }, [dispatch, searchParams, toast]);
+  }, [fetchBillsData, setSearchParams]);
 
   const handleSearch = (value) => {
     setSearchQuery(value);
@@ -465,25 +436,25 @@ export default function SalesTransactions() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem onSelect={() => handleDatePresetChange("today")}>
+            <DropdownMenuItem onSelect={() => handleDateFilterChange("today")}>
               Today
             </DropdownMenuItem>
             <DropdownMenuItem
-              onSelect={() => handleDatePresetChange("yesterday")}
+              onSelect={() => handleDateFilterChange("yesterday")}
             >
               Yesterday
             </DropdownMenuItem>
             <DropdownMenuItem
-              onSelect={() => handleDatePresetChange("thisWeek")}
+              onSelect={() => handleDateFilterChange("thisWeek")}
             >
               This Week
             </DropdownMenuItem>
             <DropdownMenuItem
-              onSelect={() => handleDatePresetChange("thisMonth")}
+              onSelect={() => handleDateFilterChange("thisMonth")}
             >
               This Month
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => handleDatePresetChange("custom")}>
+            <DropdownMenuItem onSelect={() => handleDateFilterChange("custom")}>
               Custom
             </DropdownMenuItem>
           </DropdownMenuContent>

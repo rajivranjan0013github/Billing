@@ -311,10 +311,10 @@ const SalesInvoicePrint = () => {
                     {product.saleRate}
                   </td>
                   <td className="border-r-[1px] border-gray-800 text-center px-1.5">
-                    {product.discount}%
+                    {product?.discount || 0}
                   </td>
                   <td className="border-r-[1px] border-gray-800 text-center px-1.5">
-                    {product.gstPer}%
+                    {product?.gstPer || 0}
                   </td>
                   <td className=" text-right px-1.5">
                     {product.amount}{" "}

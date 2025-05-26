@@ -52,18 +52,16 @@ export const fetchBills = createLoadingAsyncThunk(
     if (!response.ok) {
       throw new Error("Failed to fetch bills");
     }
-    const billsArray = await response.json();
-    return { billsArray, startDate, endDate, filter };
-  },
-  { useGlobalLoader: true }
+    return response.json();
+  }
 );
 
 // Search bills
 export const searchBills = createLoadingAsyncThunk(
   "bill/searchBills",
-  async ({ query }) => {
+  async ({ query, searchType }) => {
     const response = await fetch(
-      `${Backend_URL}/api/sales/search?query=${query}`,
+      `${Backend_URL}/api/sales/search?query=${query}&searchType=${searchType}`,
       { credentials: "include" }
     );
 
@@ -116,6 +114,10 @@ const billSlice = createSlice({
     fetchStatus: "idle",
     searchStatus: "idle",
     error: null,
+    dateRange: {
+      from: null,
+      to: null
+    }
   },
   reducers: {
     resetStatus: (state) => {
@@ -125,6 +127,9 @@ const billSlice = createSlice({
       state.searchStatus = "idle";
       state.error = null;
     },
+    setDateRange: (state, action) => {
+      state.dateRange = action.payload;
+    }
   },
   extraReducers: (builder) => {
     builder
@@ -147,7 +152,7 @@ const billSlice = createSlice({
       })
       .addCase(fetchBills.fulfilled, (state, action) => {
         state.fetchStatus = "succeeded";
-        state.bills = action.payload.billsArray;
+        state.bills = action.payload;
         state.error = null;
       })
       .addCase(fetchBills.rejected, (state, action) => {
@@ -183,5 +188,5 @@ const billSlice = createSlice({
   },
 });
 
-export const { resetStatus } = billSlice.actions;
+export const { resetStatus, setDateRange } = billSlice.actions;
 export default billSlice.reducer;

@@ -196,9 +196,11 @@ export default function PurchaseTable({
       location: product.location || "", // Pre-fill location if available
     }));
     setProductSearch(product.name);
-    if (inputRef && inputRef.current["batchNumber"]) {
-      inputRef.current["batchNumber"].focus();
-    }
+    setTimeout(() => {
+      if (inputRef && inputRef.current["batchNumber"]) {
+        inputRef.current["batchNumber"].focus();
+      }
+    }, 100);
   };
 
   // product seach Input handler

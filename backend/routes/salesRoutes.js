@@ -317,7 +317,7 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
 
   try {
     const { id } = req.params;
-    const { payment, ...details } = req.body;
+    const { payments, ...details } = req.body;
     let customerDetails = null;
 
     // Find existing invoice
@@ -489,62 +489,24 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
     });
 
     // Handle payment if provided
-    if (payment && payment.amount !== 0) {
-      // Create payment record
-      const paymentNumber = await Payment.getNextPaymentNumber(session);
-      const paymentDoc = new Payment({
-        amount: payment.amount,
-        paymentNumber,
-        paymentType: payment?.amount > 0 ? "Payment In" : "Payment Out",
-        paymentMethod: payment.paymentMethod,
-        paymentDate: payment.chequeDate || new Date(),
-        customerId: details.customerId,
-        customerName: details.customerName,
-        accountId: payment.accountId,
-        transactionNumber: payment.transactionNumber,
-        chequeNumber: payment.chequeNumber,
-        chequeDate: payment.chequeDate,
-        micrCode: payment.micrCode,
-        status: payment.paymentMethod === "CHEQUE" ? "PENDING" : "COMPLETED",
-        remarks: payment.remarks,
-        salesBills: [existingInvoice._id],
-        createdBy: req?.user._id,
-        createdByName: req?.user?.name,
-      });
-
-      // For cheque payments, we don't need to validate account
-      if (payment.paymentMethod === "CHEQUE") {
-        // No balance update here - will be done at the end
-        if (customerDetails) {
-          customerDetails.payments.push(paymentDoc._id);
+    if (payments && payments.length > 0) {
+     
+      for (const payment of payments) {
+        const existingPayment = await Payment.findById(payment._id).session(session);
+        if (!existingPayment) {
+          throw new Error(`Payment not found: ${payment._id}`);
         }
-      } else {
-        // For non-cheque payments, validate and update account
-        if (!payment.accountId) {
-          throw new Error("Account ID is required for non-cheque payments");
-        }
-
-        // Validate account exists
-        const account = await AccountDetails.findById(
-          payment.accountId
-        ).session(session);
-        if (!account) {
-          throw new Error("Account not found");
-        }
-
-        // Update account balance
-        account.balance += payment.amount;
-        paymentDoc.accountBalance = account.balance;
-        await account.save({ session });
-
-        // Update customer payments array if not cash customer
-        if (customerDetails) {
-          customerDetails.payments.push(paymentDoc._id);
+        existingPayment.amount = payment.amount;
+        await existingPayment.save({ session });
+      }
+      if (details.amountPaid !== details.grandTotal) {
+        if (customerDetails) {  
+          customerDetails.currentBalance =
+            (customerDetails.currentBalance || 0) +
+            (details.grandTotal || 0) -
+            details.amountPaid;
         }
       }
-
-      await paymentDoc.save({ session });
-      existingInvoice.payments.push(paymentDoc._id);
     } else {
       if (customerDetails) {
         customerDetails.currentBalance =
@@ -561,12 +523,12 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
       const previousBalance = customerDetails.currentBalance || 0;
       // For edited sales: balance calculation follows same principle
       customerDetails.currentBalance =
-        previousBalance + details.grandTotal - (payment?.amount || 0);
+        previousBalance + details.grandTotal - (details.amountPaid || 0);
 
       const ledgerEntry = new Ledger({
         customerId: customerDetails._id,
         balance: customerDetails.currentBalance,
-        credit: payment?.amount || 0, // New payment received
+        credit: details.amountPaid || 0, // New payment received
         debit: details.grandTotal, // New sales amount
         invoiceNumber: existingInvoice.invoiceNumber,
         description: "Sales Bill Edit",

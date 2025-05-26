@@ -29,7 +29,7 @@ import {
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchPayments, searchPayments } from "../redux/slices/paymentSlice";
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
   format,
   subDays,
@@ -54,6 +54,7 @@ const Payments = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const dispatch = useDispatch();
+  const isInitialDebounceEffectRun = useRef(true);
 
   // Get Redux state
   const { payments } = useSelector((state) => state.payment);
@@ -63,14 +64,13 @@ const Payments = () => {
   const urlFromDate = searchParams.get("from");
   const urlToDate = searchParams.get("to");
 
-  const [paymentTypeFilter, setPaymentTypeFilter] = useState("all"); // Set default to 'all'
+  const [paymentTypeFilter, setPaymentTypeFilter] = useState("all");
   const [dateFilterType, setDateFilterType] = useState(urlDateFilter);
   const [dateRange, setDateRange] = useState({
     from: urlFromDate ? new Date(urlFromDate) : new Date(),
     to: urlToDate ? new Date(urlToDate) : new Date(),
   });
 
-  // Add search state
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [searchType, setSearchType] = useState("invoice");
@@ -84,26 +84,40 @@ const Payments = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  const fetchPaymentsData = useCallback(async (params) => {
+    try {
+      await dispatch(fetchPayments({
+        startDate: format(params.startDate, 'yyyy-MM-dd'),
+        endDate: format(params.endDate, 'yyyy-MM-dd'),
+        filter: paymentTypeFilter !== "all" ? paymentTypeFilter : undefined
+      })).unwrap();
+    } catch (err) {
+      toast({
+        title: "Error fetching payments",
+        description: err.message,
+        variant: "destructive",
+      });
+    }
+  }, [dispatch, paymentTypeFilter, toast]);
+
   // Handle debounced search
   useEffect(() => {
-    const handleDebouncedSearch = async () => {
-      if (!debouncedSearchQuery.trim()) {
-        await dispatch(
-          fetchPayments({
-            startDate: dateRange.from,
-            endDate: dateRange.to,
-            filter: paymentTypeFilter !== "all" ? paymentTypeFilter : undefined,
-          })
-        ).unwrap();
-        return;
+    if (!debouncedSearchQuery.trim()) {
+      if (!isInitialDebounceEffectRun.current) {
+        fetchPaymentsData({
+          startDate: dateRange.from,
+          endDate: dateRange.to,
+        });
       }
+      return;
+    }
 
+    const handleSearch = async () => {
       try {
-        await dispatch(
-          searchPayments({
-            query: debouncedSearchQuery,
-          })
-        ).unwrap();
+        await dispatch(searchPayments({
+          query: debouncedSearchQuery,
+          searchType
+        })).unwrap();
       } catch (err) {
         toast({
           title: "Error",
@@ -113,10 +127,84 @@ const Payments = () => {
       }
     };
 
-    handleDebouncedSearch();
-  }, [debouncedSearchQuery, dispatch, dateRange.from, dateRange.to, paymentTypeFilter, toast]);
+    handleSearch();
+    isInitialDebounceEffectRun.current = false;
+  }, [debouncedSearchQuery, searchType, dispatch]);
 
-  const handleDateSelect = (range) => {
+  // Initialize with URL parameters or defaults
+  useEffect(() => {
+    const fromParam = searchParams.get('from');
+    const toParam = searchParams.get('to');
+    const dateFilterParam = searchParams.get('dateFilter');
+
+    // If no params, set to today's date
+    if (!fromParam || !toParam) {
+      const today = new Date();
+      const todayFormatted = format(today, 'yyyy-MM-dd');
+      
+      setSearchParams(prev => {
+        prev.set('from', todayFormatted);
+        prev.set('to', todayFormatted);
+        prev.set('dateFilter', 'today');
+        return prev;
+      });
+
+      setDateRange({ from: today, to: today });
+      setDateFilterType('today');
+      
+      fetchPaymentsData({
+        startDate: today,
+        endDate: today
+      });
+      return;
+    }
+
+    try {
+      const fromDate = new Date(fromParam);
+      const toDate = new Date(toParam);
+
+      if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+        throw new Error("Invalid date in URL parameters");
+      }
+
+      setDateRange({ from: fromDate, to: toDate });
+      
+      if (dateFilterParam) {
+        setDateFilterType(dateFilterParam);
+      }
+
+      fetchPaymentsData({
+        startDate: fromDate,
+        endDate: toDate
+      });
+    } catch (err) {
+      const today = new Date();
+      const todayFormatted = format(today, 'yyyy-MM-dd');
+      
+      setSearchParams(prev => {
+        prev.set('from', todayFormatted);
+        prev.set('to', todayFormatted);
+        prev.set('dateFilter', 'today');
+        return prev;
+      });
+
+      setDateRange({ from: today, to: today });
+      setDateFilterType('today');
+      
+      fetchPaymentsData({
+        startDate: today,
+        endDate: today
+      });
+
+      toast({
+        title: "Invalid date parameters",
+        description: "Reset to today's date",
+        variant: "destructive",
+      });
+    }
+  }, []);
+
+  const handleDateSelect = useCallback((range) => {
     if (range?.from && range?.to) {
       try {
         const fromDate = new Date(range.from);
@@ -126,40 +214,23 @@ const Payments = () => {
           throw new Error("Invalid date selection");
         }
 
-        const newFromDate = format(fromDate, "yyyy-MM-dd");
-        const newToDate = format(toDate, "yyyy-MM-dd");
-
+        const newFromDate = format(fromDate, 'yyyy-MM-dd');
+        const newToDate = format(toDate, 'yyyy-MM-dd');
+        
         setDateRange({ from: fromDate, to: toDate });
         setDateFilterType("custom");
-
-        // Update URL with date range and filter
-        setSearchParams((prev) => {
-          prev.set("from", newFromDate);
-          prev.set("to", newToDate);
-          prev.set("dateFilter", "custom");
-          if (paymentTypeFilter !== "all") {
-            prev.set("filter", paymentTypeFilter);
-          } else {
-            prev.delete("filter");
-          }
+        
+        setSearchParams(prev => {
+          prev.set('from', newFromDate);
+          prev.set('to', newToDate);
+          prev.set('dateFilter', 'custom');
           return prev;
         });
 
-        dispatch(
-          fetchPayments({
-            startDate: fromDate,
-            endDate: toDate,
-            filter: paymentTypeFilter,
-          })
-        )
-          .unwrap()
-          .catch((err) => {
-            toast({
-              title: "Error fetching payments",
-              description: err.message,
-              variant: "destructive",
-            });
-          });
+        fetchPaymentsData({
+          startDate: fromDate,
+          endDate: toDate,
+        });
       } catch (err) {
         toast({
           title: "Error",
@@ -168,9 +239,9 @@ const Payments = () => {
         });
       }
     }
-  };
+  }, [fetchPaymentsData, setSearchParams]);
 
-  const handleDateFilterChange = (value) => {
+  const handleDateFilterChange = useCallback((value) => {
     setDateFilterType(value);
 
     if (value === "custom") {
@@ -205,39 +276,22 @@ const Payments = () => {
           break;
       }
 
-      const newFromDate = format(newRange.from, "yyyy-MM-dd");
-      const newToDate = format(newRange.to, "yyyy-MM-dd");
-
+      const newFromDate = format(newRange.from, 'yyyy-MM-dd');
+      const newToDate = format(newRange.to, 'yyyy-MM-dd');
+      
       setDateRange(newRange);
 
-      // Update URL with date range and filter
-      setSearchParams((prev) => {
-        prev.set("from", newFromDate);
-        prev.set("to", newToDate);
-        prev.set("dateFilter", value);
-        if (paymentTypeFilter !== "all") {
-          prev.set("filter", paymentTypeFilter);
-        } else {
-          prev.delete("filter");
-        }
+      setSearchParams(prev => {
+        prev.set('from', newFromDate);
+        prev.set('to', newToDate);
+        prev.set('dateFilter', value);
         return prev;
       });
 
-      dispatch(
-        fetchPayments({
-          startDate: newRange.from,
-          endDate: newRange.to,
-          filter: paymentTypeFilter,
-        })
-      )
-        .unwrap()
-        .catch((err) => {
-          toast({
-            title: "Error fetching payments",
-            description: err.message,
-            variant: "destructive",
-          });
-        });
+      fetchPaymentsData({
+        startDate: newRange.from,
+        endDate: newRange.to,
+      });
     } catch (err) {
       toast({
         title: "Error",
@@ -245,122 +299,15 @@ const Payments = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [fetchPaymentsData, setSearchParams]);
 
-  // Update effect to initialize with 'all' filter
-  useEffect(() => {
-    const fromParam = searchParams.get("from");
-    const toParam = searchParams.get("to");
-    const dateFilterParam = searchParams.get("dateFilter");
-
-    // If no params, set to today's date
-    if (!fromParam || !toParam) {
-      const today = new Date();
-      const todayFormatted = format(today, "yyyy-MM-dd");
-
-      // Update URL with today's date
-      setSearchParams((prev) => {
-        prev.set("from", todayFormatted);
-        prev.set("to", todayFormatted);
-        prev.set("dateFilter", "today");
-        return prev;
-      });
-
-      setDateRange({ from: today, to: today });
-      setDateFilterType("today");
-
-      dispatch(
-        fetchPayments({
-          startDate: today,
-          endDate: today,
-        })
-      )
-        .unwrap()
-        .catch((err) => {
-          toast({
-            title: "Error fetching payments",
-            description: err.message,
-            variant: "destructive",
-          });
-        });
-      return;
-    }
-
-    try {
-      // Parse dates and validate them
-      const fromDate = new Date(fromParam);
-      const toDate = new Date(toParam);
-
-      if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
-        throw new Error("Invalid date in URL parameters");
-      }
-
-      const paramRange = {
-        from: fromDate,
-        to: toDate,
-      };
-
-      setDateRange(paramRange);
-
-      if (dateFilterParam) {
-        setDateFilterType(dateFilterParam);
-      }
-
-      dispatch(
-        fetchPayments({
-          startDate: fromDate,
-          endDate: toDate,
-        })
-      )
-        .unwrap()
-        .catch((err) => {
-          toast({
-            title: "Error fetching payments",
-            description: err.message,
-            variant: "destructive",
-          });
-        });
-    } catch (err) {
-      // If dates are invalid, reset to today
-      const today = new Date();
-      const todayFormatted = format(today, "yyyy-MM-dd");
-
-      setSearchParams((prev) => {
-        prev.set("from", todayFormatted);
-        prev.set("to", todayFormatted);
-        prev.set("dateFilter", "today");
-        return prev;
-      });
-
-      setDateRange({ from: today, to: today });
-      setDateFilterType("today");
-
-      dispatch(
-        fetchPayments({
-          startDate: today,
-          endDate: today,
-        })
-      )
-        .unwrap()
-        .catch((err) => {
-          toast({
-            title: "Error fetching payments",
-            description: err.message,
-            variant: "destructive",
-          });
-        });
-
-      toast({
-        title: "Invalid date parameters",
-        description: "Reset to today's date",
-        variant: "destructive",
-      });
-    }
-  }, [dispatch, searchParams, toast]);
-
-  const handleFilterChange = (value) => {
+  const handleFilterChange = useCallback((value) => {
     setPaymentTypeFilter(value);
-  };
+    fetchPaymentsData({
+      startDate: dateRange.from,
+      endDate: dateRange.to,
+    });
+  }, [fetchPaymentsData, dateRange]);
 
   // Filter payments based on payment type
   const filteredPayments = useMemo(() => {
@@ -489,16 +436,10 @@ const Payments = () => {
                     className="h-6 w-6 p-0 hover:bg-slate-100 rounded-full"
                     onClick={() => {
                       setSearchQuery("");
-                      dispatch(
-                        fetchPayments({
-                          startDate: dateRange.from,
-                          endDate: dateRange.to,
-                          filter:
-                            paymentTypeFilter !== "all"
-                              ? paymentTypeFilter
-                              : undefined,
-                        })
-                      );
+                      fetchPaymentsData({
+                        startDate: dateRange.from,
+                        endDate: dateRange.to,
+                      });
                     }}
                   >
                     <X className="h-4 w-4 text-blue-500" />

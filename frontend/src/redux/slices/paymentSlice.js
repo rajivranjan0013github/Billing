@@ -21,10 +21,8 @@ export const fetchPayments = createLoadingAsyncThunk(
     if (!response.ok) {
       throw new Error("Failed to fetch payments");
     }
-    const paymentArray = await response.json();
-    return { paymentArray, startDate, endDate, filter };
-  },
-  { useGlobalLoader: true }
+    return response.json();
+  }
 );
 
 // Create Payment
@@ -71,9 +69,9 @@ export const deletePayment = createLoadingAsyncThunk(
 // Search payments
 export const searchPayments = createLoadingAsyncThunk(
   "payment/searchPayments",
-  async ({ query }) => {
+  async ({ query, searchType }) => {
     const response = await fetch(
-      `${Backend_URL}/api/payment/search?query=${query}`,
+      `${Backend_URL}/api/payment/search?query=${query}&searchType=${searchType}`,
       { credentials: "include" }
     );
 
@@ -93,8 +91,23 @@ const paymentSlice = createSlice({
     fetchStatus: "idle",
     searchStatus: "idle",
     error: null,
+    dateRange: {
+      from: null,
+      to: null
+    }
   },
-  reducers: {},
+  reducers: {
+    resetStatus: (state) => {
+      state.createPaymentStatus = "idle";
+      state.deletePaymentStatus = "idle";
+      state.fetchStatus = "idle";
+      state.searchStatus = "idle";
+      state.error = null;
+    },
+    setDateRange: (state, action) => {
+      state.dateRange = action.payload;
+    }
+  },
   extraReducers: (builder) => {
     builder
       // Handle fetchPayments
@@ -103,7 +116,7 @@ const paymentSlice = createSlice({
       })
       .addCase(fetchPayments.fulfilled, (state, action) => {
         state.fetchStatus = "succeeded";
-        state.payments = action.payload.paymentArray;
+        state.payments = action.payload;
         state.error = null;
       })
       .addCase(fetchPayments.rejected, (state, action) => {
@@ -148,4 +161,5 @@ const paymentSlice = createSlice({
   },
 });
 
+export const { resetStatus, setDateRange } = paymentSlice.actions;
 export default paymentSlice.reducer;
