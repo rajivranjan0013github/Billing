@@ -366,7 +366,7 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
       const reversalTimeline = new StockTimeline({
         inventoryId: inventoryId,
         invoiceId: existingInvoice._id,
-        type: "SALE_EDIT",
+        type: "SALE_EDIT_REVERSE",
         invoiceNumber: existingInvoice.invoiceNumber,
         credit: types === "return" ? 0 : quantity,
         debit: types === "return" ? quantity : 0,
@@ -479,15 +479,6 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
       }
     }
 
-    // Update the existing invoice with new details
-    Object.assign(existingInvoice, {
-      ...details,
-      mob: customerDetails?.mob || "",
-      address: customerDetails?.address,
-      createdBy: req.user._id,
-      createdByName: req?.user?.name,
-    });
-
     // Handle payment if provided
     if (payments && payments.length > 0) {
      
@@ -499,46 +490,50 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
         existingPayment.amount = payment.amount;
         await existingPayment.save({ session });
       }
-      if (details.amountPaid !== details.grandTotal) {
-        if (customerDetails) {  
-          customerDetails.currentBalance =
-            (customerDetails.currentBalance || 0) +
-            (details.grandTotal || 0) -
-            details.amountPaid;
-        }
-      }
-    } else {
-      if (customerDetails) {
-        customerDetails.currentBalance =
-          (customerDetails.currentBalance || 0) + (details.grandTotal || 0);
-      }
-    }
+    } 
 
     // Save customer changes if any
     if (customerDetails) {
-      if (!customerDetails.invoices.includes(existingInvoice._id)) {
-        customerDetails.invoices.push(existingInvoice._id);
-      }
+      const oldCustomer = await Customer.findById(existingInvoice.customerId).session(session);
+      const newDue = (details.grandTotal || 0) - (details.amountPaid || 0);
+      const oldDue = (existingInvoice.grandTotal || 0) - (existingInvoice.amountPaid || 0);
+      oldCustomer.currentBalance -= oldDue;
+      // Ledger entry reverse transaction
+      const ledgerEntryForOldCustomer = new Ledger({
+        customerId: oldCustomer._id,
+        balance: oldCustomer.currentBalance,
+        credit : existingInvoice.grandTotal || 0, 
+        debit: existingInvoice.amountPaid || 0, // New sales amount
+        invoiceNumber: existingInvoice.invoiceNumber,
+        description: "Sales invoice edit - Reverse Transaction",
+      });
+      await ledgerEntryForOldCustomer.save({ session });
+      oldCustomer.ledger.push(ledgerEntryForOldCustomer._id);
+      await oldCustomer.save({ session });
 
-      const previousBalance = customerDetails.currentBalance || 0;
-      // For edited sales: balance calculation follows same principle
-      customerDetails.currentBalance =
-        previousBalance + details.grandTotal - (details.amountPaid || 0);
-
+      // new ledger entry
       const ledgerEntry = new Ledger({
         customerId: customerDetails._id,
-        balance: customerDetails.currentBalance,
+        balance: customerDetails.currentBalance + newDue,
         credit: details.amountPaid || 0, // New payment received
-        debit: details.grandTotal, // New sales amount
-        invoiceNumber: existingInvoice.invoiceNumber,
-        description: "Sales Bill Edit",
+        debit: details.grandTotal || 0, // New sales amount
+        invoiceNumber: details.invoiceNumber,
+        description: "Sales invoice edit - New Transaction",
       });
+      customerDetails.currentBalance += newDue;
       await ledgerEntry.save({ session });
-      if (ledgerEntry?._id) {
-        customerDetails.ledger.push(ledgerEntry._id);
-      }
+      customerDetails.ledger.push(ledgerEntry._id);
       await customerDetails.save({ session });
     }
+
+    // Update the existing invoice with new details
+    Object.assign(existingInvoice, {
+      ...details,
+      mob: customerDetails?.mob || "",
+      address: customerDetails?.address,
+      createdBy: req.user._id,
+      createdByName: req?.user?.name,
+    });
 
     // Save the updated invoice
     const updatedInvoice = await existingInvoice.save({ session });
@@ -643,7 +638,7 @@ router.delete("/invoice/:id", verifyToken, async (req, res) => {
           debit: invoice.grandTotal, // Full amount is debited as sale is cancelled
           credit: invoice.amountPaid, // Any payments made are credited back
           invoiceNumber: invoice.invoiceNumber,
-          description: "Sales Bill Deleted",
+          description: "Sales Bill Deleted - " + invoice.invoiceNumber,
         });
         await ledgerEntry.save({ session });
         if (ledgerEntry?._id) {

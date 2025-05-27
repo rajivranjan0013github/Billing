@@ -34,6 +34,26 @@ export const createBill = createLoadingAsyncThunk(
   { useGlobalLoader: true }
 );
 
+// Delete sale invoice
+export const deleteSaleInvoice = createLoadingAsyncThunk(
+  "bill/deleteSaleInvoice",
+  async (invoiceId, { dispatch }) => {
+    const response = await fetch(`${Backend_URL}/api/sales/invoice/${invoiceId}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to delete sale invoice");
+    }
+    await dispatch(setAccountsStatusIdle());
+    await dispatch(setCustomerStatusIdle());
+    await dispatch(setItemStatusIdle());
+    return invoiceId;
+  },
+  { useGlobalLoader: true }
+);
+
 // Fetch bills
 export const fetchBills = createLoadingAsyncThunk(
   "bill/fetchBills",
@@ -113,6 +133,7 @@ const billSlice = createSlice({
     editBillStatus: "idle",
     fetchStatus: "idle",
     searchStatus: "idle",
+    deleteStatus: "idle",
     error: null,
     dateRange: {
       from: null,
@@ -125,6 +146,7 @@ const billSlice = createSlice({
       state.editBillStatus = "idle";
       state.fetchStatus = "idle";
       state.searchStatus = "idle";
+      state.deleteStatus = "idle";
       state.error = null;
     },
     setDateRange: (state, action) => {
@@ -183,6 +205,20 @@ const billSlice = createSlice({
       })
       .addCase(editSaleInvoice.rejected, (state, action) => {
         state.editBillStatus = "failed";
+        state.error = action.error.message;
+      })
+      // Handle deleteSaleInvoice
+      .addCase(deleteSaleInvoice.pending, (state) => {
+        state.deleteStatus = "loading";
+        state.error = null;
+      })
+      .addCase(deleteSaleInvoice.fulfilled, (state, action) => {
+        state.deleteStatus = "succeeded";
+        state.bills = state.bills.filter(bill => bill._id !== action.payload);
+        state.error = null;
+      })
+      .addCase(deleteSaleInvoice.rejected, (state, action) => {
+        state.deleteStatus = "failed";
         state.error = action.error.message;
       });
   },

@@ -13,6 +13,7 @@ export const SearchSuggestion = forwardRef(
       onSuggestionSelect,
       showAmount = false,
       onKeyDown,
+      disabled = false,
     },
     ref
   ) => {
@@ -129,6 +130,7 @@ export const SearchSuggestion = forwardRef(
           <Input
             ref={inputRefInternal} // Use internal ref here
             type="text"
+            disabled={disabled}
             value={value}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}

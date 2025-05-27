@@ -189,7 +189,8 @@ export default function CreateSellInvoice() {
   // Add keyboard shortcut for Alt+S
   useEffect(() => {
     const handleKeyPress = (e) => {
-      if (e.altKey && e.key.toLowerCase() === "s") {
+      // Check for both Alt key (Windows) and Option/⌥ key (Mac)
+      if ((e.altKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
         handleSaveInvoice();
       }

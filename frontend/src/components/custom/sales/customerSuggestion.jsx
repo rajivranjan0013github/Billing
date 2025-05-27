@@ -5,7 +5,7 @@ import { fetchCustomers } from '../../../redux/slices/CustomerSlice';
 import { ScrollArea } from "../../ui/scroll-area";
 import CreateCustomerDialog from '../customer/CreateCustomerDialog';
 
-const CustomerSuggestion = forwardRef(({ placeholder, value, setValue, onSuggestionSelect, onKeyDown, onNewCustomerClick }, ref) => {
+const CustomerSuggestion = forwardRef(({ placeholder, value, setValue, onSuggestionSelect, onKeyDown, onNewCustomerClick, disabled }, ref) => {
   const dispatch = useDispatch();
   const { customers, status } = useSelector((state) => state.customers);
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
@@ -93,6 +93,7 @@ const CustomerSuggestion = forwardRef(({ placeholder, value, setValue, onSuggest
           type="text"
           value={value}
           onChange={handleInputChange}
+          disabled={disabled}
           onKeyDown={handleKeyDown}
           onFocus={() => {
             if (value.length >= 3) {
@@ -138,7 +139,7 @@ const CustomerSuggestion = forwardRef(({ placeholder, value, setValue, onSuggest
 });
 
 // New wrapper component that handles the create customer dialog
-export const CustomerSuggestionWithDialog = forwardRef(({ placeholder, value, setValue, onSuggestionSelect, onKeyDown }, ref) => {
+export const CustomerSuggestionWithDialog = forwardRef(({ placeholder, value, setValue, onSuggestionSelect, onKeyDown, disabled=false }, ref) => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
 
@@ -172,6 +173,7 @@ export const CustomerSuggestionWithDialog = forwardRef(({ placeholder, value, se
         onSuggestionSelect={handleSuggestionSelect}
         onKeyDown={onKeyDown}
         onNewCustomerClick={handleNewCustomerClick}
+        disabled={disabled}
       />
       <CreateCustomerDialog
         open={showCreateDialog}

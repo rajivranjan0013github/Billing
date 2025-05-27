@@ -74,7 +74,7 @@ export default function PaymentDetails() {
           <Button 
             variant="outline" 
             size="sm" 
-            className="text-sm gap-2 px-2"
+            className="text-sm gap-2 px-4"
             onClick={() => navigate('/payment/invoice-print', { state: { paymentData: paymentDetails } })}
           >
             <Printer className="h-4 w-4" />
@@ -82,7 +82,7 @@ export default function PaymentDetails() {
           </Button>
           <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-destructive">
+              <Button variant="outline" size="icon" className="text-destructive">
                 <Trash2 className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
@@ -104,11 +104,12 @@ export default function PaymentDetails() {
                 </AlertDialogDescription>
               </div>
               <div className="p-3 bg-gray-100 border-t flex items-center justify-end gap-2">
-                <Button disabled={deletePaymentStatus === "loading"} onClick={() => setIsDialogOpen(false)} variant="outline" size="sm">Cancel</Button>
+                <Button disabled={deletePaymentStatus === "loading"} onClick={() => setIsDialogOpen(false)} variant="outline" size="sm" className="px-4">Cancel</Button>
                 <Button 
                   onClick={handleDeletePayment} 
                   size="sm"
                   disabled={deletePaymentStatus === "loading"}
+                  className="bg-destructive text-white hover:bg-destructive/90 px-4"
                 >
                   {deletePaymentStatus === "loading" ? "Deleting..." : "Delete"}
                 </Button>

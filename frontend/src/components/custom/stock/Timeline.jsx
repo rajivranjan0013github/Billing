@@ -158,7 +158,7 @@ export default function Timeline({ inventoryId }) {
                               "bg-indigo-600 hover:bg-indigo-700"
                             }
                             ${
-                              transaction.type === "PURCHASE_DELETE" &&
+                              (transaction.type === "PURCHASE_DELETE" || transaction.type === "SALE_DELETE") &&
                               "bg-rose-600 hover:bg-rose-700"
                             }
                           `}

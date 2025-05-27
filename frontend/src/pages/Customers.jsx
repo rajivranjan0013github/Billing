@@ -328,7 +328,7 @@ const Customers = () => {
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => navigate(`/customers/${customer._id}`)}
                   >
-                    <TableCell className="font-medium">{customer.name}</TableCell>
+                    <TableCell className="font-medium capitalize">{customer.name}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Phone className="h-4 w-4" />

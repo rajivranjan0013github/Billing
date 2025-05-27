@@ -25,8 +25,10 @@ import {
   Upload,
   Download,
   EllipsisVertical,
+  Phone,
+  MapPin,
 } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchDistributors } from "../redux/slices/distributorSlice";
 import { importDistributors } from "../redux/slices/exportImportSlice";
@@ -65,31 +67,15 @@ export default function Distributors() {
   const [searchType, setSearchType] = useState("name");
   const [balanceFilter, setBalanceFilter] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isBalanceDropdownOpen, setIsBalanceDropdownOpen] = useState(false);
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const balanceDropdownRef = useRef(null);
-  const { importStatus } = useSelector((state) => state.exportImport);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const { importStatus } = useSelector((state) => state.exportImport);
 
   useEffect(() => {
     if(fetchStatus === 'idle') {
       dispatch(fetchDistributors());
     }
   }, [dispatch, fetchStatus]);
-
-  // Add click outside handler
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (
-        balanceDropdownRef.current &&
-        !balanceDropdownRef.current.contains(event.target)
-      ) {
-        setIsBalanceDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   // Calculate totals for the summary
   const summary = {
@@ -146,23 +132,17 @@ export default function Distributors() {
     return filtered;
   };
 
+  const handleSearchTypeChange = (value) => {
+    setSearchType(value);
+    setSearchQuery("");
+  };
 
-  // Replace the Select component with this dropdown menu
-  const balanceFilterOptions = [
-    { value: "all", label: "All Distributors" },
-    { value: "due", label: "To Collect" },
-    { value: "pay", label: "To Pay" },
-    { value: "zero", label: "Zero Balance" },
-  ];
-
-  // Custom validation if needed
-  const customValidation = (data) => {
-    // Add any additional validation logic here
-    return null;
+  const clearSearch = () => {
+    setSearchQuery("");
   };
 
   return (
-    <div className="relative p-4 space-y-4">
+    <div className="relative p-2 space-y-4">
       {importStatus === 'loading' && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg p-6 shadow-xl">
@@ -205,89 +185,60 @@ export default function Distributors() {
         </div>
       </div>
 
-      <div className="flex gap-4">
-        <div className="relative flex-1">
-          <div className="relative flex items-center bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors overflow-hidden">
-            <div className="relative flex items-center px-3 border-r border-slate-200">
-              <Select
-                defaultValue="name"
-                onValueChange={(value) => setSearchType(value)}
-              >
-                <SelectTrigger className="h-9 w-[120px] border-0 bg-transparent hover:bg-slate-100 focus:ring-0 focus:ring-offset-0">
-                  <SelectValue placeholder="Search by" />
-                </SelectTrigger>
-                <SelectContent align="start" className="w-[120px]">
-                  <SelectItem value="name" className="text-sm">
-                    Name
-                  </SelectItem>
-                  <SelectItem value="mobile" className="text-sm">
-                    Mobile
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      <div className="flex gap-4 items-center">
+        <div className="flex gap-2">
+          <Select
+            value={searchType}
+            onValueChange={handleSearchTypeChange}
+          >
+            <SelectTrigger className="w-[100px] focus:ring-0">
+              <SelectValue placeholder="Search by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Name</SelectItem>
+              <SelectItem value="mobile">Mobile</SelectItem>
+            </SelectContent>
+          </Select>
 
-            <div className="flex-1 relative flex items-center">
-              <div className="absolute left-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-slate-400" />
-              </div>
-              <Input
-                className="w-[200px] h-9 pl-10 pr-10 border-0 focus-visible:ring-0 placeholder:text-slate-400"
-                placeholder={`Search by ${
-                  searchType === "name" ? "distributor name" : "mobile number"
-                }...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <div className="absolute right-3 flex items-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 hover:bg-slate-100 rounded-full"
-                    onClick={() => setSearchQuery("")}
-                  >
-                    <X className="h-3 w-3 text-slate-500" />
-                  </Button>
-                </div>
-              )}
-            </div>
+          <div className="relative">
+            <Input
+              className="w-[250px] pl-8"
+              placeholder={`Search ${searchType === "name" ? "distributor name" : "mobile number"}...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-full aspect-square absolute right-0 top-0 hover:bg-transparent"
+                onClick={clearSearch}
+              >
+                <X className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            )}
           </div>
         </div>
 
-        <div className="relative" ref={balanceDropdownRef}>
-          <Button
-            variant="outline"
-            className="w-[150px] justify-between"
-            onClick={() => setIsBalanceDropdownOpen(!isBalanceDropdownOpen)}
-          >
-            {balanceFilterOptions.find((opt) => opt.value === balanceFilter)
-              ?.label || "Filter by balance"}
-            <ChevronDown className="h-4 w-4" />
-          </Button>
-          {isBalanceDropdownOpen && (
-            <div className="absolute z-10 mt-1 w-[150px] bg-white rounded-md shadow-lg border border-slate-200">
-              {balanceFilterOptions.map((option) => (
-                <button
-                  key={option.value}
-                  className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-100 ${
-                    balanceFilter === option.value ? "bg-slate-100" : ""
-                  }`}
-                  onClick={() => {
-                    setBalanceFilter(option.value);
-                    setIsBalanceDropdownOpen(false);
-                  }}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <Select
+          value={balanceFilter}
+          onValueChange={setBalanceFilter}
+        >
+          <SelectTrigger className="w-[150px] focus:ring-0">
+            <SelectValue placeholder="Filter by balance" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Distributors</SelectItem>
+            <SelectItem value="due">To Collect</SelectItem>
+            <SelectItem value="pay">To Pay</SelectItem>
+            <SelectItem value="zero">Zero Balance</SelectItem>
+          </SelectContent>
+        </Select>
 
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
+        <div className="ml-auto flex gap-2">
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
             Create Distributor
           </Button>
           <DropdownMenu>
@@ -394,7 +345,6 @@ export default function Distributors() {
         importFunction={importDistributors}
         title="Import Distributors"
         columns={columnsArray}
-        customValidation={customValidation}
       />
 
       <ExportDataDlg

@@ -54,23 +54,23 @@ router.get("/:id", async (req, res) => {
 
 // Create customer
 router.post("/", async (req, res) => {
-  const customer = new Customer(req.body);
-  customer.currentBalance = customer.openBalance;
-
   try {
-    const newCustomer = await customer.save();
+    const customer = new Customer(req.body);
+    customer.currentBalance = customer.openBalance;
     const ledgerEntry = new Ledger({
-      customerId: newCustomer._id,
-      balance: newCustomer.openBalance,
+      customerId: customer._id,
+      balance: customer.openBalance,
       description: "Opening Balance",
     });
-    if (newCustomer.openBalance > 0) {
-      ledgerEntry.debit = newCustomer.openBalance;
+    if (customer.openBalance > 0) {
+      ledgerEntry.debit = customer.openBalance;
     } else {
-      ledgerEntry.credit = newCustomer.openBalance * -1;
+      ledgerEntry.credit = customer.openBalance * -1;
     }
     await ledgerEntry.save();
-    res.status(201).json(newCustomer);
+    customer.ledger.push(ledgerEntry._id);
+    await customer.save();
+    res.status(201).json(customer);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -99,6 +99,7 @@ router.delete("/:id", async (req, res) => {
     if (!customer) {
       return res.status(404).json({ message: "Customer not found" });
     }
+    await Ledger.deleteMany({ customerId: customer._id });
     await customer.deleteOne();
     res.json({ message: "Customer deleted successfully" });
   } catch (error) {
