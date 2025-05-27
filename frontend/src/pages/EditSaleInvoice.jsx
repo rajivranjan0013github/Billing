@@ -57,7 +57,6 @@ export default function EditSaleInvoice() {
   const { isCollapsed } = useSelector((state) => state.loader);
   const { invoiceId } = useParams();
   const doctors = useSelector((state) => state.staff?.doctors);
-  const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState(true);
   const [invoiceDate, setInvoiceDate] = useState();
   const [dueDate, setDueDate] = useState();
@@ -101,7 +100,6 @@ export default function EditSaleInvoice() {
   useEffect(() => {
     const fetchBill = async () => {
       try {
-        setLoading(true);
         const response = await fetch(
           `${Backend_URL}/api/sales/invoice/${invoiceId}`,
           { credentials: "include" }
@@ -147,8 +145,6 @@ export default function EditSaleInvoice() {
           description: "Failed to fetch invoice details",
           variant: "destructive",
         });
-      } finally {
-        setLoading(false);
       }
     };
     if (invoiceId) {
@@ -193,6 +189,7 @@ export default function EditSaleInvoice() {
       }
 
       const formattedProducts = products.map((product) => ({
+        types: product.types,
         inventoryId: product.inventoryId,
         productName: product.productName,
         batchNumber: product.batchNumber,
@@ -235,6 +232,7 @@ export default function EditSaleInvoice() {
           totalQuantity: amountData.totalQuantity,
           productCount: amountData.productCount,
           grandTotal: amountData.grandTotal,
+          returnAmount: amountData.returnAmount,
           gstSummary: {
             0: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
             5: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },

@@ -11,6 +11,7 @@ import { Customer } from "../models/Customer.js";
 import AccountDetails from "../models/AccountDetails.js";
 import { Payment } from "../models/Payment.js";
 import { Ledger } from "../models/ledger.js";
+import { deepEqualObject } from "../utils/Helper.js";
 
 const router = express.Router();
 
@@ -152,17 +153,12 @@ router.post("/", verifyToken, async (req, res) => {
         invoiceId: newSalesBill._id,
         type: types === "return" ? "SALE_RETURN" : "SALE",
         invoiceNumber: invoiceNumber,
-        expiry: expiry,
         batchNumber,
-        mrp,
-        purchaseRate,
-        saleRate,
-        gstPer,
-        pack,
+        pack : batch.pack,
         createdBy: req?.user._id,
         createdByName: req?.user?.name,
-        customerName: details.customerName,
-        customerMob: details.mob || "",
+        name: details.customerName,
+        mob: details.mob || "",
       });
 
       // Update batch & inventory quantity
@@ -320,6 +316,19 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
     const { payments, ...details } = req.body;
     let customerDetails = null;
 
+    // Validate required fields
+    if (!details.products || !Array.isArray(details.products) || details.products.length === 0) {
+      throw new Error("Products array is required and cannot be empty");
+    }
+
+    // Validate amounts
+    if (details.grandTotal && (isNaN(details.grandTotal) || details.grandTotal < 0)) {
+      throw new Error("Invalid grand total amount");
+    }
+    if (details.amountPaid && (isNaN(details.amountPaid) || details.amountPaid < 0)) {
+      throw new Error("Invalid amount paid");
+    }
+
     // Find existing invoice
     const existingInvoice = await SalesBill.findById(id).session(session);
     if (!existingInvoice) {
@@ -331,155 +340,145 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
       if (!mongoose.isValidObjectId(details.customerId)) {
         throw Error("Customer Id is not valid");
       }
-      customerDetails = await Customer.findById(details.customerId).session(
-        session
-      );
+      customerDetails = await Customer.findById(details.customerId).session(session);
       if (!customerDetails) {
         throw Error("Customer not found");
       }
     }
 
-    // First, reverse the old inventory changes
-    for (const oldProduct of existingInvoice.products) {
-      const { inventoryId, batchId, quantity, pack, types } = oldProduct;
+    const oldProductBatchMap = new Map();
+    existingInvoice.products.forEach((product, index) => {
+      oldProductBatchMap.set(product.batchId, index);
+    });
 
-      // Find inventory and batch
-      const inventory = await Inventory.findById(inventoryId).session(session);
-      const batch = await InventoryBatch.findById(batchId).session(session);
+    for(const product of details.products){
+      const { inventoryId, batchId, quantity,types } = product;
+      // Find inventory and validate
+      const inventorySchema = await Inventory.findById(inventoryId).session(session); // new inventory schema
+      if (!inventorySchema) throw new Error(`Inventory not found: ${inventoryId}`); 
+      // Find batch and validate
+      const batch = await InventoryBatch.findById(batchId).session(session); // new batch schema
+      if (!batch) throw new Error(`Batch not found: ${batchId}`);
 
-      if (!inventory || !batch) {
-        throw new Error(
-          `Original inventory or batch not found for product ${oldProduct.productName}`
-        );
-      }
-
-      // Restore quantities based on sale or return type
-      if (types === "return") {
-        inventory.quantity -= quantity;
-        batch.quantity -= quantity;
-      } else {
-        inventory.quantity += quantity;
-        batch.quantity += quantity;
-      }
-
-      // Create reversal timeline entry
-      const reversalTimeline = new StockTimeline({
-        inventoryId: inventoryId,
+      const reverseTimeline = new StockTimeline({
+        inventoryId: product.inventoryId,
         invoiceId: existingInvoice._id,
         type: "SALE_EDIT_REVERSE",
         invoiceNumber: existingInvoice.invoiceNumber,
-        credit: types === "return" ? 0 : quantity,
-        debit: types === "return" ? quantity : 0,
-        balance: inventory.quantity,
         batchNumber: batch.batchNumber,
-        expiry: batch.expiry,
-        mrp: oldProduct.mrp,
-        purchaseRate: oldProduct.purchaseRate,
-        gstPer: oldProduct.gstPer,
-        saleRate: oldProduct.saleRate,
-        pack: oldProduct.pack,
+        pack : batch.pack,
         createdBy: req.user._id,
         createdByName: req?.user?.name,
-        customerName: details.customerName,
-        customerMob: customerDetails?.mob || "",
-        remarks: "Reversal of old quantity during edit",
+        name: details.customerName,
+        mob: customerDetails?.mob || "",
       });
-      await reversalTimeline.save({ session });
 
-      // Store reversal timeline in the old product
-      oldProduct.timeline = reversalTimeline._id;
-
-      inventory.timeline.push(reversalTimeline._id);
-      await inventory.save({ session });
-      await batch.save({ session });
-
-      // Recalculate timeline balances after this reversal
-      await Inventory.recalculateTimelineBalancesAfter(
-        inventoryId,
-        reversalTimeline.createdAt,
-        session
-      );
-    }
-
-    // Now process the new products
-    for (const product of details.products) {
-      const { inventoryId, batchId, quantity, pack, types } = product;
-
-      // Find inventory and validate
-      const inventorySchema = await Inventory.findById(inventoryId).session(
-        session
-      );
-      if (!inventorySchema) {
-        throw new Error(`Inventory not found: ${inventoryId}`);
-      }
-
-      // Find batch and validate
-      const batch = await InventoryBatch.findById(batchId).session(session);
-      if (!batch) {
-        throw new Error(`Batch not found: ${batchId}`);
-      }
-
-      // Check if sufficient stock exists for sales
-      if (types !== "return" && batch.quantity < quantity) {
-        throw new Error(
-          `Insufficient stock for ${inventorySchema.name} in batch ${product.batchNumber}`
-        );
-      }
-
-      // Update quantities based on sale or return type
-      if (types === "return") {
-        batch.quantity += quantity;
-        inventorySchema.quantity += quantity;
-      } else {
-        batch.quantity -= quantity;
-        inventorySchema.quantity -= quantity;
-      }
-
-      // Record new timeline
-      const timeline = new StockTimeline({
-        inventoryId: inventoryId,
+      const newTimeline = new StockTimeline({
+        inventoryId: product.inventoryId,
         invoiceId: existingInvoice._id,
         type: "SALE_EDIT",
-        invoiceNumber: details.invoiceNumber,
-        credit: types === "return" ? quantity : 0,
-        debit: types === "return" ? 0 : quantity,
-        balance: inventorySchema.quantity,
+        invoiceNumber: existingInvoice.invoiceNumber,
         batchNumber: batch.batchNumber,
-        expiry: batch.expiry,
-        mrp: batch.mrp,
-        purchaseRate: batch.purchaseRate,
-        gstPer: batch.gstPer,
-        saleRate: batch.saleRate,
-        pack,
+        pack : batch.pack,
         createdBy: req.user._id,
         createdByName: req?.user?.name,
-        customerName: details.customerName,
-        customerMob: customerDetails?.mob || "",
-        remarks: "New quantity after edit",
+        name: details.customerName,
+        mob: customerDetails?.mob || "",
       });
-      await timeline.save({ session });
 
-      // Store timeline reference in the product
-      product.timeline = timeline._id;
+      if(oldProductBatchMap.has(product.batchId)){
+        const oldProduct = existingInvoice.products[oldProductBatchMap.get(product.batchId)];
+        const {_id, timeline, ...rest} = oldProduct;
+        console.log(rest, product);
+        if(deepEqualObject(rest, product)){
+          continue;
+        } else {
+          if(product.quantity === oldProduct.quantity && product.pack === oldProduct.pack && product.types === oldProduct.types){
+            newTimeline.balance = inventorySchema.quantity;
+            await newTimeline.save({ session });
+            inventorySchema.timeline.push(newTimeline._id);
+          } else {
+            // reverse the old timeline
+            inventorySchema.quantity += oldProduct.quantity;
+            batch.quantity += oldProduct.quantity;
+            reverseTimeline.credit = oldProduct.quantity;
+            reverseTimeline.balance = inventorySchema.quantity;
+            await reverseTimeline.save({ session });
+            inventorySchema.timeline.push(reverseTimeline._id);
 
-      inventorySchema.timeline.push(timeline._id);
-      await batch.save({ session });
-      await inventorySchema.save({ session });
+            //create new timeline
+            inventorySchema.quantity -= product.quantity;
+            batch.quantity -= product.quantity;
+            newTimeline.debit = product.quantity;
+            newTimeline.balance = inventorySchema.quantity;
+            await newTimeline.save({ session });
+            inventorySchema.timeline.push(newTimeline._id);
+          }
+        }
+        oldProductBatchMap.delete(product.batchId);
+      } else {
+        // Check if sufficient stock exists for sales
+        if (types !== "return" && batch.quantity < quantity) throw new Error(
+          `Insufficient stock for ${inventorySchema.name} in batch ${product.batchNumber}`
+        );
 
-      // Recalculate timeline balances after this new entry
-      await Inventory.recalculateTimelineBalancesAfter(
-        inventoryId,
-        timeline.createdAt,
-        session
-      );
+        // Update quantities based on sale or return type
+        if (types === "return") {
+          batch.quantity += quantity;
+          inventorySchema.quantity += quantity;
+        } else {
+          batch.quantity -= quantity;
+          inventorySchema.quantity -= quantity;
+        }
+        newTimeline.credit = types === "return" ? 0 : quantity;
+        newTimeline.debit = types === "return" ? quantity : 0;
+        newTimeline.balance = inventorySchema.quantity;
 
-      // Add sales bill reference to inventory's sales array if not already present
-      if (!inventorySchema.sales.includes(existingInvoice._id)) {
-        inventorySchema.sales.push(existingInvoice._id);
+        // Record new timeline
+        await newTimeline.save({ session });
+        inventorySchema.timeline.push(newTimeline._id);
+        // Recalculate timeline balances after this new entry
+        // await Inventory.recalculateTimelineBalancesAfter(inventoryId,newTimeline.createdAt,session);
+
+        // Add sales bill reference to inventory's sales array if not already present
+        if (!inventorySchema.sales.includes(existingInvoice._id)) {
+          inventorySchema.sales.push(existingInvoice._id);
+        }
       }
+      await inventorySchema.save({ session });
+      await batch.save({ session });
     }
 
-    // Handle payment if provided
+    // reverse the old timeline
+    for(const [batchId, oldProductIndex] of oldProductBatchMap.entries()){
+      const oldProduct = existingInvoice.products[oldProductIndex];
+      const oldBatch = await InventoryBatch.findById(batchId).session(session);
+      const oldInventorySchema = await Inventory.findById(oldBatch.inventoryId).session(session);
+      oldInventorySchema.quantity += oldProduct.quantity;
+      oldBatch.quantity += oldProduct.quantity;
+      
+
+      const reverseTimeline = new StockTimeline({
+        inventoryId: oldBatch.inventoryId,
+        invoiceId: existingInvoice._id,
+        type: "SALE_EDIT_REVERSE",
+        invoiceNumber: existingInvoice.invoiceNumber,
+        batchNumber: oldBatch.batchNumber,
+        credit: oldProduct.quantity,
+        balance: oldInventorySchema.quantity,
+        pack : oldBatch.pack,
+        createdBy: req.user._id,
+        createdByName: req?.user?.name,
+        name: oldProduct.customerName,
+        mob: oldProduct.mob,
+      });
+      oldInventorySchema.timeline.push(reverseTimeline._id);
+      await oldInventorySchema.save({ session });
+      await oldBatch.save({ session });
+      await reverseTimeline.save({ session });
+    }
+
+    // Handle payment if provided -- payment changes
     if (payments && payments.length > 0) {
      
       for (const payment of payments) {
@@ -548,7 +547,7 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
       error: error.message,
     });
   } finally {
-    session.endSession();
+    await session.endSession();
   }
 });
 
@@ -592,19 +591,15 @@ router.delete("/invoice/:id", verifyToken, async (req, res) => {
         inventoryId: inventoryId,
         invoiceId: invoice._id,
         type: "SALE_DELETE",
-        pack,
+        pack : batch.pack,
         invoiceNumber: invoice.invoiceNumber,
         credit: quantity,
         balance: inventory.quantity,
         batchNumber: batch.batchNumber,
-        expiry: batch.expiry,
-        mrp: batch.mrp,
-        purchaseRate: batch.purchaseRate,
-        gstPer: batch.gstPer,
-        saleRate: batch.saleRate,
-        user: req.user._id,
-        userName: req?.user?.name,
-        distributorName: invoice.distributorName,
+        createdBy: req.user._id,
+        createdByName: req?.user?.name,
+        name: invoice.customerName,
+        mob: invoice.mob,
       });
 
       // Remove sales bill reference from inventory's sales array

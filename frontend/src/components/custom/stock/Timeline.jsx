@@ -176,10 +176,10 @@ export default function Timeline({ inventoryId }) {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          {transaction?.distributorName || transaction?.customerName || "-"}
+                          {transaction.name || transaction?.distributorName || transaction?.customerName || "-"}
                         </div>
                         <div className="text-xs text-gray-500">
-                          Mob: {transaction?.distributorMob || transaction?.customerMob || "-"}
+                          Mob: {transaction?.mob || transaction?.distributorMob || transaction?.customerMob || "-"}
                         </div>
                       </TableCell>
                       <TableCell>

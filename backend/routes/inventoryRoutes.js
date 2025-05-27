@@ -1,6 +1,6 @@
 import express from "express";
 import { Inventory } from "../models/Inventory.js";
-import { verifyToken, checkPermission } from "../middleware/authMiddleware.js";
+import { verifyToken } from "../middleware/authMiddleware.js";
 import { InventoryBatch } from "../models/InventoryBatch.js";
 import { StockTimeline } from "../models/StockTimeline.js";
 import mongoose from "mongoose";
@@ -50,7 +50,6 @@ router.post("/manage-batch", verifyToken, async (req, res) => {
       inventoryId: inventoryId,
       type: "Adjustment",
       batchNumber: details.batchNumber,
-      expiry: details.expiry,
       createdBy: req.user._id,
       pack: details.pack,
       createdByName: req.user?.name,
@@ -123,7 +122,6 @@ router.delete("/delete-batch/:batchId", async (req, res) => {
       inventoryId: batch.inventoryId,
       type: "Adjustment",
       batchNumber: batch.batchNumber,
-      expiry: batch.expiry,
       debit: Number(batch.quantity),
       balance: Number(inventoryDetails.quantity),
     });
