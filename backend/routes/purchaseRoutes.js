@@ -10,6 +10,7 @@ import AccountDetails from "../models/AccountDetails.js";
 import { Payment } from "../models/Payment.js";
 import { PurchaseReturn } from "../models/PurchaseReturn.js";
 import { Ledger } from "../models/ledger.js";
+import { deepEqualObject } from "../utils/Helper.js";
 
 const router = express.Router();
 
@@ -334,15 +335,11 @@ router.post("/", verifyToken, async (req, res) => {
 router.post("/edit", verifyToken, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
-  let paymentDoc; // Hoist paymentDoc declaration
 
   try {
-    const { invoiceType, distributorId, _id, payment, ...details } = req.body;
+    const { invoiceType, distributorId, _id, payments, ...details } = req.body;
 
-    if (
-      !mongoose.isValidObjectId(distributorId) ||
-      !mongoose.isValidObjectId(_id)
-    ) {
+    if (!mongoose.isValidObjectId(distributorId) || !mongoose.isValidObjectId(_id)) {
       throw Error("Invalid distributor ID or invoice ID");
     }
 
@@ -352,17 +349,12 @@ router.post("/edit", verifyToken, async (req, res) => {
       throw new Error("Invoice not found");
     }
 
-    if (
-      existingInvoice.status !== "draft" &&
-      existingInvoice.status !== "active"
-    ) {
+    if (existingInvoice.status !== "draft" && existingInvoice.status !== "active") {
       throw new Error("Cannot edit invoice in current status");
     }
 
     // Fetch distributor details
-    const distributorDetails = await Distributor.findById(
-      distributorId
-    ).session(session);
+    const distributorDetails = await Distributor.findById(distributorId).session(session);
     if (!distributorDetails) {
       throw new Error("Distributor not found");
     }
@@ -370,210 +362,206 @@ router.post("/edit", verifyToken, async (req, res) => {
     // Calculate due amount
     const dueAmount = Number(details.grandTotal) - Number(details.amountPaid);
 
-    // First, reverse the old inventory quantities
-    for (const oldProduct of existingInvoice.products) {
-      const inventorySchema = await Inventory.findById(
-        oldProduct.inventoryId
-      ).session(session);
-      if (!inventorySchema) {
-        throw new Error(`Inventory not found: ${oldProduct.inventoryId}`);
-      }
+    // Create a map of old products for efficient lookup
+    const oldProductBatchMap = new Map();
+    existingInvoice.products.forEach((product, index) => {
+      oldProductBatchMap.set(String(product.batchId), index);
+    });
 
-      const batch = await InventoryBatch.findById(oldProduct.batchId).session(
-        session
-      );
-      if (batch) {
-        // Reverse the old quantity
-        batch.quantity -= oldProduct.quantity + (oldProduct.free || 0);
-        await batch.save({ session });
-      }
-
-      // Reverse the inventory quantity
-      inventorySchema.quantity -= oldProduct.quantity + (oldProduct.free || 0);
-
-      // Record reversal timeline (reverse the old purchase)
-      const reversalTimeline = new StockTimeline({
-        inventoryId: oldProduct.inventoryId,
-        invoiceId: _id,
-        type: "PURCHASE_EDIT",
-        invoiceNumber: existingInvoice.invoiceNumber,
-        debit: oldProduct.quantity + (oldProduct.free || 0),
-        balance: inventorySchema.quantity,
-        batchNumber: oldProduct.batchNumber,
-        pack: oldProduct.pack,
-        createdBy: req.user._id,
-        createdByName: req?.user?.name,
-        name: distributorDetails.name,
-        mob: distributorDetails.mob,
-        remarks: "Reversal of original purchase for edit",
-      });
-      await reversalTimeline.save({ session });
-      inventorySchema.timeline.push(reversalTimeline._id);
-      await inventorySchema.save({ session });
-
-      // Store reversal timeline in the old product
-      oldProduct.timeline = reversalTimeline._id;
-
-      // Recalculate timeline balances starting from this reversal
-    }
-
-    // Process new inventory updates
+    // Process product changes
     for (const product of req.body.products) {
-      const {
-        inventoryId,
-        batchNumber,
-        batchId,
-        expiry,
-        quantity,
-        free,
-        pack,
-        purchaseRate,
-        saleRate,
-        gstPer,
-        HSN,
-        mrp,
-      } = product;
-
-      const inventorySchema = await Inventory.findById(inventoryId).session(
-        session
-      );
+      const { inventoryId, batchId, quantity, free = 0, } = product;
+      
+      // Find inventory and validate
+      const inventorySchema = await Inventory.findById(inventoryId).session(session);
       if (!inventorySchema) {
         throw new Error(`Inventory not found: ${inventoryId}`);
       }
 
-      let batch = await InventoryBatch.findById(batchId).session(session);
-      if (batch) {
-        // Update existing batch
-        Object.assign(batch, { expiry, pack, purchaseRate, gstPer, HSN });
-        batch.quantity += quantity + (free || 0);
-        await batch.save({ session });
-      } else {
-        // Create new batch if not found
-        batch = new InventoryBatch({
-          inventoryId: inventoryId,
-          ...product,
-          quantity: quantity + (free || 0),
-        });
-        await batch.save({ session });
-        inventorySchema.batch.push(batch._id);
-
-        // Update the batchId in the product
-        product.batchId = batch._id;
+      // Find batch and validate
+      const batch = await InventoryBatch.findById(batchId).session(session);
+      if (!batch) {
+        throw new Error(`Batch not found: ${batchId}`);
       }
 
-      // Update inventory quantity
-      inventorySchema.quantity += quantity + (free || 0);
-
-      // Update HSN if provided
-      if (HSN) {
-        inventorySchema.HSN = HSN;
-      }
-
-      // Add invoice reference to inventory's purchases array if not already present
-      if (!inventorySchema.purchases.includes(existingInvoice._id)) {
-        inventorySchema.purchases.push(existingInvoice._id);
-      }
-
-      // Create new timeline entry
-      const timeline = new StockTimeline({
-        inventoryId: inventoryId,
+      const reverseTimeline = new StockTimeline({
+        inventoryId: product.inventoryId,
         invoiceId: existingInvoice._id,
-        type: "PURCHASE_EDIT",
-        invoiceNumber: details.invoiceNumber,
-        credit: quantity + (free || 0),
-        balance: inventorySchema.quantity,
-        batchNumber,
-        pack,
+        type: "PURCHASE_EDIT_REVERSE",
+        invoiceNumber: existingInvoice.invoiceNumber,
+        batchNumber: batch.batchNumber,
+        pack: batch.pack,
         createdBy: req.user._id,
         createdByName: req?.user?.name,
         name: distributorDetails.name,
         mob: distributorDetails.mob,
-        remarks: "New purchase entry after edit",
       });
-      await timeline.save({ session });
-      inventorySchema.timeline.push(timeline._id);
-      await inventorySchema.save({ session });
 
-      // Store timeline reference in the product
-      product.timeline = timeline._id;
-      // Recalculate timeline balances after this new entry
-      // await Inventory.recalculateTimelineBalancesAfter(
-      //   inventoryId,
-      //   timeline.createdAt,
-      //   session
-      // );
+      const newTimeline = new StockTimeline({
+        inventoryId: product.inventoryId,
+        invoiceId: existingInvoice._id,
+        type: "PURCHASE_EDIT",
+        invoiceNumber: existingInvoice.invoiceNumber,
+        batchNumber: batch.batchNumber,
+        pack: batch.pack,
+        createdBy: req.user._id,
+        createdByName: req?.user?.name,
+        name: distributorDetails.name,
+        mob: distributorDetails.mob,
+      });
+
+      if (oldProductBatchMap.has(String(product.batchId))) {
+        const oldProduct = existingInvoice.products[oldProductBatchMap.get(String(product.batchId))];
+        if (deepEqualObject(JSON.parse(JSON.stringify(oldProduct)), JSON.parse(JSON.stringify(product)), ["_id", "timeline", "batchId", "inventoryId"])) {
+          oldProductBatchMap.delete(String(product.batchId));
+          continue;
+        } else {
+          if (product.quantity === oldProduct.quantity && product.pack === oldProduct.pack) {
+            // Only non-quantity fields changed
+            newTimeline.balance = inventorySchema.quantity;
+            await newTimeline.save({ session });
+            inventorySchema.timeline.push(newTimeline._id);
+          } else {
+            // Reverse the old timeline
+            const oldQuantity = oldProduct.quantity + (oldProduct.free || 0);
+            inventorySchema.quantity -= oldQuantity;
+            batch.quantity -= oldQuantity;
+            reverseTimeline.debit = oldQuantity;
+            reverseTimeline.balance = inventorySchema.quantity;
+            await reverseTimeline.save({ session });
+            inventorySchema.timeline.push(reverseTimeline._id);
+
+            // Create new timeline
+            const newQuantity = quantity + free;
+            inventorySchema.quantity += newQuantity;
+            batch.quantity += newQuantity;
+            newTimeline.credit = newQuantity;
+            newTimeline.balance = inventorySchema.quantity;
+            await newTimeline.save({ session });
+            inventorySchema.timeline.push(newTimeline._id);
+          }
+        }
+        oldProductBatchMap.delete(String(product.batchId));
+      } else {
+        // New product added
+        const newQuantity = quantity + free;
+        inventorySchema.quantity += newQuantity;
+        batch.quantity += newQuantity;
+        newTimeline.credit = newQuantity;
+        newTimeline.balance = inventorySchema.quantity;
+        await newTimeline.save({ session });
+        inventorySchema.timeline.push(newTimeline._id);
+
+        // Add purchase invoice reference if not already present
+        if (!inventorySchema.purchases.includes(existingInvoice._id)) {
+          inventorySchema.purchases.push(existingInvoice._id);
+        }
+      }
+
+      // Update batch details
+      Object.assign(batch, {
+        expiry: product.expiry,
+        pack: product.pack,
+        purchaseRate: product.purchaseRate,
+        gstPer: product.gstPer,
+        HSN: product.HSN,
+      });
+
+      await batch.save({ session });
+      await inventorySchema.save({ session });
     }
 
-    // Update the invoice with new details
+    // Reverse the old timeline for removed products
+    for (const [batchId, oldProductIndex] of oldProductBatchMap.entries()) {
+      const oldProduct = existingInvoice.products[oldProductIndex];
+      const oldBatch = await InventoryBatch.findById(batchId).session(session);
+      const oldInventorySchema = await Inventory.findById(oldProduct.inventoryId).session(session);
+
+      const oldQuantity = oldProduct.quantity + (oldProduct.free || 0);
+      oldInventorySchema.quantity -= oldQuantity;
+      oldBatch.quantity -= oldQuantity;
+
+      const reverseTimeline = new StockTimeline({
+        inventoryId: oldProduct.inventoryId,
+        invoiceId: existingInvoice._id,
+        type: "PURCHASE_EDIT_REVERSE",
+        invoiceNumber: existingInvoice.invoiceNumber,
+        debit: oldQuantity,
+        balance: oldInventorySchema.quantity,
+        batchNumber: oldProduct.batchNumber,
+        pack: oldBatch.pack,
+        createdBy: req.user._id,
+        createdByName: req?.user?.name,
+        name: distributorDetails.name,
+        mob: distributorDetails.mob,
+      });
+
+      oldInventorySchema.timeline.push(reverseTimeline._id);
+      oldInventorySchema.purchases = oldInventorySchema.purchases.filter(
+        purchaseId => purchaseId.toString() !== existingInvoice._id.toString()
+      );
+
+      await oldInventorySchema.save({ session });
+      await oldBatch.save({ session });
+      await reverseTimeline.save({ session });
+    }
+
+    // Handle payment changes
+    if (payments && payments.length > 0) {
+      for (const payment of payments) {
+        const existingPayment = await Payment.findById(payment._id).session(session);
+        if (!existingPayment) {
+          throw new Error(`Payment not found: ${payment._id}`);
+        }
+
+        // If payment method is not CHEQUE and amount has changed, update account balance
+        if (existingPayment.paymentMethod !== "CHEQUE" && existingPayment.amount !== payment.amount) {
+          const account = await AccountDetails.findById(existingPayment.accountId).session(session);
+          if (!account) {
+            throw new Error("Account not found for payment");
+          }
+
+          // Reverse old payment amount and add new payment amount
+          account.balance += existingPayment.amount;
+          account.balance -= payment.amount;
+          await account.save({ session });
+        }
+
+        existingPayment.amount = payment.amount;
+        await existingPayment.save({ session });
+      }
+    }
+
+    // Update distributor balance
+    if (!(existingInvoice.distributorId.toString() === distributorDetails._id.toString() && existingInvoice.amountPaid === details.amountPaid)) {
+      const oldDue = (existingInvoice.grandTotal || 0) - (existingInvoice.amountPaid || 0);
+      const newDue = (details.grandTotal || 0) - (details.amountPaid || 0);
+      
+      // Create ledger entry for balance update
+      const ledgerEntry = new Ledger({
+        distributorId: distributorDetails._id,
+        balance: distributorDetails.currentBalance - oldDue + newDue,
+        debit: details.amountPaid || 0,
+        credit: details.grandTotal || 0,
+        invoiceNumber: details.invoiceNumber,
+        description: "Purchase invoice edit",
+      });
+      await ledgerEntry.save({ session });
+      distributorDetails.ledger.push(ledgerEntry._id);
+      
+      distributorDetails.currentBalance = distributorDetails.currentBalance - oldDue + newDue;
+      await distributorDetails.save({ session });
+    }
+
+    // Update the existing invoice with new details
     Object.assign(existingInvoice, {
-      ...req.body,
+      ...details,
       mob: distributorDetails.mob,
       paymentStatus: dueAmount > 0 ? "due" : "paid",
       paymentDueDate: dueAmount > 0 ? details.paymentDueDate : null,
+      createdBy: req.user._id,
+      createdByName: req?.user?.name,
     });
-
-    // Handle new payment if provided
-    let distributorNeedsSave = false;
-    if (payment && payment.amount > 0) {
-      const paymentNumber = await Payment.getNextPaymentNumber(session);
-
-      const account = await AccountDetails.findById(payment?.accountId).session(
-        session
-      );
-      if (!account) {
-        throw new Error("Account not found");
-      }
-
-      // Update account balance and get NEW balance
-      account.balance -= payment?.amount || 0;
-      await account.save({ session });
-
-      // Create payment record WITH account balance
-      paymentDoc = new Payment({
-        paymentNumber,
-        amount: payment.amount,
-        paymentType: "Payment Out",
-        paymentMethod: payment.paymentMethod,
-        paymentDate: payment.chequeDate || new Date(),
-        distributorId: distributorId,
-        distributorName: distributorDetails.name,
-        accountId: payment.accountId,
-        accountBalance: account.balance,
-        transactionNumber: payment.transactionNumber,
-        chequeNumber: payment.chequeNumber,
-        chequeDate: payment.chequeDate,
-        micrCode: payment.micrCode,
-        status: payment.paymentMethod === "CHEQUE" ? "PENDING" : "COMPLETED",
-        remarks: payment.remarks,
-        bills: [existingInvoice._id],
-      });
-
-      await paymentDoc.save({ session });
-      existingInvoice.payments.push(paymentDoc._id);
-
-      if (paymentDoc?._id) {
-        distributorDetails.payments.push(paymentDoc._id);
-        distributorNeedsSave = true;
-      }
-
-      // Original logic for distributor balance update
-      if (payment.paymentMethod === "CHEQUE") {
-        distributorDetails.currentBalance =
-          (distributorDetails.currentBalance || 0) - dueAmount; // Note: dueAmount from invoice, not payment.amount. Review if this is intended.
-        distributorNeedsSave = true;
-      } else {
-        if (!payment.accountId) {
-          throw new Error("Account ID is required for non-cheque payments");
-        }
-        distributorDetails.currentBalance =
-          (distributorDetails.currentBalance || 0) - dueAmount; // Note: dueAmount
-        distributorNeedsSave = true;
-      }
-    }
-
-    if (distributorNeedsSave) {
-      await distributorDetails.save({ session });
-    }
 
     // Save the updated invoice
     const updatedInvoice = await existingInvoice.save({ session });

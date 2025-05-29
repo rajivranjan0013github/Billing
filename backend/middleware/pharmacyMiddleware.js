@@ -35,7 +35,7 @@ export const identifyPharmacyFromBody = async (req, res, next) => {
   try {
     const pharmacy = await Pharmacy.findOne({ pharmacyId });
     if (!pharmacy) {
-      return res.status(404).json({ error: "Pharmacy not found" });
+      return res.status(404).json({ error: "Pharmacy not found" }); 
     }
 
     runWithPharmacyContext(pharmacy._id, () => {

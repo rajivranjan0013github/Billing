@@ -6,7 +6,6 @@ import { Inventory } from "../models/Inventory.js";
 import { InventoryBatch } from "../models/InventoryBatch.js";
 import { StockTimeline } from "../models/StockTimeline.js";
 import { SalesBill } from "../models/SalesBill.js";
-import { Distributor } from "../models/Distributor.js";
 import { Customer } from "../models/Customer.js";
 import AccountDetails from "../models/AccountDetails.js";
 import { Payment } from "../models/Payment.js";
@@ -119,33 +118,13 @@ router.post("/", verifyToken, async (req, res) => {
     }
     // Process inventory updates
     for (const product of details.products) {
-      const {
-        inventoryId,
-        batchNumber,
-        batchId,
-        expiry,
-        quantity,
-        pack,
-        purchaseRate,
-        saleRate,
-        gstPer,
-        HSN,
-        mrp,
-        types,
-      } = product;
+      const { inventoryId, batchNumber, batchId, quantity, types } = product;
 
-      const inventorySchema = await Inventory.findById(inventoryId).session(
-        session
-      );
-
-      if (!inventorySchema) {
-        throw new Error(`Inventory not found : ${inventoryId}`);
-      }
+      const inventorySchema = await Inventory.findById(inventoryId).session(session);
+      if (!inventorySchema) throw new Error(`Inventory not found : ${inventoryId}`);
 
       const batch = await InventoryBatch.findById(batchId).session(session);
-      if (!batch) {
-        throw new Error(`Batch not found : ${batchId}`);
-      }
+      if (!batch) throw new Error(`Batch not found : ${batchId}`);
 
       // Record timeline
       const timeline = new StockTimeline({
@@ -176,28 +155,10 @@ router.post("/", verifyToken, async (req, res) => {
       await timeline.save({ session });
 
       // Add sales bill reference to inventory's sales array
-      if (!inventorySchema.sales.includes(newSalesBill._id)) {
-        inventorySchema.sales.push(newSalesBill._id);
-      }
-
-      // Store timeline reference in product and inventory
-      const productIndex = newSalesBill.products.findIndex(
-        (p) =>
-          p.inventoryId.toString() === inventoryId.toString() &&
-          p.batchNumber === batchNumber
-      );
-      if (productIndex !== -1) {
-        newSalesBill.products[productIndex].timeline = timeline._id;
-      }
+      inventorySchema.sales.push(newSalesBill._id);
+      
       inventorySchema.timeline.push(timeline._id);
       await inventorySchema.save({ session });
-
-      // Recalculate timeline balances after this new entry
-      // await Inventory.recalculateTimelineBalancesAfter(
-      //   inventoryId,
-      //   timeline.createdAt,
-      //   session
-      // );
     }
 
     // Save the sales bill
@@ -218,9 +179,7 @@ router.post("/", verifyToken, async (req, res) => {
         description: "Sales Bill",
       });
       await ledgerEntry.save({ session });
-      if (ledgerEntry?._id) {
-        customerDetails.ledger.push(ledgerEntry._id);
-      }
+      customerDetails.ledger.push(ledgerEntry._id);
       await customerDetails.save({ session });
     }
 
@@ -316,19 +275,6 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
     const { payments, ...details } = req.body;
     let customerDetails = null;
 
-    // Validate required fields
-    if (!details.products || !Array.isArray(details.products) || details.products.length === 0) {
-      throw new Error("Products array is required and cannot be empty");
-    }
-
-    // Validate amounts
-    if (details.grandTotal && (isNaN(details.grandTotal) || details.grandTotal < 0)) {
-      throw new Error("Invalid grand total amount");
-    }
-    if (details.amountPaid && (isNaN(details.amountPaid) || details.amountPaid < 0)) {
-      throw new Error("Invalid amount paid");
-    }
-
     // Find existing invoice
     const existingInvoice = await SalesBill.findById(id).session(session);
     if (!existingInvoice) {
@@ -348,9 +294,10 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
 
     const oldProductBatchMap = new Map();
     existingInvoice.products.forEach((product, index) => {
-      oldProductBatchMap.set(product.batchId, index);
+      oldProductBatchMap.set(String(product.batchId), index);
     });
 
+    // product changes
     for(const product of details.products){
       const { inventoryId, batchId, quantity,types } = product;
       // Find inventory and validate
@@ -386,11 +333,11 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
         mob: customerDetails?.mob || "",
       });
 
-      if(oldProductBatchMap.has(product.batchId)){
-        const oldProduct = existingInvoice.products[oldProductBatchMap.get(product.batchId)];
-        const {_id, timeline, ...rest} = oldProduct;
-        console.log(rest, product);
-        if(deepEqualObject(rest, product)){
+      if(oldProductBatchMap.has(String(product.batchId))){
+        const oldProduct = existingInvoice.products[oldProductBatchMap.get(String(product.batchId))];
+        if(deepEqualObject(JSON.parse(JSON.stringify(oldProduct)), JSON.parse(JSON.stringify(product)), ["_id", "timeline", "batchId", "inventoryId", "purchaseRate", "mfcName"])){
+        
+          oldProductBatchMap.delete(String(product.batchId));
           continue;
         } else {
           if(product.quantity === oldProduct.quantity && product.pack === oldProduct.pack && product.types === oldProduct.types){
@@ -415,7 +362,7 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
             inventorySchema.timeline.push(newTimeline._id);
           }
         }
-        oldProductBatchMap.delete(product.batchId);
+        oldProductBatchMap.delete(String(product.batchId));
       } else {
         // Check if sufficient stock exists for sales
         if (types !== "return" && batch.quantity < quantity) throw new Error(
@@ -430,15 +377,13 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
           batch.quantity -= quantity;
           inventorySchema.quantity -= quantity;
         }
-        newTimeline.credit = types === "return" ? 0 : quantity;
-        newTimeline.debit = types === "return" ? quantity : 0;
+        newTimeline.debit = types === "return" ? 0 : quantity;
+        newTimeline.credit = types === "return" ? quantity : 0;
         newTimeline.balance = inventorySchema.quantity;
 
         // Record new timeline
         await newTimeline.save({ session });
         inventorySchema.timeline.push(newTimeline._id);
-        // Recalculate timeline balances after this new entry
-        // await Inventory.recalculateTimelineBalancesAfter(inventoryId,newTimeline.createdAt,session);
 
         // Add sales bill reference to inventory's sales array if not already present
         if (!inventorySchema.sales.includes(existingInvoice._id)) {
@@ -457,7 +402,6 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
       oldInventorySchema.quantity += oldProduct.quantity;
       oldBatch.quantity += oldProduct.quantity;
       
-
       const reverseTimeline = new StockTimeline({
         inventoryId: oldBatch.inventoryId,
         invoiceId: existingInvoice._id,
@@ -469,30 +413,18 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
         pack : oldBatch.pack,
         createdBy: req.user._id,
         createdByName: req?.user?.name,
-        name: oldProduct.customerName,
-        mob: oldProduct.mob,
+        name: existingInvoice.customerName,
+        mob: existingInvoice.mob,
       });
       oldInventorySchema.timeline.push(reverseTimeline._id);
+      oldInventorySchema.sales = oldInventorySchema.sales.filter(saleId => saleId.toString() !== existingInvoice._id.toString());
       await oldInventorySchema.save({ session });
       await oldBatch.save({ session });
       await reverseTimeline.save({ session });
     }
 
-    // Handle payment if provided -- payment changes
-    if (payments && payments.length > 0) {
-     
-      for (const payment of payments) {
-        const existingPayment = await Payment.findById(payment._id).session(session);
-        if (!existingPayment) {
-          throw new Error(`Payment not found: ${payment._id}`);
-        }
-        existingPayment.amount = payment.amount;
-        await existingPayment.save({ session });
-      }
-    } 
-
     // Save customer changes if any
-    if (customerDetails) {
+    if (customerDetails && !(existingInvoice.customerId.toString() === customerDetails._id.toString() && existingInvoice.amountPaid === details.amountPaid)) {
       const oldCustomer = await Customer.findById(existingInvoice.customerId).session(session);
       const newDue = (details.grandTotal || 0) - (details.amountPaid || 0);
       const oldDue = (existingInvoice.grandTotal || 0) - (existingInvoice.amountPaid || 0);
@@ -524,6 +456,19 @@ router.post("/invoice/:id", verifyToken, async (req, res) => {
       customerDetails.ledger.push(ledgerEntry._id);
       await customerDetails.save({ session });
     }
+
+    // Handle payment if provided -- payment changes
+    if (payments && payments.length > 0) {
+     
+      for (const payment of payments) {
+        const existingPayment = await Payment.findById(payment._id).session(session);
+        if (!existingPayment) {
+          throw new Error(`Payment not found: ${payment._id}`);
+        }
+        existingPayment.amount = payment.amount;
+        await existingPayment.save({ session });
+      }
+    } 
 
     // Update the existing invoice with new details
     Object.assign(existingInvoice, {
@@ -608,6 +553,11 @@ router.delete("/invoice/:id", verifyToken, async (req, res) => {
       );
 
       await timeline.save({ session });
+    }
+
+    // delete payments
+    for(const payment of invoice.payments){
+      await Payment.findByIdAndDelete(payment._id).session(session);
     }
 
     // Delete the invoice
@@ -741,14 +691,14 @@ router.get("/inventory/:inventoryId", verifyToken, async (req, res) => {
 
     // Get total count from the sales array
     const totalSales = inventory.sales.length;
-    const totalPages = Math.ceil(totalSales / limit);
+    const totalPages = Math.ceil(totalSales / limit); 
 
     // Format the response data
     const salesHistory = inventory.sales
       .map((sale) => {
-        const product = sale.products[0]; // Since we filtered for specific inventory
+        const product = sale.products.find(p => p.inventoryId && p.inventoryId.toString() === inventoryId.toString());
         if (!product) return null;
-
+        
         return {
           _id: sale._id,
           createdAt: sale.createdAt,

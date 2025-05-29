@@ -64,8 +64,6 @@ export default function Timeline({ inventoryId }) {
     }
   };
 
-  console.log(timeline);
-
   return (
     <div className="w-full" ref={timelineRef}>
       <div className="border rounded-lg min-h-[400px] relative">
@@ -185,9 +183,6 @@ export default function Timeline({ inventoryId }) {
                       <TableCell>
                         <div className="text-sm font-medium">
                           {transaction?.batchNumber || "-"}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Exp: {transaction?.expiry || "-"}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">

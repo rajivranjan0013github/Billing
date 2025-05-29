@@ -200,6 +200,7 @@ export default function EditSaleInvoice() {
         quantity: Number(product.quantity),
         pack: Number(product.pack),
         saleRate: Number(product.saleRate),
+        purchaseRate: Number(product.purchaseRate),
         discount: Number(product.discount || 0),
         gstPer: Number(product.gstPer),
         amount: Number(product.amount),

@@ -10,7 +10,9 @@ import { Input } from "../../ui/input";
 const formatExpiryInput = (currentValue) => {
   let value = currentValue.replace(/\D/g, ""); // Remove all non-digits first
 
-  if (value.length > 2) {
+  if (value.length === 1 && Number(value) > 1) {
+    value = "0" + value + "/";
+  } else if (value.length > 2) {
     // If more than 2 digits, format as MM/YY (limit year to 2 digits)
     value = value.substring(0, 2) + "/" + value.substring(2, 4);
   } else if (value.length === 2 && currentValue.length === 2) {
@@ -173,6 +175,22 @@ export default function PurchaseTable({
     if (!newProduct?.quantity) {
       toast({ variant: "destructive", title: "Please add quantity" });
       return;
+    }
+    if(newProduct?.expiry){
+      const tempExpiry = newProduct?.expiry.split("/");
+      if(tempExpiry.length === 1){
+        toast({ variant: "destructive", title: "Please add expiry" });
+        return;
+      } else if(tempExpiry.length === 2){
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth();
+        const expiryYear = 2000 + Number(tempExpiry[1]);
+        const expiryMonth = Number(tempExpiry[0]);
+        if(expiryYear < currentYear || (expiryYear === currentYear && expiryMonth < currentMonth)){
+          toast({ variant: "destructive", title: "You cannot add expired product" });
+          return;
+        }
+      }
     }
 
     let tempData = { ...newProduct };

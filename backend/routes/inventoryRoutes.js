@@ -142,25 +142,14 @@ router.delete("/delete-batch/:batchId", async (req, res) => {
 
 router.get("/timeline/:inventoryId", async (req, res) => {
   const { inventoryId } = req.params;
-  const { type, page = 1 } = req.query;
+  const {  page = 1 } = req.query;
   const limit = 20;
   const skip = (page - 1) * limit;
   const queryValue = { inventoryId };
 
-  if (type === "purchase") {
-    queryValue.type = { $in: ["PURCHASE", "PURCHASE_EDIT"] };
-    queryValue.credit = { $exists: true, $ne: null };
-  } else if (type === "sale") {
-    queryValue.type = { $in: ["SALE", "SALE_EDIT"] };
-    queryValue.debit = { $exists: true, $ne: null };
-  }
-
   try {
     const [timeline, total] = await Promise.all([
-      StockTimeline.find(queryValue)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
+      StockTimeline.find(queryValue).sort({ createdAt: -1 }).skip(skip).limit(limit),
       StockTimeline.countDocuments(queryValue),
     ]);
 
