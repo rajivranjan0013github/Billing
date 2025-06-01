@@ -5,14 +5,19 @@ import { Label } from "../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
 import { Save, Settings2, ArrowLeft } from "lucide-react";
 import PurchaseItemTable from "../components/custom/purchase/PurchaseItemTable";
+import ProductMappingDialog from "../components/custom/purchase/ProductMappingDialog";
 import { useToast } from "../hooks/use-toast";
-import SelectDistributorDlg from "../components/custom/distributor/SelectDistributorDlg";
 import { useDispatch, useSelector } from "react-redux";
-import { createPurchaseBill } from "../redux/slices/PurchaseBillSlice";
+import {
+  createPurchaseBill,
+  preprocessImageForLLM,
+} from "../redux/slices/PurchaseBillSlice";
+import { fetchItems } from "../redux/slices/inventorySlice";
 import { useNavigate } from "react-router-dom";
 import PaymentDialog from "../components/custom/payment/PaymentDialog";
 import AmountSettingsDialog from "../components/custom/purchase/AmountSettingDialog";
 import { formatCurrency } from "../utils/Helper";
+import SelectDistributorDlg from "../components/custom/distributor/SelectDistributorDlg";
 const inputKeys = [
   "distributorName",
   "invoiceNo",
@@ -52,38 +57,37 @@ const calculateLineItemAmountDetails = (product, amountType) => {
     billableQuantity = quantity * schemeRatio;
   }
 
-  const discountedRate = (purchaseRate * (1 - discountPercent / 100));
+  const discountedRate = purchaseRate * (1 - discountPercent / 100);
 
   let amount;
   switch (amountType) {
     case "exclusive":
       // As per dialog: "Shows pure rate × quantity"
       // Interpreted: Original Purchase Rate * Billable Quantity (to account for scheme)
-      amount = (purchaseRate * billableQuantity);
+      amount = purchaseRate * billableQuantity;
       break;
     case "inclusive_all":
       // As per dialog: "Shows rate after applying discount × quantity"
       // Interpreted: Discounted Rate (after explicit disc) * Billable Quantity
-      amount = (discountedRate * billableQuantity);
+      amount = discountedRate * billableQuantity;
       break;
     case "inclusive_gst":
       // As per dialog: "Shows rate after discount and GST × quantity"
       // Interpreted: (Discounted Rate (after explicit disc) + GST on it) * Billable Quantity
-      const gstOnDiscountedRate = (discountedRate * (gstPer / 100));
-      amount = ((discountedRate + gstOnDiscountedRate) * billableQuantity);
+      const gstOnDiscountedRate = discountedRate * (gstPer / 100);
+      amount = (discountedRate + gstOnDiscountedRate) * billableQuantity;
       break;
     default: // Default to exclusive logic
-      amount = (purchaseRate * billableQuantity);
+      amount = purchaseRate * billableQuantity;
       break;
   }
   return roundToTwo(amount); // Returns raw number; convertToFraction applied by caller if needed
 };
 
-// calculateTotals should NOT depend on amountType for its core financial calculations.
-// amountType is for line item display only.
 export const calculateTotals = (products) => {
   // Calculate the sums using reduce
-  const totals = products.reduce((acc, product) => {
+  const totals = products.reduce(
+    (acc, product) => {
       const quantity = Number(product?.quantity || 0);
       const free = Number(product?.free || 0);
       const purchaseRate = Number(product?.purchaseRate || 0);
@@ -98,23 +102,23 @@ export const calculateTotals = (products) => {
         billableQuantity = quantity * schemeRatio;
       }
 
-      const discountedRate = (purchaseRate * (1 - discountPercent / 100));
-      const baseAmountForSubtotal = (quantity * purchaseRate);
+      const discountedRate = purchaseRate * (1 - discountPercent / 100);
+      const baseAmountForSubtotal = quantity * purchaseRate;
 
       let taxable;
       let gstAmount;
 
       // Standardized calculation for taxable and GST, equivalent to former 'exclusive' mode.
       // This ensures grandTotal is not affected by the display amountType.
-      taxable = (discountedRate * billableQuantity);
-      gstAmount = ((taxable * gstPer) / 100);
-      
+      taxable = discountedRate * billableQuantity;
+      gstAmount = (taxable * gstPer) / 100;
+
       acc.productCount += 1;
       acc.totalQuantity += quantity + free;
-      acc.subtotal = (acc.subtotal + baseAmountForSubtotal);
-      acc.taxable = (acc.taxable + taxable);
-      acc.gstAmount = (acc.gstAmount + gstAmount);
-      acc.grandTotal = (acc.grandTotal + taxable + gstAmount);
+      acc.subtotal = acc.subtotal + baseAmountForSubtotal;
+      acc.taxable = acc.taxable + taxable;
+      acc.gstAmount = acc.gstAmount + gstAmount;
+      acc.grandTotal = acc.grandTotal + taxable + gstAmount;
 
       return acc;
     },
@@ -151,15 +155,27 @@ export default function PurchaseForm() {
 
   const [invoiceDate, setInvoiceDate] = useState();
   const [products, setProducts] = useState([]);
-  const [distributorSelectDialog, setdistributorSelectDialog] = useState(false);
   const [distributorName, setdistributorName] = useState("");
   const { toast } = useToast();
-  const { createPurchaseBillStatus } = useSelector((state) => state.purchaseBill);
+  const { createPurchaseBillStatus } = useSelector(
+    (state) => state.purchaseBill
+  );
   const { isCollapsed } = useSelector((state) => state.loader);
+  const { items: inventoryItems, itemsStatus: inventoryItemsStatus } =
+    useSelector((state) => state.inventory);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [invoiceForPayment, setInvoiceForPayment] = useState(null);
-  const [additionalDiscount, setAdditionalDiscount] = useState({per: "",value: "",});
+  const [additionalDiscount, setAdditionalDiscount] = useState({
+    per: "",
+    value: "",
+  });
+  const [llmData, setLlmData] = useState(null);
+  const [productMappingDialogOpen, setProductMappingDialogOpen] =
+    useState(false);
+  const [productsToMap, setProductsToMap] = useState([]);
+  const [distributorSelectDialog, setdistributorSelectDialog] = useState(false);
+  const [imageProcessing, setImageProcessing] = useState(false);
 
   const [formData, setFormData] = useState({
     purchaseType: "invoice",
@@ -172,8 +188,54 @@ export default function PurchaseForm() {
     amountType: "exclusive", // 'exclusive', 'inclusive_gst', 'inclusive_all'
   });
 
+  useEffect(() => {
+    if (llmData) {
+      if (
+        inventoryItemsStatus === "idle" ||
+        inventoryItemsStatus === "failed"
+      ) {
+        dispatch(fetchItems());
+      }
+
+      setFormData((prevFormData) => ({
+        ...prevFormData,
+        distributorName: llmData.distributorName || "",
+        distributorId:
+          llmData.distributorId || prevFormData.distributorId || "",
+        invoiceNumber: llmData.invoiceNumber || "",
+        withGst: llmData.withGst ? "yes" : "no",
+      }));
+
+      setInvoiceDate(llmData.invoiceDate || null);
+      setdistributorName(llmData.distributorName || "");
+
+      // If we have products or a distributor name without ID, open the mapping dialog
+      if (
+        (llmData.products && llmData.products.length > 0) ||
+        (llmData.distributorName &&
+          !llmData.distributorId &&
+          !formData.distributorId)
+      ) {
+        setProductsToMap(llmData.products || []);
+        setProductMappingDialogOpen(true);
+      }
+    }
+  }, [llmData, dispatch, formData.distributorId, inventoryItemsStatus]);
+
+  const handleProductMappingSubmit = (confirmedProducts) => {
+    setProducts((prevProducts) => [...prevProducts, ...confirmedProducts]);
+    setProductMappingDialogOpen(false);
+    setLlmData(null);
+    setProductsToMap([]);
+    toast({
+      title: "Products Added",
+      description: `${confirmedProducts.length} products have been mapped and added to the invoice.`,
+      variant: "success",
+    });
+  };
+
   // caculating total of the product
-  const amountData = useMemo(() => calculateTotals(products),[products]);
+  const amountData = useMemo(() => calculateTotals(products), [products]);
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -240,6 +302,7 @@ export default function PurchaseForm() {
       const formattedProducts = products.map((product) => ({
         mfcName: product.mfcName,
         inventoryId: product.inventoryId,
+        name: product.productName,
         productName: product.productName,
         batchNumber: product.batchNumber,
         batchId: product.batchId,
@@ -302,7 +365,7 @@ export default function PurchaseForm() {
             : null,
       };
 
-      await dispatch(createPurchaseBill(purchaseData)).unwrap();
+       await dispatch(createPurchaseBill(purchaseData)).unwrap();
 
       toast({
         title: "Purchase invoice saved successfully",
@@ -471,7 +534,8 @@ export default function PurchaseForm() {
         return {
           ...product,
           discount: newDiscount, // Apply the new discount to the product state
-          amount: calculateLineItemAmountDetails( // Use the standardized function
+          amount: calculateLineItemAmountDetails(
+            // Use the standardized function
             productWithNewDiscount,
             formData.amountType
           ),
@@ -481,6 +545,61 @@ export default function PurchaseForm() {
 
     // Reset additional discount after applying
     setAdditionalDiscount({ per: "", value: "" });
+  };
+
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) {
+      return;
+    }
+
+    // Optional: Check file type and size if needed
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please select an image file.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onloadend = async () => {
+      // Remove the data URL prefix to get just the base64 data
+      const base64Image = reader.result.split(",")[1];
+      try {
+        setImageProcessing(true);
+        const response = await dispatch(
+          preprocessImageForLLM({
+            base64Image,
+            mimeType: file.type,
+          })
+        ).unwrap();
+        setLlmData(response.extractedData);
+
+        toast({
+          title: "Image Sent for Preprocessing",
+          description: "The image has been successfully sent for LLM analysis.",
+          variant: "success",
+        });
+      } catch (error) {
+        toast({
+          title: "Error Sending Image",
+          description:
+            error.message || "Failed to send image for LLM preprocessing.",
+          variant: "destructive",
+        });
+      } finally {
+        setImageProcessing(false);
+      }
+    };
+    reader.onerror = () => {
+      toast({
+        title: "Error Reading File",
+        description: "Could not read the selected file.",
+        variant: "destructive",
+      });
+    };
   };
 
   return (
@@ -668,19 +787,28 @@ export default function PurchaseForm() {
             </div>
           </div>
         </div>
-        {/* <div className="p-4 border rounded-lg">
-          <h3 className="mb-4 text-sm font-medium">CUSTOM CHARGE</h3>
-          <div className="flex gap-4">
+        {/* Image Upload Section */}
+        <div className="p-4 border rounded-lg">
+          <h3 className="mb-4 text-sm font-medium">UPLOAD FOR LLM ANALYSIS</h3>
+          <div className="relative">
             <Input
-              placeholder="Custom charge"
-              className="appearance-none h-8 border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="mb-2"
+              disabled={imageProcessing}
             />
-            <Input
-              placeholder="₹ Value"
-              className="appearance-none h-8 border-[1px] border-gray-300 px-2 bg-white focus:outline-none focus:ring-0 focus:border-gray-300"
-            />
+            {imageProcessing && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/50">
+                <div className="animate-spin text-lg">⏳</div>
+              </div>
+            )}
           </div>
-        </div> */}
+          <p className="text-xs text-muted-foreground">
+            Upload an image of the invoice for automated data extraction
+            (optional).
+          </p>
+        </div>
         <div className="flex items-center justify-center p-4 border rounded-lg">
           <div className="text-center">
             <div className="mb-1">Click on Save to Add Payment</div>
@@ -734,13 +862,6 @@ export default function PurchaseForm() {
           </div>
         </div>
       </div>
-      <SelectDistributorDlg
-        open={distributorSelectDialog}
-        setOpen={setdistributorSelectDialog}
-        search={distributorName}
-        setSearch={setdistributorName}
-        onSelect={handleDistributorSelect}
-      />
       <AmountSettingsDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
@@ -756,6 +877,32 @@ export default function PurchaseForm() {
         invoiceData={invoiceForPayment}
         onSubmit={handlePaymentSubmit}
         billStatus={createPurchaseBillStatus}
+      />
+      <SelectDistributorDlg
+        open={distributorSelectDialog}
+        setOpen={setdistributorSelectDialog}
+        search={distributorName}
+        setSearch={setdistributorName}
+        onSelect={handleDistributorSelect}
+      />
+      <ProductMappingDialog
+        open={productMappingDialogOpen}
+        onOpenChange={setProductMappingDialogOpen}
+        productsToMap={productsToMap}
+        inventoryItems={inventoryItems}
+        onSubmit={handleProductMappingSubmit}
+        isLoadingInventory={
+          inventoryItemsStatus === "loading" || inventoryItemsStatus === "idle"
+        }
+        distributorName={llmData?.distributorName || ""}
+        onDistributorSelect={(distributor) => {
+          setdistributorName(distributor.name);
+          setFormData({
+            ...formData,
+            distributorId: distributor._id,
+            distributorName: distributor.name,
+          });
+        }}
       />
     </div>
   );
