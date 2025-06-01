@@ -325,7 +325,6 @@ export default function ImportDataDlg({
           const worksheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-          console.log("Raw JSON data from Excel:", jsonData); // Kept for debugging
 
           setRawExcelData(jsonData); // Store raw data; useEffect will handle transformation
 

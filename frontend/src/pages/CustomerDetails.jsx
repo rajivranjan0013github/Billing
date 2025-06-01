@@ -1,4 +1,12 @@
-import { ArrowLeft, FileText, Plus, Printer, Trash2, ArrowUpDown, Calendar, FileX, Pen } from "lucide-react";
+import {
+  ArrowLeft,
+  FileText,
+  Trash2,
+  ArrowUpDown,
+  FileX,
+  Pen,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -7,23 +15,37 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Badge } from "../components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchCustomerDetails, setTabName } from "../redux/slices/CustomerSlice";
+import { fetchCustomerDetails, setTabName, deleteCustomer } from "../redux/slices/CustomerSlice";
 import CreateCustomerDialog from "../components/custom/customer/CreateCustomerDialog";
-import { formatCurrency } from "../utils/Helper";
 import LedgerTabContent from "../components/custom/distributor/LedgerTabContent";
-import { cn } from "../lib/utils";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
+import { useToast } from "../hooks/use-toast";
 
 export default function CustomerDetails() {
   const navigate = useNavigate();
   const { customerId } = useParams();
   const dispatch = useDispatch();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const {  details: customerDetails,  status, tabName, invoices, payments} = useSelector((state) => state.customers.currentCustomer);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const { toast } = useToast();
+  const {
+    details: customerDetails,
+    status,
+    tabName,
+    invoices,
+    payments,
+    deleteCustomerStatus,
+  } = useSelector((state) => state.customers.currentCustomer);
+
   useEffect(() => {
     if (customerId) {
-     
-        dispatch(fetchCustomerDetails(customerId));
-      
+      dispatch(fetchCustomerDetails(customerId));
     }
   }, [customerId, dispatch]);
 
@@ -70,6 +92,23 @@ export default function CustomerDetails() {
     }).filter(Boolean);
   };
 
+  const handleDelete = async () => {
+    try {
+      await dispatch(deleteCustomer(customerId)).unwrap();
+      toast({
+        title: "Customer deleted successfully",
+        variant: "success",
+      });
+      navigate(-1);
+    } catch (error) {
+      toast({
+        title: "Failed to delete customer",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <header className="flex items-center justify-between px-6 py-3 border-b">
@@ -77,13 +116,18 @@ export default function CustomerDetails() {
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-xl font-semibold">{customerDetails.name}</h1>
+          <h1 className="text-xl font-semibold uppercase">{customerDetails.name}</h1>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon">
             <FileText className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="icon">
+          <Button
+            variant="outline"
+            size="icon"
+            className="bg-red-500 text-white hover:bg-red-600"
+            onClick={() => setIsDeleteDialogOpen(true)}
+          >
             <Trash2 className="h-4 w-4" />
           </Button>
           <Button variant="outline" size="icon" onClick={() => setIsEditDialogOpen(true)}>
@@ -100,6 +144,45 @@ export default function CustomerDetails() {
           dispatch(fetchCustomerDetails(customerId));
         }}
       />
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="max-w-xl p-0 gap-0">
+          <AlertDialogHeader className="px-4 py-2.5 flex flex-row items-center justify-between bg-gray-100 border-b">
+            <AlertDialogTitle className="text-base font-semibold">Delete Customer</AlertDialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </AlertDialogHeader>
+          <div className="p-6">
+            <AlertDialogDescription>
+              Are you sure you want to delete this customer? This action will permanently delete all associated records and cannot be undone.
+            </AlertDialogDescription>
+          </div>
+          <div className="p-3 bg-gray-100 border-t flex items-center justify-end gap-2">
+            <Button 
+              onClick={() => setIsDeleteDialogOpen(false)} 
+              variant="outline" 
+              size="sm"
+              disabled={deleteCustomerStatus === "loading"}
+              className='px-4'
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleDelete}
+              size="sm"
+              className='px-4 bg-red-500 text-white hover:bg-red-600'
+              disabled={deleteCustomerStatus === "loading"}
+            >
+              {deleteCustomerStatus === "loading" ? "Deleting..." : "Delete"}
+            </Button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Tabs defaultValue={tabName} className="flex-1" onValueChange={(value) => dispatch(setTabName(value))}>
         <div className="border-b">
@@ -147,7 +230,7 @@ export default function CustomerDetails() {
                       <div className="text-sm text-muted-foreground">
                         Customer Name
                       </div>
-                      <div>{customerDetails.name}</div>
+                      <div className="capitalize">{customerDetails.name}</div>
                     </div>
                     <div>
                       <div className="text-sm text-muted-foreground">

@@ -12,6 +12,7 @@ import {
   Trash2,
   X,
   ArrowLeftRight,
+  Plus,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -29,7 +30,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchItems } from "../redux/slices/inventorySlice";
 import { deletePurchaseBill } from "../redux/slices/PurchaseBillSlice";
-import PaymentDialog from "../components/custom/payment/PaymentDialog";
 import AmountSettingsDialog from "../components/custom/purchase/AmountSettingDialog";
 import MakePaymentDlg from "../components/custom/payment/MakePaymentDlg";
 import { ScrollArea } from "../components/ui/scroll-area";
@@ -103,6 +103,7 @@ export default function EditPurchaseInvoice() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { deleteStatus } = useSelector((state) => state.purchaseBill);
   const { isCollapsed } = useSelector((state) => state.loader);
+  const [editedPayments, setEditedPayments] = useState({});
 
   const [formData, setFormData] = useState({
     purchaseType: "invoice",
@@ -237,15 +238,30 @@ export default function EditPurchaseInvoice() {
     };
   }, []);
 
+  // Add function to handle payment amount changes
+  const handlePaymentAmountChange = (paymentId, newAmount) => {
+    setEditedPayments(prev => ({
+      ...prev,
+      [paymentId]: Number(newAmount)
+    }));
+
+    // Recalculate total amount paid
+    let newTotalPaid = 0;
+    payments.forEach(payment => {
+      if (payment._id === paymentId) {
+        newTotalPaid += Number(newAmount);
+      } else {
+        newTotalPaid += editedPayments[payment._id] || payment.amount;
+      }
+    });
+    setAmountPaid(newTotalPaid);
+  };
+
   const handleSaveInvoice = async () => {
     try {
       setLoading(true);
       // Validate required fields
-      if (
-        !formData.distributorName ||
-        !formData.invoiceNumber ||
-        !invoiceDate
-      ) {
+      if (!formData.distributorName || !formData.invoiceNumber || !invoiceDate) {
         throw new Error("Please fill all required fields");
       }
 
@@ -253,58 +269,6 @@ export default function EditPurchaseInvoice() {
         throw new Error("Please add at least one product");
       }
 
-      // Instead of saving invoice here, open payment dialog
-      setInvoiceForPayment({
-        distributorName: formData.distributorName,
-        distributorId: formData.distributorId,
-        invoiceNumber: formData.invoiceNumber,
-        invoiceDate: invoiceDate,
-        grandTotal: amountData.grandTotal,
-        alreadyPaid: amountPaid,
-        dueAmount: amountData.grandTotal - amountPaid,
-        dueDate: dueDate,
-      });
-      setPaymentDialogOpen(true);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to validate invoice",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle distributor name input change
-  const handleDistributorNameChange = (e) => {
-    e.preventDefault();
-    const value = e.target.value;
-
-    // Open dialog if space is pressed or text is entered
-    if (value.length === 1 && value === " ") {
-      setdistributorSelectDialog(true);
-      return;
-    }
-    if (value.length > 0 && value[0] !== " ") {
-      setdistributorName(value);
-      setdistributorSelectDialog(true);
-    }
-  };
-
-  // Handle distributor selection from dialog
-  const handleDistributorSelect = (distributor) => {
-    setdistributorName(distributor.name);
-    setFormData({
-      ...formData,
-      distributorId: distributor._id,
-      distributorName: distributor.name,
-    });
-    setdistributorSelectDialog(false);
-  };
-
-  const handlePaymentSubmit = async (paymentData) => {
-    try {
       const formattedProducts = products.map((product) => ({
         inventoryId: product.inventoryId,
         productName: product.productName,
@@ -324,15 +288,20 @@ export default function EditPurchaseInvoice() {
         amount: roundToTwo(Number(product.amount)),
       }));
 
+      // Create updated payments array with edited amounts
+      const updatedPayments = payments.map(payment => ({
+        _id: payment._id,
+        amount: editedPayments[payment._id] || payment.amount
+      }));
+
       const purchaseData = {
         _id: invoiceId,
         invoiceType: "PURCHASE",
-
         invoiceNumber: formData.invoiceNumber,
         distributorName: formData.distributorName,
         distributorId: formData.distributorId,
         invoiceDate: new Date(invoiceDate),
-        paymentDueDate: paymentData.dueDate || null,
+        paymentDueDate: amountData.grandTotal > amountPaid ? dueDate : null,
         products: formattedProducts,
         withGst: formData.withGst === "yes",
         billSummary: {
@@ -347,26 +316,9 @@ export default function EditPurchaseInvoice() {
         amountCalculationType: formData.amountType,
         status: "active",
         grandTotal: roundToTwo(amountData.grandTotal),
-        amountPaid: paymentData.totalPaid,
-        payment:
-          paymentData.status === "paid"
-            ? {
-                amount: Number(paymentData.amount || 0),
-                paymentType: paymentData.paymentType,
-                paymentMethod: paymentData.paymentMethod,
-                distributorId: formData.distributorId,
-                distributorName: formData.distributorName,
-                remarks: paymentData.notes,
-                ...(paymentData.paymentMethod !== "cheque" && {
-                  accountId: paymentData.accountId,
-                }),
-                ...(paymentData.paymentMethod === "cheque" && {
-                  chequeNumber: paymentData.chequeNumber,
-                  chequeDate: paymentData.chequeDate,
-                  micrCode: paymentData.micrCode,
-                }),
-              }
-            : null,
+        amountPaid: amountPaid,
+        payments: updatedPayments,
+        paymentStatus: amountPaid >= amountData.grandTotal ? 'paid' : 'due'
       };
 
       const response = await fetch(`${Backend_URL}/api/purchase/edit`, {
@@ -399,7 +351,36 @@ export default function EditPurchaseInvoice() {
         description: error.message || "Failed to save invoice",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
+  };
+
+  // Handle distributor name input change
+  const handleDistributorNameChange = (e) => {
+    e.preventDefault();
+    const value = e.target.value;
+
+    // Open dialog if space is pressed or text is entered
+    if (value.length === 1 && value === " ") {
+      setdistributorSelectDialog(true);
+      return;
+    }
+    if (value.length > 0 && value[0] !== " ") {
+      setdistributorName(value);
+      setdistributorSelectDialog(true);
+    }
+  };
+
+  // Handle distributor selection from dialog
+  const handleDistributorSelect = (distributor) => {
+    setdistributorName(distributor.name);
+    setFormData({
+      ...formData,
+      distributorId: distributor._id,
+      distributorName: distributor.name,
+    });
+    setdistributorSelectDialog(false);
   };
 
   const handleDeleteInvoice = async () => {
@@ -441,7 +422,10 @@ export default function EditPurchaseInvoice() {
             <Settings2 className="w-4 h-4 mr-2" />
             Column Settings
           </Button>
-          <Button
+         
+          {viewMode ? (
+            <>
+             <Button
             size="sm"
             variant="outline"
             className="px-4"
@@ -465,8 +449,6 @@ export default function EditPurchaseInvoice() {
             <ArrowLeftRight className="w-4 h-4 mr-2" />
             Purchase Return
           </Button>
-          {viewMode ? (
-            <>
               <Button
                 size="sm"
                 variant="destructive"
@@ -670,14 +652,13 @@ export default function EditPurchaseInvoice() {
         </div>
 
         {/* Payment Details Section */}
-        <div className="mb-10 mt-4">
+        <div className="pb-20 mt-4">
           <div className="border rounded-lg overflow-hidden">
             <div className="flex justify-between items-center p-4 border-b bg-gray-50">
               <h3 className="text-lg font-medium">Payment History</h3>
               <Button
                 variant="outline"
                 size="sm"
-                className="px-4"
                 disabled={amountPaid >= amountData?.grandTotal}
                 onClick={() => {
                   setPaymentOutData({
@@ -696,8 +677,10 @@ export default function EditPurchaseInvoice() {
                   });
                   setPaymentOutDialogOpen(true);
                 }}
+                className='gap-1 px-2'
               >
-                Add New Payment
+                <Plus className="h-4 w-4" />
+                Add Payment
               </Button>
             </div>
 
@@ -741,13 +724,28 @@ export default function EditPurchaseInvoice() {
                         }`}
                       >
                         <td className="px-4 py-3 text-sm">
-                          {new Date(payment.paymentDate).toLocaleDateString()}
+                          {new Date(payment.paymentDate).toLocaleDateString('en-IN', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
                         </td>
                         <td className="px-4 py-3 text-sm font-medium">
                           {payment.paymentNumber}
                         </td>
                         <td className="px-4 py-3 text-sm font-medium">
-                          ₹{payment.amount.toLocaleString("en-IN")}
+                          {!viewMode ? (
+                            <Input
+                              type="number"
+                              value={editedPayments[payment._id] || payment.amount}
+                              onChange={(e) => handlePaymentAmountChange(payment._id, e.target.value)}
+                              className="w-24 h-8"
+                              min="0"
+                              step="0.01"
+                            />
+                          ) : (
+                            formatCurrency(payment?.amount)
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">
@@ -797,7 +795,7 @@ export default function EditPurchaseInvoice() {
               <div className="text-center text-gray-500 py-8">
                 <p className="text-sm">No payment records found</p>
                 <p className="text-xs text-gray-400 mt-1">
-                  Click 'Add New Payment' to record a payment
+                  Click 'Add Payment' to record a payment
                 </p>
               </div>
             )}
@@ -871,12 +869,6 @@ export default function EditPurchaseInvoice() {
         onChange={(value) => handleInputChange("amountType", value)}
         products={products}
         setProducts={setProducts}
-      />
-      <PaymentDialog
-        open={paymentDialogOpen}
-        onOpenChange={setPaymentDialogOpen}
-        invoiceData={invoiceForPayment}
-        onSubmit={handlePaymentSubmit}
       />
       <MakePaymentDlg
         open={paymentOutDialogOpen}

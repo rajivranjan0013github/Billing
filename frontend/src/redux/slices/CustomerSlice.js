@@ -114,6 +114,7 @@ const customerSlice = createSlice({
       tabName: "profile",
       ledgerEntries: [],
       ledgerStatus: "idle",
+      deleteCustomerStatus: "idle",
     },
     pagination: {
       currentPage: 1,
@@ -182,10 +183,18 @@ const customerSlice = createSlice({
           state.customers[index] = action.payload;
         }
       })
+      .addCase(deleteCustomer.pending, (state) => {
+        state.currentCustomer.deleteCustomerStatus = "loading";
+      })
       .addCase(deleteCustomer.fulfilled, (state, action) => {
+        state.currentCustomer.deleteCustomerStatus = "succeeded";
         state.customers = state.customers.filter(
           (customer) => customer._id !== action.payload
         );
+      })
+      .addCase(deleteCustomer.rejected, (state, action) => {
+        state.currentCustomer.deleteCustomerStatus = "failed";
+        state.error = action.error.message;
       })
       .addCase(fetchCustomerLedgerEntries.pending, (state) => {
         state.currentCustomer.ledgerStatus = "loading";

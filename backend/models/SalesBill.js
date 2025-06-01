@@ -79,10 +79,6 @@ const salesBillSchema = new mongoose.Schema(
         gstPer: Number,
         mfcName: String,
         amount: Number,
-        timeline: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "StockTimeline",
-        },
       },
     ],
     grandTotal: Number,

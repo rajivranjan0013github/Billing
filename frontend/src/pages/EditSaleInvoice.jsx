@@ -4,7 +4,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
 import { Checkbox } from "../components/ui/checkbox";
-import { ArrowLeft, Pencil, Save, FileText, Trash2, ChevronRight, Plus} from "lucide-react";
+import { ArrowLeft, Pencil, Save, FileText, Trash2, ChevronRight, Plus, X } from "lucide-react";
 import { format } from "date-fns";
 import { Backend_URL, convertQuantityValue } from "../assets/Data";
 import { useToast } from "../hooks/use-toast";
@@ -15,9 +15,16 @@ import SaleItemTable from "../components/custom/sales/SaleItemTable";
 import { useSelector, useDispatch } from "react-redux";
 import { formatCurrency } from "../utils/Helper";
 import { fetchSettings } from '../redux/slices/settingsSlice'
-import { editSaleInvoice } from '../redux/slices/SellBillSlice';
+import { editSaleInvoice, deleteSaleInvoice } from '../redux/slices/SellBillSlice';
 import MakePaymentDlg from "../components/custom/payment/MakePaymentDlg";
 import SearchSuggestion from "../components/custom/custom-fields/CustomSearchSuggestion";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
 
 // Helper function to round to 2 decimal places
 const roundToTwo = (num) => {
@@ -50,7 +57,6 @@ export default function EditSaleInvoice() {
   const { isCollapsed } = useSelector((state) => state.loader);
   const { invoiceId } = useParams();
   const doctors = useSelector((state) => state.staff?.doctors);
-  const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState(true);
   const [invoiceDate, setInvoiceDate] = useState();
   const [dueDate, setDueDate] = useState();
@@ -63,7 +69,8 @@ export default function EditSaleInvoice() {
   const [paymentOutData, setPaymentOutData] = useState(null);
   const [paymentOutDialogOpen, setPaymentOutDialogOpen] = useState(false);
   const [editedPayments, setEditedPayments] = useState({});
-  const { editBillStatus } = useSelector((state) => state.bill);
+  const { editBillStatus, deleteStatus } = useSelector((state) => state.bill);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Convert doctors array to the format expected by SearchSuggestion
   const doctorSuggestions = doctors.map((doctor, index) => ({
@@ -93,7 +100,6 @@ export default function EditSaleInvoice() {
   useEffect(() => {
     const fetchBill = async () => {
       try {
-        setLoading(true);
         const response = await fetch(
           `${Backend_URL}/api/sales/invoice/${invoiceId}`,
           { credentials: "include" }
@@ -139,8 +145,6 @@ export default function EditSaleInvoice() {
           description: "Failed to fetch invoice details",
           variant: "destructive",
         });
-      } finally {
-        setLoading(false);
       }
     };
     if (invoiceId) {
@@ -185,6 +189,7 @@ export default function EditSaleInvoice() {
       }
 
       const formattedProducts = products.map((product) => ({
+        types: product.types,
         inventoryId: product.inventoryId,
         productName: product.productName,
         batchNumber: product.batchNumber,
@@ -195,6 +200,7 @@ export default function EditSaleInvoice() {
         quantity: Number(product.quantity),
         pack: Number(product.pack),
         saleRate: Number(product.saleRate),
+        purchaseRate: Number(product.purchaseRate),
         discount: Number(product.discount || 0),
         gstPer: Number(product.gstPer),
         amount: Number(product.amount),
@@ -227,6 +233,7 @@ export default function EditSaleInvoice() {
           totalQuantity: amountData.totalQuantity,
           productCount: amountData.productCount,
           grandTotal: amountData.grandTotal,
+          returnAmount: amountData.returnAmount,
           gstSummary: {
             0: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
             5: { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
@@ -340,6 +347,24 @@ export default function EditSaleInvoice() {
     setPaymentOutDialogOpen(true);
   };
 
+  const handleDeleteInvoice = async () => {
+    try {
+      await dispatch(deleteSaleInvoice(invoiceId)).unwrap();
+      toast({
+        title: "Success",
+        description: "Sale invoice deleted successfully",
+        variant: "success",
+      });
+      navigate(-1);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete invoice",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="relative rounded-lg h-[100vh] pt-2 ">
       {/* Header */}
@@ -375,7 +400,10 @@ export default function EditSaleInvoice() {
                   <Pencil className="w-4 h-4" /> Edit
                 </Button>
 
-                <Button className="gap-2 bg-rose-600 hover:bg-rose-500  ">
+                <Button 
+                  className="gap-2 bg-rose-600 hover:bg-rose-500"
+                  onClick={() => setDeleteDialogOpen(true)}
+                >
                   <Trash2 className="w-4 h-4" /> Delete
                 </Button>
               </>
@@ -454,10 +482,12 @@ export default function EditSaleInvoice() {
               onSuggestionSelect={handleCustomerSelect}
               onKeyDown={(e) => handleKeyDown(e, "customerName")}
               ref={(el) => (inputRef.current["customerName"] = el)}
+              disabled={viewMode}
             />
             <div className="flex items-center gap-2 mt-1 text-sm font-semibold">
               <Checkbox
                 checked={isCashCounter}
+                disabled={viewMode}
                 onCheckedChange={(checked) => {
                   if (!checked && !customerName) {
                     toast({
@@ -496,6 +526,7 @@ export default function EditSaleInvoice() {
               }}
               onKeyDown={(e) => handleKeyDown(e, "doctorName")}
               ref={(el) => (inputRef.current["doctorName"] = el)}
+              disabled={viewMode}
             />
           </div>
           <div>
@@ -787,6 +818,51 @@ export default function EditSaleInvoice() {
         paymentData={paymentOutData}
         showStep1={true}
       />
+
+      {/* Add Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="max-w-xl p-0 gap-0">
+          <AlertDialogHeader className="px-4 py-2.5 flex flex-row items-center justify-between bg-gray-100 border-b">
+            <AlertDialogTitle className="text-base font-semibold">
+              Delete Sale Invoice
+            </AlertDialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </AlertDialogHeader>
+          <div className="p-6">
+            <AlertDialogDescription>
+              Are you sure you want to delete this sale invoice? This action
+              will permanently delete the invoice and revert all associated
+              inventory adjustments and payment records.
+            </AlertDialogDescription>
+          </div>
+          <div className="p-3 bg-gray-100 border-t flex items-center justify-end gap-2">
+            <Button
+              onClick={() => setDeleteDialogOpen(false)}
+              variant="outline"
+              size="sm"
+              disabled={deleteStatus === "loading"}
+              className="px-4"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteInvoice}
+              size="sm"
+              disabled={deleteStatus === "loading"}
+              className="bg-destructive text-white hover:bg-destructive/90 px-4"
+            >
+              {deleteStatus === "loading" ? "Deleting..." : "Delete"}
+            </Button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

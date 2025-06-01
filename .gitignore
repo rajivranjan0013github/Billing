@@ -6,6 +6,7 @@
 /backend/config
 /backend/load-test.yml
 /frontend/.pnp
+/practice.js
 .pnp.js
 # testing
 /coverage

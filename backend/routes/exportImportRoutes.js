@@ -102,13 +102,7 @@ router.post('/import-inventory', verifyToken, async (req, res) => {
                                 credit: item.quantity,
                                 balance: inventoryItem.quantity,
                                 batchNumber: item.batchNumber,
-                                expiry: item.expiry,
-                                mrp: item.mrp,
-                                purchaseRate: item.purchaseRate,
-                                gstPer: item.gstPer,
-                                saleRate: item.saleRate,
                                 pack: item.pack,
-                                HSN: item.HSN || null,
                                 createdBy: req.user._id,
                                 createdByName: req.user.name,
                             });
