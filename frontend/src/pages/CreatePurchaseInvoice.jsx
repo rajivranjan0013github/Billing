@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import PaymentDialog from "../components/custom/payment/PaymentDialog";
 import AmountSettingsDialog from "../components/custom/purchase/AmountSettingDialog";
 import { formatCurrency } from "../utils/Helper";
+import { Switch } from "../components/ui/switch";
 const inputKeys = [
   "distributorName",
   "invoiceNo",
@@ -160,6 +161,7 @@ export default function PurchaseForm() {
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [invoiceForPayment, setInvoiceForPayment] = useState(null);
   const [additionalDiscount, setAdditionalDiscount] = useState({per: "",value: "",});
+  const [showDiscount, setShowDiscount] = useState(false);
 
   const [formData, setFormData] = useState({
     purchaseType: "invoice",
@@ -627,7 +629,7 @@ export default function PurchaseForm() {
       </div>
 
       <div className="grid grid-cols-4 gap-4">
-        <div className="p-4 border rounded-lg">
+        <div className={`p-4 border rounded-lg ${showDiscount ? 'block' : 'hidden'}`}>
           <div className="flex justify-between">
             <h3 className="mb-4 text-sm font-medium">OVERALL BILL DISCOUNT</h3>
             <Button
@@ -681,12 +683,12 @@ export default function PurchaseForm() {
             />
           </div>
         </div> */}
-        <div className="flex items-center justify-center p-4 border rounded-lg">
+        {/* <div className="flex items-center justify-center p-4 border rounded-lg">
           <div className="text-center">
             <div className="mb-1">Click on Save to Add Payment</div>
             <div className="text-sm text-muted-foreground">Use 'Alt+S' Key</div>
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* footer of purchase */}
@@ -703,8 +705,16 @@ export default function PurchaseForm() {
           <div>Subtotal</div>
           <div className="text-lg">{formatCurrency(amountData?.subtotal)}</div>
         </div>
-        <div className="py-2">
-          <div className="">(-) Discount</div>
+        <div className="py-2 flex flex-col items-center">
+          <div className="flex items-center gap-2">
+            <span>(-) Discount</span>
+            <Switch
+              checked={showDiscount}
+              onCheckedChange={setShowDiscount}
+              size="sm"
+              className="scale-75"
+            />
+          </div>
           <div className="text-lg">
             {formatCurrency(amountData?.discountAmount)}
           </div>

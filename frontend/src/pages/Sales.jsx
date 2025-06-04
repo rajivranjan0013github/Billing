@@ -223,11 +223,6 @@ export default function SalesTransactions() {
           prev.set("dateFilter", "custom");
           return prev;
         });
-
-        fetchBillsData({
-          startDate: fromDate,
-          endDate: toDate,
-        });
       } catch (err) {
         toast({
           title: "Error",
@@ -236,7 +231,7 @@ export default function SalesTransactions() {
         });
       }
     }
-  }, [fetchBillsData, setSearchParams]);
+  }, [setSearchParams, toast]);
 
   const handleDateFilterChange = useCallback((value) => {
     setDateFilterType(value);
@@ -624,11 +619,16 @@ export default function SalesTransactions() {
                   </TableCell> */}
                   <TableCell>
                     <div className="font-medium">
+                    <p>
                       {new Date(bill?.createdAt).toLocaleDateString("en-IN", {
                         day: "2-digit",
                         month: "short",
                         year: "2-digit",
                       })}
+                    </p>
+                      <span className="text-xs text-gray-500">
+                        {format(new Date(bill?.createdAt), "hh:mm a")}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">

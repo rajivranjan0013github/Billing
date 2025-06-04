@@ -257,6 +257,13 @@ export default function SaleTable({
       return;
     }
 
+    // conerting packs and loose to number
+    const packSize = Number(newProduct.pack || 1);
+    const packs = Number(newProduct.packs || 0);
+    const loose = Number(newProduct.loose || 0);
+    newProduct.packs = packs + Math.floor(loose / packSize);
+    newProduct.loose = loose % packSize;
+
     if (newProduct.batchNumber) {
       setProducts((pre) => [...pre, newProduct]);
     } else {
