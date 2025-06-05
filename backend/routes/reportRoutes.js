@@ -8,6 +8,11 @@ import { Inventory } from "../models/Inventory.js";
 
 const router = express.Router();
 
+// Helper function to escape special characters for regex
+const escapeRegExp = (string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
+};
+
 // Helper function to get date range
 const getDateRange = (params) => {
   if (params.startDate && params.endDate) {
@@ -48,7 +53,9 @@ router.get("/sales", async (req, res) => {
 
     // Add product filter to query if provided
     if (product) {
-      query["products.productName"] = { $regex: new RegExp(product, "i") };
+      query["products.productName"] = {
+        $regex: new RegExp(escapeRegExp(product), "i"),
+      };
       query["products.types"] = "sale";
     }
 
@@ -68,7 +75,7 @@ router.get("/sales", async (req, res) => {
                     ? {
                         $regexMatch: {
                           input: "$$product.mfcName",
-                          regex: new RegExp(manufacturer, "i"),
+                          regex: new RegExp(escapeRegExp(manufacturer), "i"),
                         },
                       }
                     : { $eq: [true, true] },
@@ -76,7 +83,7 @@ router.get("/sales", async (req, res) => {
                     ? {
                         $regexMatch: {
                           input: "$$product.productName",
-                          regex: new RegExp(product, "i"),
+                          regex: new RegExp(escapeRegExp(product), "i"),
                         },
                       }
                     : { $eq: [true, true] },
@@ -112,6 +119,7 @@ router.get("/sales", async (req, res) => {
         totalSales: 0,
         totalBills: sales.length,
         totalGST: 0,
+        totalQuantity: 0,
       },
     };
 
@@ -157,7 +165,7 @@ router.get("/sales", async (req, res) => {
               product.productName
             );
             manufacturerSummary[product.mfcName].totalQuantity +=
-              product.quantity;
+              product.quantity / product.pack;
             manufacturerSummary[product.mfcName].totalAmount += product.amount;
           });
         });
@@ -168,6 +176,54 @@ router.get("/sales", async (req, res) => {
             uniqueProducts: mfr.uniqueProducts.size,
           })
         );
+        break;
+
+      case "group-wise":
+        const groupSalesSummary = {};
+        // Need a different pipeline for group-wise that looks up inventory groups
+        // The 'sales' variable above is already filtered by date, customer, potentially product/manufacturer for the bill level
+        // Now we need to process these sales to aggregate by inventory group
+
+        for (const sale of sales) {
+          // Iterate over already fetched and partially filtered sales
+          for (const productItem of sale.products) {
+            // Assuming productItem has an inventoryId to lookup Inventory
+            if (productItem.inventoryId) {
+              const inventoryItem = await Inventory.findById(
+                productItem.inventoryId
+              ).lean();
+              if (
+                inventoryItem &&
+                inventoryItem.group &&
+                inventoryItem.group.length > 0
+              ) {
+                inventoryItem.group.forEach((groupName) => {
+                  if (!groupSalesSummary[groupName]) {
+                    groupSalesSummary[groupName] = {
+                      groupName: groupName,
+                      totalQuantity: 0,
+                      totalAmount: 0,
+                      uniqueProducts: new Set(),
+                    };
+                  }
+                  groupSalesSummary[groupName].totalQuantity +=
+                    productItem.quantity;
+                  groupSalesSummary[groupName].totalAmount +=
+                    productItem.amount; // Assuming productItem.amount is the value before tax for consistency
+                  groupSalesSummary[groupName].uniqueProducts.add(
+                    productItem.productName
+                  );
+                });
+              }
+            }
+          }
+        }
+        response.groupSummary = Object.values(groupSalesSummary)
+          .map((summary) => ({
+            ...summary,
+            uniqueProducts: summary.uniqueProducts.size,
+          }))
+          .sort((a, b) => a.groupName.localeCompare(b.groupName));
         break;
 
       case "product-wise":
@@ -195,7 +251,7 @@ router.get("/sales", async (req, res) => {
                 totalAmount: 0,
               };
             }
-            productSummary[key].quantitySold += product.quantity;
+            productSummary[key].quantitySold += product.quantity / product.pack;
             productSummary[key].totalAmount += product.amount;
 
             // Store individual sales
@@ -206,18 +262,18 @@ router.get("/sales", async (req, res) => {
               invoiceNumber: sale.invoiceNumber,
               invoiceDate: sale.invoiceDate,
               customerName: sale.distributorName,
-              quantity: product.quantity,
-              rate: product.rate,
+              quantity: product.quantity / product.pack,
+              taxableAmount: product.amount * (1 - product.gstPer / 100),
+              rate: product.saleRate,
               amount: product.amount,
-              gst: product.gst,
-              totalAmount:
-                product.amount + (product.amount * product.gst) / 100,
+              gst: product.gstPer,
             });
           });
         });
 
         response.productSummary = Object.values(productSummary);
         response.productSales = productSales;
+
         break;
 
       case "daily-sales":
@@ -301,8 +357,24 @@ router.get("/sales", async (req, res) => {
     }
 
     // Calculate summary
+    response.summary.totalQuantity = 0; // Initialize to ensure we sum correctly
     sales.forEach((sale) => {
       response.summary.totalSales += sale.billSummary.grandTotal;
+      if (sale.products && Array.isArray(sale.products)) {
+        sale.products.forEach((p) => {
+          if (
+            p &&
+            typeof p.quantity === "number" &&
+            typeof p.pack === "number" &&
+            p.pack !== 0
+          ) {
+            response.summary.totalQuantity += p.quantity / p.pack;
+          } else if (p && typeof p.quantity === "number") {
+            // If pack is not available or zero, assume pack is 1 (or handle as per your business logic)
+            response.summary.totalQuantity += p.quantity;
+          }
+        });
+      }
       response.summary.totalGST += sale.billSummary.gstAmount;
     });
 
@@ -332,7 +404,9 @@ router.get("/purchase", async (req, res) => {
 
     // Add product filter to query if provided
     if (product) {
-      query["products.productName"] = { $regex: new RegExp(product, "i") };
+      query["products.productName"] = {
+        $regex: new RegExp(escapeRegExp(product), "i"),
+      };
     }
 
     // Fetch purchase data with filtered products
@@ -350,7 +424,7 @@ router.get("/purchase", async (req, res) => {
                     ? {
                         $regexMatch: {
                           input: "$$product.mfcName",
-                          regex: new RegExp(manufacturer, "i"),
+                          regex: new RegExp(escapeRegExp(manufacturer), "i"),
                         },
                       }
                     : { $eq: [true, true] },
@@ -358,7 +432,7 @@ router.get("/purchase", async (req, res) => {
                     ? {
                         $regexMatch: {
                           input: "$$product.productName",
-                          regex: new RegExp(product, "i"),
+                          regex: new RegExp(escapeRegExp(product), "i"),
                         },
                       }
                     : { $eq: [true, true] },
@@ -394,6 +468,7 @@ router.get("/purchase", async (req, res) => {
         totalPurchases: 0,
         totalBills: purchases.length,
         totalGST: 0,
+        totalQuantity: 0,
       },
     };
 
@@ -412,15 +487,15 @@ router.get("/purchase", async (req, res) => {
               distributorId,
               distributorName:
                 purchase.distributorName || "Unknown Distributor",
-              totalPurchases: 0,
               totalAmount: 0,
               billCount: 0,
+              invoices: [],
             };
           }
-          distributorSummary[distributorId].totalPurchases++;
           distributorSummary[distributorId].totalAmount +=
             purchase.billSummary.grandTotal;
           distributorSummary[distributorId].billCount++;
+          distributorSummary[distributorId].invoices.push(purchase);
         });
         response.distributorSummary = Object.values(distributorSummary);
         break;
@@ -441,7 +516,7 @@ router.get("/purchase", async (req, res) => {
               product.productName
             );
             manufacturerSummary[product.mfcName].totalQuantity +=
-              product.quantity;
+              product.quantity / product.pack;
             manufacturerSummary[product.mfcName].totalAmount += product.amount;
           });
         });
@@ -452,6 +527,50 @@ router.get("/purchase", async (req, res) => {
             uniqueProducts: mfr.uniqueProducts.size,
           })
         );
+        break;
+
+      case "group-wise":
+        const groupPurchaseSummary = {};
+        // Similar to sales, iterate over 'purchases' and lookup inventory groups
+        for (const purchase of purchases) {
+          for (const productItem of purchase.products) {
+            if (productItem.inventoryId) {
+              // Assuming productItem.inventoryId exists
+              const inventoryItem = await Inventory.findById(
+                productItem.inventoryId
+              ).lean();
+              if (
+                inventoryItem &&
+                inventoryItem.group &&
+                inventoryItem.group.length > 0
+              ) {
+                inventoryItem.group.forEach((groupName) => {
+                  if (!groupPurchaseSummary[groupName]) {
+                    groupPurchaseSummary[groupName] = {
+                      groupName: groupName,
+                      totalQuantity: 0,
+                      totalAmount: 0,
+                      uniqueProducts: new Set(),
+                    };
+                  }
+                  groupPurchaseSummary[groupName].totalQuantity +=
+                    productItem.quantity;
+                  groupPurchaseSummary[groupName].totalAmount +=
+                    productItem.amount; // Assuming productItem.amount is taxable value
+                  groupPurchaseSummary[groupName].uniqueProducts.add(
+                    productItem.productName
+                  );
+                });
+              }
+            }
+          }
+        }
+        response.groupSummary = Object.values(groupPurchaseSummary)
+          .map((summary) => ({
+            ...summary,
+            uniqueProducts: summary.uniqueProducts.size,
+          }))
+          .sort((a, b) => a.groupName.localeCompare(b.groupName));
         break;
 
       case "product-wise":
@@ -479,7 +598,8 @@ router.get("/purchase", async (req, res) => {
                 totalAmount: 0,
               };
             }
-            productSummary[key].quantityPurchased += product.quantity;
+            productSummary[key].quantityPurchased +=
+              product.quantity / product.pack;
             productSummary[key].totalAmount += product.amount;
 
             // Store individual purchases
@@ -490,7 +610,7 @@ router.get("/purchase", async (req, res) => {
               invoiceNumber: purchase.invoiceNumber,
               invoiceDate: purchase.invoiceDate,
               distributorName: purchase.distributorName,
-              quantity: product.quantity,
+              quantity: product.quantity / product.pack,
               mfcName: product.mfcName,
               batchNumber: product.batchNumber,
               productName: product.productName,
@@ -510,8 +630,23 @@ router.get("/purchase", async (req, res) => {
 
     // Calculate summary
     purchases.forEach((purchase) => {
-      response.summary.totalPurchases += purchase.billSummary.grandTotal;
-      response.summary.totalGST += purchase.billSummary.gstAmount;
+      if (purchase.products && Array.isArray(purchase.products)) {
+        purchase.products.forEach((p) => {
+          // p for product
+          if (p && typeof p.amount === "number") {
+            const taxableAmount = p.amount - (p.amount * p.gstPer) / 100;
+            let gstAmountForItem = 0;
+
+            if (typeof p.gstPer === "number" && p.gstPer > 0) {
+              gstAmountForItem = (taxableAmount * p.gstPer) / 100;
+            }
+
+            response.summary.totalGST += gstAmountForItem;
+            response.summary.totalPurchases += taxableAmount;
+            response.summary.totalQuantity += p.quantity / p.pack;
+          }
+        });
+      }
     });
 
     res.json(response);
@@ -566,7 +701,9 @@ router.get("/inventory", async (req, res) => {
           { $sort: { productName: 1, batchNumber: 1 } },
         ];
 
-        const stockStatus = await InventoryBatch.pharmacyAwareAggregate(stockStatusPipeline);
+        const stockStatus = await InventoryBatch.pharmacyAwareAggregate(
+          stockStatusPipeline
+        );
         response.items = stockStatus;
         break;
 
@@ -599,7 +736,9 @@ router.get("/inventory", async (req, res) => {
           { $sort: { currentStock: 1 } },
         ];
 
-        const lowStockItems = await InventoryBatch.pharmacyAwareAggregate(lowStockPipeline);
+        const lowStockItems = await InventoryBatch.pharmacyAwareAggregate(
+          lowStockPipeline
+        );
         response.lowStockItems = lowStockItems;
         break;
 
@@ -653,6 +792,7 @@ router.get("/inventory", async (req, res) => {
               batchNumber: 1,
               quantity: 1,
               expiry: 1,
+              pack: 1,
               mrp: 1,
               expiryDate: 1,
             },
@@ -666,8 +806,14 @@ router.get("/inventory", async (req, res) => {
           },
         ];
 
-        const expiryAlerts = await InventoryBatch.pharmacyAwareAggregate(expiryPipeline);
-        response.expiryAlerts = expiryAlerts;
+        const expiryAlerts = await InventoryBatch.pharmacyAwareAggregate(
+          expiryPipeline
+        );
+        const processedExpiryAlerts = expiryAlerts.map((item) => ({
+          ...item,
+          quantity: item.quantity / item.pack,
+        }));
+        response.expiryAlerts = processedExpiryAlerts;
         break;
     }
 

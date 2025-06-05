@@ -56,6 +56,91 @@ export const createPurchaseBill = createLoadingAsyncThunk(
   { useGlobalLoader: true }
 );
 
+// Save purchase draft
+export const savePurchaseDraft = createLoadingAsyncThunk(
+  "purchaseBill/savePurchaseDraft",
+  async (draftData, { dispatch }) => {
+    const response = await fetch(`${Backend_URL}/api/purchase/draft`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(draftData),
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to save purchase draft");
+    }
+    const result = await response.json();
+    // Optionally, dispatch actions to update other slices if needed
+    // await dispatch(setDistributorStatusIdle()); // Example
+    return result; // This should return the saved draft with an _id
+  },
+  { useGlobalLoader: true } // Consider if global loader is desired here
+);
+
+// Upload invoice image
+export const uploadInvoiceImage = createLoadingAsyncThunk(
+  "purchaseBill/uploadInvoiceImage",
+  async ({ invoiceId, imageBase64 }, { dispatch }) => {
+    const response = await fetch(
+      `${Backend_URL}/api/purchase/invoice/${invoiceId}/image`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ invoiceImage: imageBase64 }),
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to upload invoice image");
+    }
+    const result = await response.json();
+    // Dispatch an action to update the specific purchase bill in the state if needed
+    // Or simply refetch the bill details
+    return result; // This should return the updated invoice details
+  },
+  { useGlobalLoader: true } // Consider if global loader is desired here
+);
+
+// Preprocess invoice image using LLM
+export const preprocessImageForLLM = createLoadingAsyncThunk(
+  "purchaseBill/preprocessImageForLLM",
+  async ({ base64Image, mimeType }, { dispatch }) => {
+    const response = await fetch(
+      `${Backend_URL}/api/purchase/llm/preprocessImage`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          imageBase64: base64Image,
+          mimeType,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(
+        errorData.message || "Failed to send image for LLM preprocessing"
+      );
+    }
+    const result = await response.json();
+    // Optionally, handle the result from the preprocessing endpoint
+    return result;
+  },
+  { useGlobalLoader: false }
+);
+
 // Fetch all purchase bills
 export const fetchPurchaseBills = createLoadingAsyncThunk(
   "purchaseBill/fetchPurchaseBills",
@@ -121,14 +206,17 @@ export const deletePurchaseBill = createLoadingAsyncThunk(
 export const searchByInvoice = createLoadingAsyncThunk(
   "purchaseBill/searchByInvoice",
   async ({ distributorId, invoiceNumber }) => {
-    const response = await fetch(`${Backend_URL}/api/purchase/search-by-invoice`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ distributorId, invoiceNumber }),
-      credentials: "include",
-    });
+    const response = await fetch(
+      `${Backend_URL}/api/purchase/search-by-invoice`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ distributorId, invoiceNumber }),
+        credentials: "include",
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -148,8 +236,11 @@ const purchaseBillSlice = createSlice({
     searchStatus: "idle",
     searchByInvoiceStatus: "idle",
     deleteStatus: "idle",
+    saveDraftStatus: "idle",
+    uploadImageStatus: "idle",
     error: null,
     invoiceDetails: null,
+    preprocessLLMStatus: "idle",
   },
   reducers: {
     resetStatus: (state) => {
@@ -159,6 +250,8 @@ const purchaseBillSlice = createSlice({
       state.searchStatus = "idle";
       state.searchByInvoiceStatus = "idle";
       state.deleteStatus = "idle";
+      state.saveDraftStatus = "idle";
+      state.uploadImageStatus = "idle";
       state.error = null;
     },
   },
@@ -238,6 +331,54 @@ const purchaseBillSlice = createSlice({
       })
       .addCase(searchByInvoice.rejected, (state, action) => {
         state.searchByInvoiceStatus = "failed";
+        state.error = action.error.message;
+      })
+      .addCase(savePurchaseDraft.pending, (state) => {
+        state.saveDraftStatus = "loading";
+        state.error = null;
+      })
+      .addCase(savePurchaseDraft.fulfilled, (state, action) => {
+        state.saveDraftStatus = "succeeded";
+        const index = state.purchaseBills.findIndex(
+          (bill) => bill._id === action.payload._id
+        );
+        if (index !== -1) {
+          state.purchaseBills[index] = action.payload;
+        }
+        state.error = null;
+      })
+      .addCase(savePurchaseDraft.rejected, (state, action) => {
+        state.saveDraftStatus = "failed";
+        state.error = action.error.message;
+      })
+      .addCase(uploadInvoiceImage.pending, (state) => {
+        state.uploadImageStatus = "loading";
+        state.error = null;
+      })
+      .addCase(uploadInvoiceImage.fulfilled, (state, action) => {
+        state.uploadImageStatus = "succeeded";
+        const index = state.purchaseBills.findIndex(
+          (bill) => bill._id === action.payload._id
+        );
+        if (index !== -1) {
+          state.purchaseBills[index] = action.payload;
+        }
+        state.error = null;
+      })
+      .addCase(uploadInvoiceImage.rejected, (state, action) => {
+        state.uploadImageStatus = "failed";
+        state.error = action.error.message;
+      })
+      .addCase(preprocessImageForLLM.pending, (state) => {
+        state.preprocessLLMStatus = "loading";
+        state.error = null;
+      })
+      .addCase(preprocessImageForLLM.fulfilled, (state, action) => {
+        state.preprocessLLMStatus = "succeeded";
+        state.error = null;
+      })
+      .addCase(preprocessImageForLLM.rejected, (state, action) => {
+        state.preprocessLLMStatus = "failed";
         state.error = action.error.message;
       });
   },

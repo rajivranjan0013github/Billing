@@ -482,15 +482,13 @@ export default function SaleTable({
           </div>
           <div>
             <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-10">
-                ₹
-              </span>
+             
               <Input
                 ref={(el) => (inputRef.current["mrp"] = el)}
                 onChange={(e) => handleInputChange("mrp", e.target.value)}
                 value={newProduct.mrp || ""}
                 type="text"
-                className="h-8 w-full border-[1px] border-gray-300 pl-5"
+                className="h-8 w-full border-[1px] border-gray-300 text-right"
                 onKeyDown={(e) => handleInputKeyDown(e, "mrp")}
               />
             </div>
@@ -644,14 +642,12 @@ export default function SaleTable({
               </div>
               <div>
                 <div className="relative">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-10">
-                    ₹
-                  </span>
+                 
                   <Input
                     disabled={editMode}
-                    value={product?.mrp || ""}
+                    value={product?.mrp?.toFixed(2) || ""}
                     type="text"
-                    className="h-8 w-full border-[1px] border-gray-300 pl-5 rounded-sm"
+                    className="h-8 w-full border-[1px] border-gray-300 text-right rounded-sm"
                   />
                 </div>
               </div>
@@ -673,14 +669,12 @@ export default function SaleTable({
               </div>
               <div>
                 <div className="relative">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-10">
-                    ₹
-                  </span>
+                 
                   <Input
                     disabled={editMode}
-                    value={product?.saleRate || ""}
+                    value={Number(product?.saleRate||0)?.toFixed(2) || ""}
                     type="text"
-                    className="h-8 w-full border-[1px] border-gray-300 pl-5 rounded-sm"
+                    className="h-8 w-full border-[1px] border-gray-300 text-right rounded-sm"
                   />
                 </div>
               </div>

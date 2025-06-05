@@ -142,14 +142,17 @@ router.delete("/delete-batch/:batchId", async (req, res) => {
 
 router.get("/timeline/:inventoryId", async (req, res) => {
   const { inventoryId } = req.params;
-  const {  page = 1 } = req.query;
+  const { page = 1 } = req.query;
   const limit = 20;
   const skip = (page - 1) * limit;
   const queryValue = { inventoryId };
 
   try {
     const [timeline, total] = await Promise.all([
-      StockTimeline.find(queryValue).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      StockTimeline.find(queryValue)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
       StockTimeline.countDocuments(queryValue),
     ]);
 
@@ -195,6 +198,115 @@ router.get("/:inventoryId", verifyToken, async (req, res) => {
     res.status(200).json(item);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// Get all unique group names
+router.get("/groups/distinct", verifyToken, async (req, res) => {
+  try {
+    const distinctGroups = await Inventory.distinct("group");
+    res.status(200).json(distinctGroups);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Assign a group to multiple inventory items
+router.post("/groups/assign", verifyToken, async (req, res) => {
+  const { groupName, inventoryIds } = req.body;
+
+  if (
+    !groupName ||
+    !inventoryIds ||
+    !Array.isArray(inventoryIds) ||
+    inventoryIds.length === 0
+  ) {
+    return res.status(400).json({
+      message: "Group name and a list of inventory IDs are required.",
+    });
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const operations = inventoryIds.map((inventoryId) => ({
+      updateOne: {
+        filter: { _id: inventoryId },
+        update: { $addToSet: { group: groupName } }, // $addToSet adds only if value doesn't exist
+      },
+    }));
+
+    if (operations.length > 0) {
+      await Inventory.bulkWrite(operations, { session });
+    }
+
+    await session.commitTransaction();
+    res.status(200).json({
+      message: `Group '${groupName}' assigned successfully to specified items.`,
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    res.status(500).json({ message: error.message });
+  } finally {
+    session.endSession();
+  }
+});
+
+// Rename a group and update its membership
+router.post("/groups/update", verifyToken, async (req, res) => {
+  const {
+    oldGroupName,
+    newGroupName,
+    removeOldGroupIds,
+    addNewGroupIds,
+    renameGroupIds,
+  } = req.body;
+
+  if (!oldGroupName || !newGroupName) {
+    return res.status(400).json({
+      message:
+        "Old group name, new group name, and all three ID arrays are required.",
+    });
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // 1. Remove old group from specified items
+    if (removeOldGroupIds?.length > 0) {
+      await Inventory.updateMany(
+        { _id: { $in: removeOldGroupIds } },
+        { $pull: { group: oldGroupName } },
+        { session }
+      );
+    }
+    // 2. Add new group to specified items
+    if (addNewGroupIds?.length > 0) {
+      await Inventory.updateMany(
+        { _id: { $in: addNewGroupIds } },
+        { $addToSet: { group: newGroupName } },
+        { session }
+      );
+    }
+    // 3. Rename group for specified items
+    if (renameGroupIds?.length > 0) {
+      await Inventory.updateMany(
+        { _id: { $in: renameGroupIds } },
+        { $pull: { group: oldGroupName }, $addToSet: { group: newGroupName } },
+        { session }
+      );
+    }
+    await session.commitTransaction();
+    res.status(200).json({
+      message: `Group '${newGroupName}' updated successfully.`,
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    res.status(500).json({ message: error.message });
+  } finally {
+    session.endSession();
   }
 });
 

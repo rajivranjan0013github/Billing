@@ -3,6 +3,7 @@ import { verifyToken } from "../middleware/authMiddleware.js";
 import mongoose from "mongoose";
 import { InvoiceSchema } from "../models/InvoiceSchema.js";
 import { Inventory } from "../models/Inventory.js";
+import { llmProcessing } from "../llmprocessing.js";
 import { InventoryBatch } from "../models/InventoryBatch.js";
 import { StockTimeline } from "../models/StockTimeline.js";
 import { Distributor } from "../models/Distributor.js";
@@ -109,7 +110,7 @@ router.post("/", verifyToken, async (req, res) => {
     if (!mongoose.isValidObjectId(distributorId)) {
       throw Error("distributor Id is not valid");
     }
- 
+
     // Fetching distributor to update current balance of distributor
     const distributorDetails = await Distributor.findById(
       distributorId
@@ -223,9 +224,9 @@ router.post("/", verifyToken, async (req, res) => {
     // Process inventory updates
     for (const product of req.body.products) {
       const {
-        inventoryId,
+        inventoryId: providedInventoryId,
         batchNumber,
-        batchId,
+        batchId: providedBatchId,
         expiry,
         quantity,
         pack,
@@ -236,54 +237,122 @@ router.post("/", verifyToken, async (req, res) => {
         mrp,
         free,
         discount,
+        name,
+        mfcName,
       } = product;
 
-      const inventorySchema = await Inventory.findById(inventoryId).session(
-        session
-      );
+      let existingInventory;
+      let inventoryId;
 
-      if (!inventorySchema) {
-        throw new Error(`Inventory not found : ${inventoryId}`);
+      // Create new inventory if no ID provided or invalid
+      if (
+        !providedInventoryId ||
+        !mongoose.isValidObjectId(providedInventoryId)
+      ) {
+        // Create new inventory
+        existingInventory = new Inventory({
+          name: name || "Unknown Product",
+          mfcName: mfcName || "Unknown Manufacturer",
+          HSN: HSN || null,
+          quantity: 0,
+          mrp: mrp || 0,
+          purchaseRate: purchaseRate || 0,
+          gstPer: gstPer || 0,
+          saleRate: saleRate || 0,
+          pack: pack || 0,
+          batch: [],
+          purchases: [],
+          timeline: [],
+          createdBy: req.user._id,
+          createdByName: req.user.name,
+        });
+        await existingInventory.save({ session });
+        inventoryId = existingInventory._id;
+      } else {
+        // Try to find existing inventory
+        existingInventory = await Inventory.findById(
+          providedInventoryId
+        ).session(session);
+
+        if (!existingInventory) {
+          existingInventory = new Inventory({
+            _id: providedInventoryId,
+            name: name || "Unknown Product",
+            mfcName: mfcName || "Unknown Manufacturer",
+            HSN: HSN || null,
+            quantity: 0,
+            mrp: mrp || 0,
+            purchaseRate: purchaseRate || 0,
+            gstPer: gstPer || 0,
+            saleRate: saleRate || 0,
+            pack: pack || 0,
+            batch: [],
+            purchases: [],
+            timeline: [],
+            createdBy: req.user._id,
+            createdByName: req.user.name,
+          });
+          await existingInventory.save({ session });
+        }
+        inventoryId = providedInventoryId;
       }
 
-      const batch = await InventoryBatch.findById(batchId).session(session);
+      // Update the product's inventoryId in the invoice
+      const productToUpdateIndex = newInvoice.products.findIndex(
+        (p) =>
+          // Match by batch number and either no inventory ID or matching the provided one
+          p.batchNumber === batchNumber &&
+          (!p.inventoryId ||
+            (providedInventoryId &&
+              p.inventoryId.toString() === providedInventoryId.toString()))
+      );
+
+      if (productToUpdateIndex !== -1) {
+        newInvoice.products[productToUpdateIndex].inventoryId = inventoryId;
+      }
+
+      // Now handle batch
+      let batch = null;
+      if (providedBatchId && mongoose.isValidObjectId(providedBatchId)) {
+        batch = await InventoryBatch.findById(providedBatchId).session(session);
+      }
 
       if (batch) {
         Object.assign(batch, { expiry, pack, purchaseRate, gstPer, HSN });
-        batch.quantity += quantity + free;
+        batch.quantity += quantity + (free || 0);
         await batch.save({ session });
       } else {
-        // creating new batch
+        // Create new batch
         const newBatch = new InventoryBatch({
           inventoryId: inventoryId,
-          ...product,
+          batchNumber,
+          expiry,
+          pack,
+          purchaseRate,
           saleRate: mrp,
-          quantity: quantity + free,
+          gstPer,
+          mrp,
+          HSN,
+          quantity: quantity + (free || 0),
         });
 
         await newBatch.save({ session });
-        inventorySchema.batch.push(newBatch._id);
+        existingInventory.batch.push(newBatch._id);
 
         // Update the batchId in the invoice's products array
-        const productIndex = newInvoice.products.findIndex(
-          (p) =>
-            p.inventoryId.toString() === inventoryId.toString() &&
-            p.batchNumber === batchNumber
-        );
-        if (productIndex !== -1) {
-          newInvoice.products[productIndex].batchId = newBatch._id;
+        if (productToUpdateIndex !== -1) {
+          newInvoice.products[productToUpdateIndex].batchId = newBatch._id;
         }
       }
 
-      inventorySchema.quantity += quantity + free;
-      // Add invoice reference to inventory's purchases array
-      if (!inventorySchema.purchases.includes(newInvoice._id)) {
-        inventorySchema.purchases.push(newInvoice._id);
+      existingInventory.quantity += quantity + (free || 0);
+      if (!existingInventory.purchases.includes(newInvoice._id)) {
+        existingInventory.purchases.push(newInvoice._id);
       }
 
       // Update HSN if provided
       if (HSN) {
-        inventorySchema.HSN = HSN;
+        existingInventory.HSN = HSN;
       }
 
       // Record timeline
@@ -292,8 +361,8 @@ router.post("/", verifyToken, async (req, res) => {
         invoiceId: newInvoice._id,
         type: "PURCHASE",
         invoiceNumber: details.invoiceNumber,
-        credit: quantity + free,
-        balance: inventorySchema.quantity,
+        credit: quantity + (free || 0),
+        balance: existingInventory.quantity,
         batchNumber,
         pack,
         createdBy: req.user._id,
@@ -304,16 +373,11 @@ router.post("/", verifyToken, async (req, res) => {
       await timeline.save({ session });
 
       // Store timeline reference in product and inventory
-      const productIndex = newInvoice.products.findIndex(
-        (p) =>
-          p.inventoryId.toString() === inventoryId.toString() &&
-          p.batchNumber === batchNumber
-      );
-      if (productIndex !== -1) {
-        newInvoice.products[productIndex].timeline = timeline._id;
+      if (productToUpdateIndex !== -1) {
+        newInvoice.products[productToUpdateIndex].timeline = timeline._id;
       }
-      inventorySchema.timeline.push(timeline._id);
-      await inventorySchema.save({ session });
+      existingInventory.timeline.push(timeline._id);
+      await existingInventory.save({ session });
     }
 
     // Save the invoice
@@ -788,7 +852,7 @@ router.post("/return", verifyToken, async (req, res) => {
     // Process inventory updates for returned items
     for (const product of products) {
       const {
-        inventoryId,
+        inventoryId: providedInventoryId,
         batchId,
         quantity,
         pack,
@@ -801,12 +865,12 @@ router.post("/return", verifyToken, async (req, res) => {
       } = product;
 
       // Find inventory and batch
-      const inventorySchema = await Inventory.findById(inventoryId).session(
-        session
-      );
+      const inventorySchema = await Inventory.findById(
+        providedInventoryId
+      ).session(session);
 
       if (!inventorySchema) {
-        throw new Error(`Inventory not found: ${inventoryId}`);
+        throw new Error(`Inventory not found: ${providedInventoryId}`);
       }
 
       const batch = await InventoryBatch.findById(batchId).session(session);
@@ -824,7 +888,7 @@ router.post("/return", verifyToken, async (req, res) => {
 
       // Record timeline
       const timeline = new StockTimeline({
-        inventoryId,
+        inventoryId: providedInventoryId,
         type: "PURCHASE_RETURN",
         invoiceNumber: purchaseReturn.debitNoteNumber,
         debit: quantity,
@@ -1058,8 +1122,8 @@ router.delete("/:id", verifyToken, async (req, res) => {
         _id: { $in: invoice.payments },
       }).session(session);
 
-       // Update distributor balance
-       const distributor = await Distributor.findById(
+      // Update distributor balance
+      const distributor = await Distributor.findById(
         invoice.distributorId
       ).session(session);
 
@@ -1087,7 +1151,6 @@ router.delete("/:id", verifyToken, async (req, res) => {
         session
       );
 
-     
       if (distributor) {
         const previousBalance = distributor.currentBalance || 0;
         const dueAmount =
@@ -1171,7 +1234,7 @@ router.get("/inventory/:inventoryId", verifyToken, async (req, res) => {
     const { inventoryId } = req.params;
     const { page = 1, limit = 10 } = req.query;
     const skip = (page - 1) * limit;
-    
+
     // Validate inventory ID
     if (!mongoose.isValidObjectId(inventoryId)) {
       throw new Error("Invalid inventory ID");
@@ -1211,12 +1274,15 @@ router.get("/inventory/:inventoryId", verifyToken, async (req, res) => {
     const purchaseHistory = inventory.purchases
       .map((purchase) => {
         // const product = purchase.products[0]; // Since we filtered for specific inventory
-        const product = purchase.products.find(p => p.inventoryId && p.inventoryId.toString() === inventoryId.toString());
+        const product = purchase.products.find(
+          (p) =>
+            p.inventoryId && p.inventoryId.toString() === inventoryId.toString()
+        );
         if (!product) return null;
 
         // Calculate the total quantity including free items
         const totalQuantity = (product.quantity || 0) + (product.free || 0);
-        
+
         // Calculate net purchase rate (after GST and discount)
         const baseRate = product.purchaseRate || 0;
         const discount = product.discount || 0;
@@ -1257,6 +1323,41 @@ router.get("/inventory/:inventoryId", verifyToken, async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: "Error fetching purchase history",
+      error: error.message,
+    });
+  }
+});
+
+// LLM Image Preprocessing Route
+router.post("/llm/preprocessImage", verifyToken, async (req, res) => {
+  try {
+  
+
+    const { imageBase64, mimeType } = req.body;
+
+    if (!imageBase64 || !mimeType) {
+      return res
+        .status(400)
+        .json({ message: "Image data and MIME type are required." });
+    }
+
+    if (!mimeType.startsWith("image/")) {
+      return res
+        .status(400)
+        .json({ message: "Invalid MIME type. Only images are allowed." });
+    }
+
+   
+    const extractedData = await llmProcessing(imageBase64, mimeType);
+
+    res.status(200).json({
+      message: "Image processed successfully",
+      extractedData: extractedData,
+    });
+  } catch (error) {
+    console.error("Error in LLM image preprocessing:", error);
+    res.status(500).json({
+      message: "Error processing image for LLM",
       error: error.message,
     });
   }

@@ -44,6 +44,7 @@ export default function CreateDistributorDlg({
   onOpenChange,
   onSuccess,
   distributorToEdit,
+  initialData,
 }) {
   const inputRef = useRef([]);
   const dispatch = useDispatch();
@@ -100,10 +101,15 @@ export default function CreateDistributorDlg({
           ifsc: distributorToEdit.bankDetails?.ifsc || "",
         },
       });
+    } else if (initialData) {
+      setFormData({
+        ...INITIAL_FORM_DATA,
+        ...initialData,
+      });
     } else {
       setFormData(INITIAL_FORM_DATA);
     }
-  }, [distributorToEdit]);
+  }, [distributorToEdit, initialData]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

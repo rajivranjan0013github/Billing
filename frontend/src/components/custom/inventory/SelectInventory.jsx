@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../ui/dialog";
+import { Badge } from "../../ui/badge";
 import { Input } from "../../ui/input";
 import {
   Table,
@@ -160,7 +161,7 @@ export default function ProductSelector({
               <Input
                 autoFocus
                 placeholder="Search products..."
-                className="pl-8 h-8 text-sm border rounded-md focus:ring-2 focus:ring-blue-500"
+                className="pl-8 h-8 text-sm border rounded-md focus:ring-2 focus:ring-blue-500 font-semibold"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 ref={searchRef}
@@ -183,19 +184,19 @@ export default function ProductSelector({
             <Table>
               <TableHeader className="sticky top-0  z-10">
                 <TableRow>
-                  <TableHead className="w-[30%] text-left text-sm font-semibold">
+                  <TableHead className="w-[30%] text-left text-sm font-semibold h-8">
                     PRODUCT NAME
                   </TableHead>
-                  <TableHead className="w-[30%] text-left text-sm font-semibold">
+                  <TableHead className="w-[30%] text-left text-sm font-semibold h-8">
                     COMPANY
                   </TableHead>
-                  <TableHead className="w-[10%] text-sm font-semibold text-center">
+                  <TableHead className="w-[10%] text-sm font-semibold text-center h-8">
                     PACK
                   </TableHead>
-                  <TableHead className="w-[20%] text-sm font-semibold text-center">
+                  <TableHead className="w-[20%] text-sm font-semibold text-center h-8">
                     STATUS
                   </TableHead>
-                  <TableHead className="w-[10%] text-sm font-semibold text-center">
+                  <TableHead className="w-[10%] text-sm font-semibold text-center h-8">
                     LOCATION
                   </TableHead>
                 </TableRow>
@@ -228,15 +229,13 @@ export default function ProductSelector({
                           {product.pack}
                         </TableCell>
                         <TableCell className="w-[20%] py-3 text-center">
-                          <span
-                            className={`${
-                              product.quantity > 0
-                                ? "bg-green-500"
-                                : "bg-red-500"
-                            } text-white px-2 py-1 text-xs`}
+                          <Badge
+                            variant={
+                              product.quantity > 0 ? "success" : "destructive"
+                            }
                           >
                             {product.quantity > 0 ? "In Stock" : "Out of Stock"}
-                          </span>
+                          </Badge>
                         </TableCell>
                         <TableCell className="w-[10%] py-3 text-center">
                           {product?.location}

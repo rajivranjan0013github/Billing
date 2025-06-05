@@ -192,6 +192,10 @@ export default function PurchaseTable({
         }
       }
     }
+    else{
+      toast({ variant: "destructive", title: "Please add expiry" });
+      return;
+    }
 
     let tempData = { ...newProduct };
     if (!tempData.batchNumber) tempData.batchNumber = batchNumber;
@@ -406,10 +410,10 @@ export default function PurchaseTable({
           <p className="text-xs font-semibold">FREE</p>
         </div>
         <div>
-          <p className="text-xs font-semibold">MRP</p>
+          <p className="text-xs font-semibold">MRP(₹)</p>
         </div>
         <div>
-          <p className="text-xs font-semibold">RATE</p>
+          <p className="text-xs font-semibold">RATE(₹)</p>
         </div>
         <div>
           <p className="text-xs font-semibold">Scheme</p>
@@ -525,24 +529,18 @@ export default function PurchaseTable({
           </div>
           <div>
             <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-10">
-                ₹
-              </span>
               <Input
                 ref={(el) => (inputRef.current["mrp"] = el)}
                 onKeyDown={(e) => handleTableKeyDown(e, "mrp")}
                 onChange={(e) => handleInputChange("mrp", e.target.value)}
                 value={newProduct.mrp || ""}
                 type="text"
-                className="h-8 w-full border-[1px] border-gray-300 pl-5 rounded-sm"
+                className="h-8 w-full border-[1px] border-gray-300 px-1 rounded-sm"
               />
             </div>
           </div>
           <div>
             <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-10">
-                ₹
-              </span>
               <Input
                 ref={(el) => (inputRef.current["purchaseRate"] = el)}
                 onKeyDown={(e) => handleTableKeyDown(e, "purchaseRate")}
@@ -551,7 +549,7 @@ export default function PurchaseTable({
                 }
                 value={newProduct.purchaseRate || ""}
                 type="text"
-                className="h-8 w-full border-[1px] border-gray-300 pl-5 rounded-sm"
+                className="h-8 w-full border-[1px] border-gray-300 px-1 rounded-sm"
               />
             </div>
           </div>
@@ -749,9 +747,6 @@ export default function PurchaseTable({
               </div>
               <div>
                 <div className="relative">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-10">
-                    ₹
-                  </span>
                   <Input
                     disabled={!editAll && editingIndex !== index}
                     onChange={(e) =>
@@ -761,17 +756,15 @@ export default function PurchaseTable({
                         e.target.value
                       )
                     }
-                    value={product?.mrp || ""}
+                    value={Number(product?.mrp || 0)?.toFixed(2) || ""}
                     type="text"
-                    className="h-8 w-full border-[1px] border-gray-300 pl-7 rounded-sm"
+                    className="h-8 w-full border-[1px] border-gray-300  rounded-sm text-right"
                   />
                 </div>
               </div>
               <div>
                 <div className="relative">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 z-10">
-                    ₹
-                  </span>
+                  
                   <Input
                     disabled={!editAll && editingIndex !== index}
                     onChange={(e) =>
@@ -781,9 +774,9 @@ export default function PurchaseTable({
                         e.target.value
                       )
                     }
-                    value={product?.purchaseRate || ""}
+                    value={Number(product?.purchaseRate || 0)?.toFixed(2) || ""}
                     type="text"
-                    className="h-8 w-full border-[1px] border-gray-300 pl-5 rounded-sm"
+                    className="h-8 w-full border-[1px] border-gray-300  rounded-sm text-right"
                   />
                 </div>
               </div>
@@ -870,9 +863,9 @@ export default function PurchaseTable({
               <div>
                 <Input
                   disabled
-                  value={product?.amount || ""}
+                  value={Number(product?.amount || 0)?.toFixed(2) || ""}
                   type="text"
-                  className="h-8 w-full border-[1px] border-gray-300 px-1 rounded-sm"
+                  className="h-8 w-full border-[1px] border-gray-300 px-1 text-right rounded-sm"
                 />
               </div>
               <div className="flex gap-2 items-center justify-center">

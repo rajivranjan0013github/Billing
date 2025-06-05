@@ -314,11 +314,11 @@ const Customers = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>CUSTOMER NAME</TableHead>
-                  <TableHead>MOBILE NUMBER</TableHead>
-                  <TableHead>ADDRESS</TableHead>
-                  <TableHead>BALANCE</TableHead>
-                  <TableHead className="text-right">ACTIONS</TableHead>
+                  <TableHead className="h-8">CUSTOMER NAME</TableHead>
+                  <TableHead className="h-8">MOBILE NUMBER </TableHead>
+                  <TableHead className="h-8">ADDRESS</TableHead>
+                  <TableHead className="text-right h-8">BALANCE (₹)</TableHead>
+                  <TableHead className="text-right h-8">ACTIONS</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody className='border'>
@@ -328,54 +328,56 @@ const Customers = () => {
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => navigate(`/customers/${customer._id}`)}
                   >
-                    <TableCell className="font-medium capitalize">{customer.name}</TableCell>
-                    <TableCell>
+                    <TableCell className="font-medium capitalize h-8">{customer.name}</TableCell>
+                    <TableCell className="h-8">
                       <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4" />
+                      
                         {customer.mob}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="h-8"  >
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
+                       
                         {customer.address}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-right h-8">
                       <span
-                        className={
+                        className={`${
                           customer.currentBalance > 0
                             ? "text-green-600"
                             : customer.currentBalance < 0
                             ? "text-red-600"
-                            : ""
-                        }
+                            : "" 
+                        } font-semibold text-right`}
                       >
                         {customer.currentBalance > 0 ? "↓ " : customer.currentBalance < 0 ? "↑ " : ""}
-                        {formatCurrency(Math.abs(customer.currentBalance || 0))}
+                        {(Math.abs(customer.currentBalance || 0))}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right h-8">
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-6 w-6"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleEdit(customer);
                           }}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-3 w-3" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-6 w-6"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDelete(customer._id);
                           }}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </TableCell>

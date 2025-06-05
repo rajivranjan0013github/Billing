@@ -98,8 +98,10 @@ export default function SelectManufacturer({
       // Handle selection
       handleSelect(selectedId);
       onOpenChange(false);
+      setSearch("");
     } else if (e.key === "Escape") {
       onOpenChange(false);
+      setSearch("");
     }
   };
 
@@ -107,6 +109,7 @@ export default function SelectManufacturer({
   const handleSelect = (manufacturer) => {
     onSelect?.(manufacturer);
     onOpenChange(false);
+    setSearch("");
   };
 
   return (
