@@ -24,9 +24,7 @@ const ReportSummary = ({ summary, activeTab }) => {
       <Card className="shadow-sm hover:shadow-md transition-shadow duration-200 flex-grow w-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 px-3 pt-3 pb-1">
           <CardTitle className="text-xs font-medium text-gray-600">
-            {activeTab === "sales"
-              ? " Sales Value"
-              : " Purchase Amount"}
+            {activeTab === "sales" ? " Sales Value" : " Purchase Amount"}
           </CardTitle>
         </CardHeader>
         <CardContent className="px-3 pb-3 pt-1">
@@ -40,7 +38,7 @@ const ReportSummary = ({ summary, activeTab }) => {
       <Card className="shadow-sm hover:shadow-md transition-shadow duration-200 flex-grow w-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 px-3 pt-3 pb-1">
           <CardTitle className="text-xs font-medium text-gray-600">
-             GST
+            GST
           </CardTitle>
         </CardHeader>
         <CardContent className="px-3 pb-3 pt-1">
@@ -64,9 +62,7 @@ const ReportSummary = ({ summary, activeTab }) => {
       <Card className="shadow-sm hover:shadow-md transition-shadow duration-200 flex-grow w-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 px-3 pt-3 pb-1">
           <CardTitle className="text-xs font-medium text-gray-600">
-            {activeTab === "sales"
-              ? "Quantity Sold"
-              : "Quantity Purchased"}
+            {activeTab === "sales" ? "Quantity Sold" : "Quantity Purchased"}
           </CardTitle>
         </CardHeader>
         <CardContent className="px-3 pb-3 pt-1">
@@ -77,7 +73,7 @@ const ReportSummary = ({ summary, activeTab }) => {
           </div>
         </CardContent>
       </Card>
-   
+
       {activeTab === "sales" && summary.averageBillValue && (
         <Card className="shadow-sm hover:shadow-md transition-shadow duration-200 flex-grow w-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 px-3 pt-3 pb-1">

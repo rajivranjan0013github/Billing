@@ -12,6 +12,7 @@ import { deletePayment } from "../redux/slices/paymentSlice"
 import { useToast } from "../hooks/use-toast"
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../components/ui/alert-dialog"
 import { formatCurrency } from "../utils/Helper"
+import { format } from "date-fns"
 
 
 export default function PaymentDetails() {
@@ -141,7 +142,7 @@ export default function PaymentDetails() {
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">PAYMENT DATE</p>
               <p className="font-medium">
-                {new Date(paymentDetails.paymentDate).toLocaleDateString()}
+                {format(new Date(paymentDetails.paymentDate), "dd-MM-yyyy")} {format(new Date(paymentDetails.createdAt), "hh:mm a")}
               </p>
             </div>
             <div className="space-y-1">
@@ -169,7 +170,7 @@ export default function PaymentDetails() {
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">CHEQUE DATE</p>
                   <p className="font-medium">
-                    {paymentDetails.chequeDate && new Date(paymentDetails.chequeDate).toLocaleDateString()}
+                    {paymentDetails.chequeDate && format(new Date(paymentDetails.chequeDate), "dd-MM-yyyy")} {format(new Date(paymentDetails.chequeDate), "hh:mm a")}
                   </p>
                 </div>
                 <div className="space-y-1">

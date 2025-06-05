@@ -631,7 +631,7 @@ const Payments = () => {
           <TableHeader>
             <TableRow>
               <TableHead className="pl-3">S.NO</TableHead>
-              <TableHead className="w-[150px]">Date</TableHead>
+              <TableHead className="w-[150px]">Date & Time</TableHead>
               <TableHead>Payment Number</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Payment Type</TableHead>
@@ -648,12 +648,8 @@ const Payments = () => {
                 onClick={() => navigate(`/payment/${payment._id}`)}
               >
                 <TableCell className="pl-5">{index + 1}</TableCell>
-                <TableCell>
-                  {new Date(payment.paymentDate).toLocaleDateString("en-IN", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })}
+                <TableCell className='uppercase'>
+                  {format(new Date(payment.paymentDate), "MM MMM")} {format(new Date(payment.paymentDate), "hh:mm a")}
                 </TableCell>
                 <TableCell>{payment?.paymentNumber}</TableCell>
                 <TableCell className="font-semibold">

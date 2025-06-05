@@ -132,14 +132,14 @@ const SalesInvoicePrint = () => {
               <Printer className="w-4 h-4" />
               Print Now (Ctrl + P)
             </Button>
-            <Button variant="outline" className="gap-2" size="sm">
+            {/* <Button variant="outline" className="gap-2" size="sm">
               <Send className="w-4 h-4" />
               Send Invoice (F2)
             </Button>
             <Button variant="outline" className="gap-2" size="sm">
               <FileDown className="w-4 h-4" />
               Export as PDF (F4)
-            </Button>
+            </Button> */}
           </div>
         </div>
       </div>
@@ -206,7 +206,8 @@ const SalesInvoicePrint = () => {
               <div className="bg-gray-200 px-3 py-1 border-b-[1px] border-gray-800 flex justify-between gap-8 text-sm">
                 <span className="font-medium">{invoiceData.invoiceNumber}</span>
                 <span className="font-medium">
-                  {format(new Date(invoiceData.invoiceDate), "dd-MM-yyyy")}
+                  {format(new Date(invoiceData.invoiceDate), "dd-MM-yyyy")}{" "}
+                  {format(new Date(invoiceData.createdAt), "hh:mm a")}
                 </span>
               </div>
               <div className="text-xs font-medium p-2 space-y-1">
@@ -324,7 +325,7 @@ const SalesInvoicePrint = () => {
                   </td>
                 </tr>
               ))}
-              {[...Array(Math.max(0, 10 - invoiceData.products.length))].map(
+              {[...Array(Math.max(0, 18 - invoiceData.products.length))].map(
                 (_, index) => (
                   <tr key={`empty-${index}`}>
                     <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>

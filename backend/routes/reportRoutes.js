@@ -266,8 +266,7 @@ router.get("/sales", async (req, res) => {
               taxableAmount: product.amount * (1 - product.gstPer / 100),
               rate: product.saleRate,
               amount: product.amount,
-              gst: product.gstPer
-            
+              gst: product.gstPer,
             });
           });
         });
@@ -633,7 +632,6 @@ router.get("/purchase", async (req, res) => {
     purchases.forEach((purchase) => {
       if (purchase.products && Array.isArray(purchase.products)) {
         purchase.products.forEach((p) => {
-         
           // p for product
           if (p && typeof p.amount === "number") {
             const taxableAmount = p.amount - (p.amount * p.gstPer) / 100;
@@ -642,9 +640,9 @@ router.get("/purchase", async (req, res) => {
             if (typeof p.gstPer === "number" && p.gstPer > 0) {
               gstAmountForItem = (taxableAmount * p.gstPer) / 100;
             }
-          
+
             response.summary.totalGST += gstAmountForItem;
-            response.summary.totalPurchases += taxableAmount ;
+            response.summary.totalPurchases += taxableAmount;
             response.summary.totalQuantity += p.quantity / p.pack;
           }
         });

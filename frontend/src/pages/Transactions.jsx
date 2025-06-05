@@ -5,6 +5,7 @@ import { fetchAccountTransactions } from '../redux/slices/accountSlice';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { FileX, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "../components/ui/button";
+import { format } from "date-fns";
 
 const Transactions = () => {
   const dispatch = useDispatch();
@@ -96,7 +97,7 @@ const Transactions = () => {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="font-medium">Date</TableHead>
+                  <TableHead className="font-medium">Date & Time</TableHead>
                   <TableHead className="font-medium">Name</TableHead>
                   <TableHead className="font-medium">Payment Number</TableHead>
                   <TableHead className="font-medium ">Credit</TableHead>
@@ -109,11 +110,7 @@ const Transactions = () => {
                 {transactions.map((transaction) => (
                   <TableRow key={transaction._id || `${transaction.paymentDate}-${transaction.amount}`} className='hover:bg-muted/50' onClick={() => navigate(`/payment/${transaction._id}`)}>
                     <TableCell className="font-semibold">
-                      {transaction.paymentDate ? new Date(transaction.paymentDate).toLocaleDateString('en-IN', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric'
-                      }) : 'N/A'}
+                      { format(new Date(transaction.paymentDate), "dd-MM-yyyy")} {format(new Date(transaction.createdAt), "hh:mm a")}
                     </TableCell>
                     <TableCell className="font-semibold">
                       {transaction.customerName || transaction.distributorName || 'N/A'}

@@ -17,6 +17,7 @@ import { useNavigate } from "react-router-dom";
 import PaymentDialog from "../components/custom/payment/PaymentDialog";
 import AmountSettingsDialog from "../components/custom/purchase/AmountSettingDialog";
 import { formatCurrency } from "../utils/Helper";
+import { Switch } from "../components/ui/switch";
 import SelectDistributorDlg from "../components/custom/distributor/SelectDistributorDlg";
 const inputKeys = [
   "distributorName",
@@ -170,6 +171,7 @@ export default function PurchaseForm() {
     per: "",
     value: "",
   });
+  const [showDiscount, setShowDiscount] = useState(false);
   const [llmData, setLlmData] = useState(null);
   const [productMappingDialogOpen, setProductMappingDialogOpen] =
     useState(false);
@@ -365,7 +367,7 @@ export default function PurchaseForm() {
             : null,
       };
 
-       await dispatch(createPurchaseBill(purchaseData)).unwrap();
+      await dispatch(createPurchaseBill(purchaseData)).unwrap();
 
       toast({
         title: "Purchase invoice saved successfully",
@@ -746,7 +748,11 @@ export default function PurchaseForm() {
       </div>
 
       <div className="grid grid-cols-4 gap-4">
-        <div className="p-4 border rounded-lg">
+        <div
+          className={`p-4 border rounded-lg ${
+            showDiscount ? "block" : "hidden"
+          }`}
+        >
           <div className="flex justify-between">
             <h3 className="mb-4 text-sm font-medium">OVERALL BILL DISCOUNT</h3>
             <Button
@@ -788,33 +794,53 @@ export default function PurchaseForm() {
           </div>
         </div>
         {/* Image Upload Section */}
-        <div className="p-4 border rounded-lg">
-          <h3 className="mb-4 text-sm font-medium">UPLOAD FOR LLM ANALYSIS</h3>
-          <div className="relative">
-            <Input
+        <div className="p-4 border rounded-lg group hover:shadow-lg transition-shadow duration-200 cursor-pointer">
+          <h3 className="mb-4 text-sm font-medium text-gray-700 group-hover:text-gray-900">
+            Uplaod Invoice Image for AI data filling
+          </h3>
+          <div className="relative mt-2">
+            <input
               type="file"
               accept="image/*"
               onChange={handleImageUpload}
-              className="mb-2"
+              className="sr-only" // Screen-reader only, visually hidden
+              id="imageUploadInput"
               disabled={imageProcessing}
             />
+            <Label
+              htmlFor="imageUploadInput"
+              className={`w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 ${
+                imageProcessing
+                  ? "cursor-not-allowed opacity-50"
+                  : "cursor-pointer"
+              }`}
+            >
+              {imageProcessing ? (
+                <>
+                  <span className="animate-spin mr-2 text-violet-700">⏳</span>
+                  Processing...
+                </>
+              ) : (
+                "Upload Invoice Image"
+              )}
+            </Label>
             {imageProcessing && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/50">
-                <div className="animate-spin text-lg">⏳</div>
+              <div className="absolute inset-0 flex items-center justify-center bg-white/70 rounded-md">
+                {/* Spinner is now part of the button text when processing */}
               </div>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="mt-2 text-xs text-gray-500 group-hover:text-gray-600">
             Upload an image of the invoice for automated data extraction
             (optional).
           </p>
         </div>
-        <div className="flex items-center justify-center p-4 border rounded-lg">
+        {/* <div className="flex items-center justify-center p-4 border rounded-lg">
           <div className="text-center">
             <div className="mb-1">Click on Save to Add Payment</div>
             <div className="text-sm text-muted-foreground">Use 'Alt+S' Key</div>
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* footer of purchase */}
@@ -831,8 +857,16 @@ export default function PurchaseForm() {
           <div>Subtotal</div>
           <div className="text-lg">{formatCurrency(amountData?.subtotal)}</div>
         </div>
-        <div className="py-2">
-          <div className="">(-) Discount</div>
+        <div className="py-2 flex flex-col items-center">
+          <div className="flex items-center gap-2">
+            <span>(-) Discount</span>
+            <Switch
+              checked={showDiscount}
+              onCheckedChange={setShowDiscount}
+              size="sm"
+              className="scale-75"
+            />
+          </div>
           <div className="text-lg">
             {formatCurrency(amountData?.discountAmount)}
           </div>

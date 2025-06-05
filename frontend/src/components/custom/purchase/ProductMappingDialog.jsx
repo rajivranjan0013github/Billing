@@ -8,6 +8,7 @@ import {
   DialogDescription,
   DialogClose,
 } from "../../ui/dialog";
+import { useToast } from "../../../hooks/use-toast";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { ScrollArea } from "../../ui/scroll-area";
@@ -26,13 +27,14 @@ const ProductMappingDialog = ({
   isLoadingInventory,
   distributorName,
   onDistributorSelect,
+  selectedDistributor,
 }) => {
   const [mappedProducts, setMappedProducts] = useState([]);
   const [searchQueries, setSearchQueries] = useState({});
   const [distributorSearchQuery, setDistributorSearchQuery] = useState("");
   const [createDistributorOpen, setCreateDistributorOpen] = useState(false);
   const { distributors } = useSelector((state) => state.distributor);
-
+  const { toast } = useToast();
   // Configure Fuse instance for products
   const fuse = useMemo(() => {
     const fuseOptions = {
@@ -185,6 +187,15 @@ const ProductMappingDialog = ({
   };
 
   const handleConfirm = () => {
+    // Check if a distributor is selected
+    if (!selectedDistributor || !selectedDistributor._id) {
+      toast({
+        title: "Please create or select a distributor before confirming.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const finalProducts = mappedProducts
       .filter((p) => p.includeProduct)
       .map((p) => {
@@ -226,7 +237,7 @@ const ProductMappingDialog = ({
           };
         }
       });
-  
+
     onSubmit(finalProducts);
     onOpenChange(false);
   };

@@ -681,11 +681,7 @@ export default function PurchasesTransactions() {
                   </TableCell>
                   <TableCell>
                     <div className="font-medium">
-                      {new Date(bill.createdAt).toLocaleDateString("en-IN", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "2-digit",
-                      })}
+                     <p className="uppercase">{format(new Date(bill.createdAt), "dd-MM-yyyy")}</p> {format(new Date(bill.createdAt), "hh:mm a")}
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">
