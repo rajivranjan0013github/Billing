@@ -132,9 +132,7 @@ async function scanPurchaseBill(fileData, mimeType) {
     },
   ];
 
-  console.log(
-    "Sending request to Gemini API via @google/genai SDK (stream)..."
-  );
+
   try {
     const streamResponse = await ai.models.generateContentStream({
       model: MODEL_NAME,
@@ -163,7 +161,6 @@ async function scanPurchaseBill(fileData, mimeType) {
     }
     parsableJson = parsableJson.trim(); // Trim again in case of whitespace after removal
 
-    console.log("Parsable JSON string:", parsableJson); // Added for debugging the cleaned string
 
     if (!parsableJson) {
       // Check the cleaned string
@@ -173,7 +170,6 @@ async function scanPurchaseBill(fileData, mimeType) {
       );
     }
 
-    console.log(parsableJson);
 
     try {
       return JSON.parse(parsableJson);
@@ -214,11 +210,7 @@ export const llmProcessing = async (fileData, mimeType) => {
     console.time("scanPurchaseBill");
     const extractedData = await scanPurchaseBill(fileData, mimeType);
     console.timeEnd("scanPurchaseBill");
-    console.log(
-      "\n--- Successfully Extracted Data (from @google/genai stream) ---"
-    );
-    console.log(JSON.stringify(extractedData, null, 2));
-    console.log("\n--- Test Complete ---");
+  
     return extractedData;
   } catch (error) {
     console.error("\n--- Test Failed ---");

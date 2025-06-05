@@ -290,7 +290,7 @@ export default function Distributors() {
                 <TableHead>ADDRESS</TableHead>
                 {/* <TableHead>ACCOUNT NUMBER</TableHead>
                 <TableHead>IFSC CODE</TableHead> */}
-                <TableHead className="text-right">BALANCE</TableHead>
+                <TableHead className="text-right"> BALANCE (₹)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -322,7 +322,7 @@ export default function Distributors() {
                         : distributor.currentBalance < 0
                         ? "↑ "
                         : ""}
-                      {formatCurrency(
+                      {(
                         Math.abs(distributor.currentBalance || 0)
                       )}
                     </span>

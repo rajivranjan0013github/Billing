@@ -665,7 +665,7 @@ export default function SaleTable({
                  
                   <Input
                     disabled={editMode}
-                    value={product?.saleRate?.toFixed(2) || ""}
+                    value={Number(product?.saleRate||0)?.toFixed(2) || ""}
                     type="text"
                     className="h-8 w-full border-[1px] border-gray-300 text-right rounded-sm"
                   />

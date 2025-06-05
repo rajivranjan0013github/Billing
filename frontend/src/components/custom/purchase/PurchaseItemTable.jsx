@@ -42,7 +42,6 @@ export default function PurchaseTable({
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(true);
   const [newProduct, setNewProduct] = useState({});
-  console.log(products);
   const [productSearch, setProductSearch] = useState("");
   const [isProductSelectorOpen, setIsProductSelectorOpen] = useState(false);
   const [batchNumber, setBatchNumber] = useState("");
@@ -192,6 +191,10 @@ export default function PurchaseTable({
           return;
         }
       }
+    }
+    else{
+      toast({ variant: "destructive", title: "Please add expiry" });
+      return;
     }
 
     let tempData = { ...newProduct };

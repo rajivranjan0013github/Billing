@@ -1331,9 +1331,7 @@ router.get("/inventory/:inventoryId", verifyToken, async (req, res) => {
 // LLM Image Preprocessing Route
 router.post("/llm/preprocessImage", verifyToken, async (req, res) => {
   try {
-    console.log("Received request to preprocess image");
-    console.log("Headers:", req.headers);
-    console.log("Origin:", req.get("origin"));
+  
 
     const { imageBase64, mimeType } = req.body;
 
@@ -1349,7 +1347,7 @@ router.post("/llm/preprocessImage", verifyToken, async (req, res) => {
         .json({ message: "Invalid MIME type. Only images are allowed." });
     }
 
-    console.log("Processing image with mime type:", mimeType);
+   
     const extractedData = await llmProcessing(imageBase64, mimeType);
 
     res.status(200).json({

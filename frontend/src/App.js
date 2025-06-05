@@ -44,6 +44,7 @@ import Reports from "./pages/Reports";
 import PaymentInvoicePrint from "./pages/PaymentInvoicePrint";
 import BillingSettings from "./pages/BillingSettings";
 import Transactions from "./pages/Transactions";
+import ManageGroupsPage from "./pages/ManageGroupsPage";
 
 const AppContent = () => {
   const dispatch = useDispatch();
@@ -163,6 +164,10 @@ const AppContent = () => {
                 element={<PaymentInvoicePrint />}
               />
               <Route path="/settings/config" element={<BillingSettings />} />
+              <Route
+                path="/settings/manage-groups"
+                element={<ManageGroupsPage />}
+              />
               <Route
                 path="/accounts/transactions/:accountId"
                 element={<Transactions />}

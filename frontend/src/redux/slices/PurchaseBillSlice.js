@@ -113,7 +113,6 @@ export const uploadInvoiceImage = createLoadingAsyncThunk(
 export const preprocessImageForLLM = createLoadingAsyncThunk(
   "purchaseBill/preprocessImageForLLM",
   async ({ base64Image, mimeType }, { dispatch }) => {
-    console.log("preprocessImageForLLM");
     const response = await fetch(
       `${Backend_URL}/api/purchase/llm/preprocessImage`,
       {
@@ -130,7 +129,6 @@ export const preprocessImageForLLM = createLoadingAsyncThunk(
     );
 
     if (!response.ok) {
-      console.log(response.json());
       const errorData = await response.json();
       throw new Error(
         errorData.message || "Failed to send image for LLM preprocessing"

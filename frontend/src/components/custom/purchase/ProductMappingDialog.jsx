@@ -226,8 +226,7 @@ const ProductMappingDialog = ({
           };
         }
       });
-    console.log(finalProducts);
-    console.log(mappedProducts);
+  
     onSubmit(finalProducts);
     onOpenChange(false);
   };
