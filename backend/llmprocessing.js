@@ -17,11 +17,21 @@ async function scanPurchaseBill(fileData, mimeType) {
   const prompt = `
       Extract information from this purchase bill and follow the response schema strictly.
       Report the invoiceDate in the format YYYY-MM-DD.
+       Distributor Data:
+  distributorName: is the name of the distributor,
+  distributorMob: is the mobile number of the distributor,
+  distributorAddress: is the address of the distributor,
+  distributorGstin: is the GSTIN of the distributor,
+  distributorEmail: is the email of the distributor,
+  distributorBankNumber: is the bank account number of the distributor, also called as account number ,
+  distributorDlNumber: is the Drug License number of the distributor also abbreviated as DL, D.L, DL No, DL Number, DL No. etc,
+  distributorBankIfsc: is the bank IFSC code of the distributor also called as IFSC code,
       Discount is sometimes shown in the bills as D% , Disc , D.
+      Pack is sometimes shon aslong sise the prodcut name as 1*5 , 10*10 , 10*100 etc, which means 5,10,100 pack size .
       Report the expiry date in the product list in the format MM/YY or mm/yy , expiry date in the bill can be in the fomrat like MAY-25 or may-25 which should be translated to 05/25.
      Quantity & Direct Free Area ("Qty" Column or Similar):
   This area contains the purchased quantity and any free items directly associated with it.
-  
+ 
   quantity (Integer/Float): The purchased amount.
   
   e.g., 10+1 → quantity is 10, 5-2 → quantity is 5, 50 → quantity is 50
@@ -102,6 +112,13 @@ async function scanPurchaseBill(fileData, mimeType) {
     properties: {
       invoiceNumber: { type: Type.STRING },
       distributorName: { type: Type.STRING },
+      distributorMob: { type: Type.STRING },
+      distributorAddress: { type: Type.STRING },
+      distributorGstin: { type: Type.STRING },
+      distributorEmail: { type: Type.STRING },
+      distributorBankNumber: { type: Type.STRING },
+      distributorBankIfsc: { type: Type.STRING },
+      distributorDlNumber: { type: Type.STRING },
       invoiceDate: { type: Type.STRING },
       grandTotal: { type: Type.NUMBER },
       withGst: { type: Type.BOOLEAN },

@@ -156,7 +156,6 @@ export default function PurchaseForm() {
 
   const [invoiceDate, setInvoiceDate] = useState();
   const [products, setProducts] = useState([]);
-  const [distributorName, setdistributorName] = useState("");
   const { toast } = useToast();
   const { createPurchaseBillStatus } = useSelector(
     (state) => state.purchaseBill
@@ -190,6 +189,26 @@ export default function PurchaseForm() {
     amountType: "exclusive", // 'exclusive', 'inclusive_gst', 'inclusive_all'
   });
 
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const onDistributorSelect = (distributor) => {
+    if (distributor) {
+      setFormData((prev) => ({
+        ...prev,
+        distributorId: distributor._id,
+        distributorName: distributor.name,
+      }));
+    } else {
+      // Handles clearing the selection, e.g., when 'Change' is clicked in mapping
+      setFormData((prev) => ({
+        ...prev,
+        distributorId: "",
+      }));
+    }
+  };
+
   useEffect(() => {
     if (llmData) {
       if (
@@ -209,7 +228,6 @@ export default function PurchaseForm() {
       }));
 
       setInvoiceDate(llmData.invoiceDate || null);
-      setdistributorName(llmData.distributorName || "");
 
       // If we have products or a distributor name without ID, open the mapping dialog
       if (
@@ -239,10 +257,6 @@ export default function PurchaseForm() {
   // caculating total of the product
   const amountData = useMemo(() => calculateTotals(products), [products]);
 
-  const handleInputChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
   const [loading, setLoading] = useState(false);
 
   // Add keyboard shortcut for Alt+S
@@ -261,14 +275,18 @@ export default function PurchaseForm() {
     formData,
     formData?.invoiceNumber,
     invoiceDate,
-    distributorName,
+    formData.distributorName,
   ]); // Add dependencies that handleSaveInvoice uses
 
   const handleSaveInvoice = async () => {
     try {
       setLoading(true);
       // Validate required fields
-      if (!distributorName || !formData.invoiceNumber || !invoiceDate) {
+      if (
+        !formData.distributorName ||
+        !formData.invoiceNumber ||
+        !invoiceDate
+      ) {
         throw new Error("Please fill all required fields");
       }
 
@@ -403,7 +421,6 @@ export default function PurchaseForm() {
     setProducts([]);
     setPaymentDialogOpen(false);
     setInvoiceForPayment(null);
-    setdistributorName("");
   };
 
   // Add this new function to handle key press events
@@ -457,18 +474,18 @@ export default function PurchaseForm() {
     return () => {
       document.removeEventListener("keydown", handleShortcutKeyPressed);
     };
-  }, [formData, invoiceDate, distributorName, products]);
+  }, [formData, invoiceDate, formData.distributorName, products]);
 
   // Update the distributor name input section
   const handleDistributorNameChange = (e) => {
     e.preventDefault();
     const value = e.target.value;
-    setdistributorName(value);
+    handleInputChange("distributorName", value);
 
     if (value.length === 1) {
       if (value === " ") {
         setdistributorSelectDialog(true);
-      } else if (value[0] !== " " && distributorName.length === 0) {
+      } else if (value[0] !== " " && formData.distributorName.length <= 1) {
         setdistributorSelectDialog(true);
       }
     }
@@ -476,12 +493,7 @@ export default function PurchaseForm() {
 
   // Handle distributor selection from dialog
   const handleDistributorSelect = (distributor) => {
-    setdistributorName(distributor.name);
-    setFormData({
-      ...formData,
-      distributorId: distributor._id,
-      distributorName: distributor.name,
-    });
+    onDistributorSelect(distributor);
     setdistributorSelectDialog(false);
     setTimeout(() => {
       if (inputRef.current["invoiceNo"]) {
@@ -580,15 +592,16 @@ export default function PurchaseForm() {
         setLlmData(response.extractedData);
 
         toast({
-          title: "Image Sent for Preprocessing",
-          description: "The image has been successfully sent for LLM analysis.",
+          title: "Data Extracted Successfully",
+          description:
+            "The data has been successfully extracted from the image.",
           variant: "success",
         });
       } catch (error) {
         toast({
-          title: "Error Sending Image",
+          title: "Error Extracting Data",
           description:
-            error.message || "Failed to send image for LLM preprocessing.",
+            error.message || "Failed to extract data from the image.",
           variant: "destructive",
         });
       } finally {
@@ -602,6 +615,10 @@ export default function PurchaseForm() {
         variant: "destructive",
       });
     };
+  };
+
+  const handleOcrData = async (file) => {
+    // Implementation of handleOcrData function
   };
 
   return (
@@ -685,7 +702,7 @@ export default function PurchaseForm() {
             </Label>
             <Input
               ref={(el) => (inputRef.current["distributorName"] = el)}
-              value={distributorName || ""}
+              value={formData.distributorName || ""}
               onChange={handleDistributorNameChange}
               onKeyDown={(e) => handleKeyDown(e, "invoiceNo")}
               placeholder="Type or Press space"
@@ -796,7 +813,7 @@ export default function PurchaseForm() {
         {/* Image Upload Section */}
         <div className="p-4 border rounded-lg group hover:shadow-lg transition-shadow duration-200 cursor-pointer">
           <h3 className="mb-4 text-sm font-medium text-gray-700 group-hover:text-gray-900">
-            Uplaod Invoice Image for AI data filling
+            Upload Invoice Image for AI data filling
           </h3>
           <div className="relative mt-2">
             <input
@@ -915,8 +932,8 @@ export default function PurchaseForm() {
       <SelectDistributorDlg
         open={distributorSelectDialog}
         setOpen={setdistributorSelectDialog}
-        search={distributorName}
-        setSearch={setdistributorName}
+        search={formData.distributorName}
+        setSearch={(value) => handleInputChange("distributorName", value)}
         onSelect={handleDistributorSelect}
       />
       <ProductMappingDialog
@@ -929,14 +946,22 @@ export default function PurchaseForm() {
           inventoryItemsStatus === "loading" || inventoryItemsStatus === "idle"
         }
         distributorName={llmData?.distributorName || ""}
-        onDistributorSelect={(distributor) => {
-          setdistributorName(distributor.name);
-          setFormData({
-            ...formData,
-            distributorId: distributor._id,
-            distributorName: distributor.name,
-          });
+        distributorData={{
+          distributorName: llmData?.distributorName,
+          distributorMob: llmData?.distributorMob,
+          distributorAddress: llmData?.distributorAddress,
+          distributorGstin: llmData?.distributorGstin,
+          distributorDlNumber: llmData?.distributorDlNumber,
+          distributorEmail: llmData?.distributorEmail,
+          distributorBankNumber: llmData?.distributorBankNumber,
+          distributorBankIfsc: llmData?.distributorBankIfsc,
         }}
+        onDistributorSelect={onDistributorSelect}
+        selectedDistributor={
+          formData.distributorId
+            ? { _id: formData.distributorId, name: formData.distributorName }
+            : null
+        }
       />
     </div>
   );

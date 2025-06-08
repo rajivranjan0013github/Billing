@@ -17,6 +17,7 @@ import { Badge } from "../../ui/badge";
 import Fuse from "fuse.js";
 import { useSelector } from "react-redux";
 import CreateDistributorDlg from "../distributor/CreateDistributorDlg";
+import DistributorMapping from "./DistributorMapping";
 
 const ProductMappingDialog = ({
   open,
@@ -26,16 +27,14 @@ const ProductMappingDialog = ({
   onSubmit,
   isLoadingInventory,
   distributorName,
+  distributorData,
   onDistributorSelect,
   selectedDistributor,
 }) => {
   const [mappedProducts, setMappedProducts] = useState([]);
   const [searchQueries, setSearchQueries] = useState({});
-  const [distributorSearchQuery, setDistributorSearchQuery] = useState("");
-  const [createDistributorOpen, setCreateDistributorOpen] = useState(false);
-  const { distributors } = useSelector((state) => state.distributor);
   const { toast } = useToast();
-  // Configure Fuse instance for products
+
   const fuse = useMemo(() => {
     const fuseOptions = {
       keys: [{ name: "name", weight: 1 }],
@@ -48,57 +47,6 @@ const ProductMappingDialog = ({
     };
     return new Fuse(inventoryItems || [], fuseOptions);
   }, [inventoryItems]);
-
-  // Configure Fuse instance for distributors
-  const distributorFuse = useMemo(() => {
-    const fuseOptions = {
-      keys: [{ name: "name", weight: 1 }],
-      threshold: 0.3,
-      distance: 100,
-      minMatchCharLength: 2,
-      shouldSort: true,
-      includeScore: true,
-      includeMatches: true,
-    };
-    return new Fuse(distributors || [], fuseOptions);
-  }, [distributors]);
-
-  // Effect for initial distributor search
-  useEffect(() => {
-    if (distributorName) {
-      const results = distributorFuse.search(distributorName).slice(0, 5);
-      setDistributorSearchResults(
-        results.map((result) => ({
-          item: result.item,
-          confidence: 1 - (result.score || 0),
-        }))
-      );
-
-      // Automatically select the first distributor if it has high confidence
-      const firstResult = results[0];
-      if (firstResult && 1 - firstResult.score >= 0.8) {
-        onDistributorSelect(firstResult.item);
-      }
-    }
-  }, [distributorName, distributorFuse]);
-
-  const [distributorSearchResults, setDistributorSearchResults] = useState([]);
-
-  const handleDistributorSearch = (searchTerm) => {
-    setDistributorSearchQuery(searchTerm);
-    if (!searchTerm.trim()) {
-      setDistributorSearchResults([]);
-      return;
-    }
-
-    const results = distributorFuse.search(searchTerm).slice(0, 5);
-    setDistributorSearchResults(
-      results.map((result) => ({
-        item: result.item,
-        confidence: 1 - (result.score || 0),
-      }))
-    );
-  };
 
   useEffect(() => {
     if (initialProductsToMap) {
@@ -242,12 +190,6 @@ const ProductMappingDialog = ({
     onOpenChange(false);
   };
 
-  // Add handler for new distributor creation success
-  const handleDistributorCreated = (newDistributor) => {
-    onDistributorSelect(newDistributor);
-    setCreateDistributorOpen(false);
-  };
-
   if (isLoadingInventory) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -310,71 +252,12 @@ const ProductMappingDialog = ({
           </DialogHeader>
 
           {/* Distributor Section */}
-          <div className="mb-4 border-b pb-4">
-            <div className="text-sm font-medium mb-2">DISTRIBUTOR MAPPING</div>
-            <div className="flex gap-4 items-center">
-              <div className="flex-1">
-                {distributorSearchQuery ? (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Search distributor..."
-                      className="h-8 text-sm"
-                      value={distributorSearchQuery}
-                      onChange={(e) => handleDistributorSearch(e.target.value)}
-                    />
-                    <Button size="sm" variant="outline" className="h-8">
-                      <Search className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2 flex-wrap">
-                    {distributorSearchResults.length > 0 ? (
-                      <>
-                        {distributorSearchResults.map((result, index) => (
-                          <Badge
-                            key={index}
-                            variant="outline"
-                            className="py-0.5 px-2 cursor-pointer transition-colors text-xs text-black"
-                            onClick={() => onDistributorSelect(result.item)}
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <span>{result.item.name}</span>
-                            </div>
-                          </Badge>
-                        ))}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 text-xs px-2 hover:bg-primary/5"
-                          onClick={() =>
-                            setDistributorSearchQuery(distributorName)
-                          }
-                        >
-                          More
-                        </Button>
-                      </>
-                    ) : (
-                      <div className="flex items-center justify-between w-full">
-                        <div className="text-sm text-muted-foreground flex items-center gap-2">
-                          <AlertCircle className="h-4 w-4" />
-                          <span>No matching distributor found</span>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 gap-1"
-                          onClick={() => setCreateDistributorOpen(true)}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Create New Distributor
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <DistributorMapping
+            distributorName={distributorName}
+            distributorData={distributorData}
+            onDistributorSelect={onDistributorSelect}
+            selectedDistributor={selectedDistributor}
+          />
 
           <div className="">
             <div className="grid grid-cols-12 gap-4 px-4  bg-gray-50/80 rounded-md text-sm font-medium text-muted-foreground">
@@ -559,15 +442,6 @@ const ProductMappingDialog = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <CreateDistributorDlg
-        open={createDistributorOpen}
-        onOpenChange={setCreateDistributorOpen}
-        onSuccess={handleDistributorCreated}
-        initialData={{
-          name: distributorName || "",
-        }}
-      />
     </>
   );
 };

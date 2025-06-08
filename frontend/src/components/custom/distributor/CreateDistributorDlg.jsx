@@ -105,6 +105,10 @@ export default function CreateDistributorDlg({
       setFormData({
         ...INITIAL_FORM_DATA,
         ...initialData,
+        bankDetails: {
+          accountNumber: initialData.accountNumber || "",
+          ifsc: initialData.ifsc || "",
+        },
       });
     } else {
       setFormData(INITIAL_FORM_DATA);
