@@ -37,48 +37,37 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchDashboardMetrics, resetDashboardState } from "../redux/slices/dashboardSlice";
 
 const Dashboard = () => {
   const isMobile = useMediaQuery("(max-width: 767px)");
   const navigate = useNavigate();
-  const [dashboardData, setDashboardData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState("Today");
-  const [dateRange, setDateRange] = useState({
-    from: new Date(),
-    to: new Date(),
-  });
+  const dispatch = useDispatch();
 
-  const fetchDashboardData = async (from, to) => {
-    try {
-      const response = await fetch(
-        `${Backend_URL}/api/dashboard/metrics?startDate=${from.toISOString()}&endDate=${to.toISOString()}`,
-        {
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (!response.ok) {
-        throw new Error("Failed to fetch dashboard data");
-      }
-      const data = await response.json();
-      setDashboardData(data);
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: dashboardData, loading: loadingState, error } = useSelector((state) => state.dashboard);
+  const isLoading = loadingState === 'pending' || loadingState === 'idle';
+
+  const [dateFilter, setDateFilter] = useState("Today");
+  const [dateRange, setDateRange] = useState(() => {
+    const { from, to } = convertFilterToDateRange("Today");
+    return { from, to };
+  });
 
   useEffect(() => {
     if (dateFilter !== "Custom") {
       const { from, to } = convertFilterToDateRange(dateFilter);
       setDateRange({ from, to });
-      fetchDashboardData(from, to);
+      dispatch(fetchDashboardMetrics({ from, to }));
     }
-  }, [dateFilter]);
+  }, [dateFilter, dispatch]);
+
+  useEffect(() => {
+    if (dateFilter === "Today" && loadingState === 'idle') {
+      const { from, to } = convertFilterToDateRange("Today");
+      dispatch(fetchDashboardMetrics({ from, to }));
+    }
+  }, [dispatch, dateFilter, loadingState]);
 
   const handleDateRangeSelect = (range) => {
     if (range?.from && range?.to) {
@@ -88,21 +77,73 @@ const Dashboard = () => {
 
   const handleDateSearch = () => {
     if (dateRange.from && dateRange.to) {
-      fetchDashboardData(dateRange.from, dateRange.to);
+      dispatch(fetchDashboardMetrics({ from: dateRange.from, to: dateRange.to }));
     }
   };
 
   const handleDateCancel = () => {
     const { from, to } = convertFilterToDateRange("Today");
     setDateFilter("Today");
-    setDateRange({ from, to });
-    fetchDashboardData(from, to);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50">
         <Loader text="Loading dashboard data..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-gray-50 max-w-[1600px] mx-auto">
+        <div className="flex flex-col gap-3 mb-4">
+          <div className="flex justify-between items-center">
+            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+              Dashboard Overview
+            </h1>
+            <Button
+              variant="outline"
+              onClick={() => navigate("/reports")}
+              className="flex items-center hover:bg-indigo-50 transition-colors text-base"
+            >
+              <Activity className="mr-2 h-4 w-4" />
+              View Reports
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-3 items-center">
+            <Select value={dateFilter} onValueChange={setDateFilter}>
+              <SelectTrigger className="w-[160px] h-10 text-base border-indigo-200 hover:border-indigo-300 transition-colors">
+                <SelectValue placeholder="Select date range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Today">Today</SelectItem>
+                <SelectItem value="Yesterday">Yesterday</SelectItem>
+                <SelectItem value="This Week">This Week</SelectItem>
+                <SelectItem value="This Month">This Month</SelectItem>
+                <SelectItem value="Last 7 Days">Last 7 Days</SelectItem>
+                <SelectItem value="Custom">Custom Range</SelectItem>
+              </SelectContent>
+            </Select>
+            {dateFilter === "Custom" && (
+              <DateRangePicker
+                from={dateRange.from}
+                to={dateRange.to}
+                onSelect={handleDateRangeSelect}
+                onSearch={handleDateSearch}
+                onCancel={handleDateCancel}
+              />
+            )}
+          </div>
+        </div>
+        <div className="text-center py-10 text-red-600">
+          <AlertTriangle className="mx-auto h-12 w-12 text-red-500" />
+          <p className="mt-4 text-lg">Error loading dashboard data:</p>
+          <p>{typeof error === 'string' ? error : JSON.stringify(error)}</p>
+          <Button onClick={() => dispatch(fetchDashboardMetrics({ from: dateRange.from, to: dateRange.to }))} className="mt-4">
+            Try Again
+          </Button>
+        </div>
       </div>
     );
   }

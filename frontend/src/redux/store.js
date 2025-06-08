@@ -14,6 +14,7 @@ import customerReducer from "./slices/CustomerSlice";
 import reportReducer from "./slices/reportSlice";
 import settingsReducer from "./slices/settingsSlice";
 import exportImportReducer from "./slices/exportImportSlice";
+import dashboardReducer from "./slices/dashboardSlice";
 
 export const store = configureStore({
   reducer: {
@@ -32,5 +33,6 @@ export const store = configureStore({
     report: reportReducer,
     settings: settingsReducer,
     exportImport: exportImportReducer,
+    dashboard: dashboardReducer,
   },
 });

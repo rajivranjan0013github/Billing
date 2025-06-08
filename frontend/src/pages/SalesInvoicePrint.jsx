@@ -3,9 +3,14 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useReactToPrint } from "react-to-print";
 import { Button } from "../components/ui/button";
 import { format } from "date-fns";
-import { ArrowLeft, Printer, Send, FileDown } from "lucide-react";
+import { ArrowLeft, Printer, Send, FileDown, Settings } from "lucide-react";
 import { useSelector } from "react-redux";
 import { formatCurrency } from "../utils/Helper";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../components/ui/popover";
 
 const SalesInvoicePrint = () => {
   const location = useLocation();
@@ -15,10 +20,39 @@ const SalesInvoicePrint = () => {
   const invoiceData = location.state?.invoiceData;
   const pharmacyInfo = useSelector((state) => state.pharmacy.pharmacyInfo);
 
+  const initialFieldVisibility = {
+    pack: true,
+    hsn: true,
+    batch: true,
+    exp: true,
+    qty: true,
+    mrp: true,
+    rate: true,
+    discount: true,
+    gst: true,
+  };
+
+  const [fieldVisibility, setFieldVisibility] = useState(() => {
+    const savedVisibility = localStorage.getItem("invoiceFieldVisibility");
+    if (savedVisibility) {
+      try {
+        return JSON.parse(savedVisibility);
+      } catch (error) {
+        console.error("Error parsing field visibility from localStorage:", error);
+        return initialFieldVisibility; // Fallback to default if parsing fails
+      }
+    }
+    return initialFieldVisibility;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("invoiceFieldVisibility", JSON.stringify(fieldVisibility));
+  }, [fieldVisibility]);
+
   // Add useEffect for keyboard shortcut
   useEffect(() => {
     const handleKeyPress = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "p") {
+      if (((e.ctrlKey || e.metaKey) && e.key === "p") || e.key === 'Enter') {
         e.preventDefault(); // Prevent default browser print dialog
         handlePrint();
       }
@@ -72,6 +106,13 @@ const SalesInvoicePrint = () => {
     setPageSize((prev) => (prev === "A4" ? "A5" : "A4"));
   };
 
+  const toggleFieldVisibility = (field) => {
+    setFieldVisibility(prev => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
+  };
+
   // Common styles for both A4 and A5
   const commonStyles = {
     A4: {
@@ -89,7 +130,7 @@ const SalesInvoicePrint = () => {
   return (
     <div className="p-4 font-semibold">
       {/* Header Controls - Only visible on screen */}
-      <div className="flex items-center justify-between mb-4 print:hidden">
+      <div className="flex items-center justify-between mb-4 print:hidden border-b-[1px] border-gray-400 pb-2">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
@@ -121,9 +162,7 @@ const SalesInvoicePrint = () => {
               A5
             </button>
           </div>
-
-          <div className="flex gap-2">
-            <Button
+          <Button
               variant="outline"
               className="gap-2"
               onClick={handlePrint}
@@ -132,6 +171,44 @@ const SalesInvoicePrint = () => {
               <Printer className="w-4 h-4" />
               Print Now (Ctrl + P)
             </Button>
+
+          <div className="flex gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  size="sm"
+                >
+                  <Settings className="w-4 h-4" />
+                  Field Settings
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-0 print:hidden " side='bottom' align='end'>
+                <div className="px-4 py-3 bg-gray-50 border-b">
+                  <h4 className="text-sm font-semibold text-gray-700">Customize Fields</h4>
+                </div>
+                <div className="p-3 space-y-2">
+                  {Object.keys(fieldVisibility).map((field) => (
+                    <div key={field} className="flex items-center justify-between py-1">
+                      <span className="capitalize text-xs font-medium text-gray-600">
+                        {field.replace(/([A-Z])/g, ' $1')}
+                      </span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={fieldVisibility[field]}
+                          onChange={() => toggleFieldVisibility(field)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-500 peer-checked:bg-blue-500"></div>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+           
             {/* <Button variant="outline" className="gap-2" size="sm">
               <Send className="w-4 h-4" />
               Send Invoice (F2)
@@ -247,30 +324,51 @@ const SalesInvoicePrint = () => {
                 <th className="border-r-[1px] border-gray-800 font-medium p-1.5">
                   Description
                 </th>
-                <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
-                  HSN
-                </th>
-                <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
-                  Batch
-                </th>
-                <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
-                  Exp
-                </th>
-                <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
-                  Qty
-                </th>
-                <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
-                  MRP
-                </th>
-                <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
-                  Rate
-                </th>
-                <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
-                  Dis%
-                </th>
-                <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
-                  GST%
-                </th>
+                {fieldVisibility.pack && (
+                  <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
+                    Pack
+                  </th>
+                )}
+                {fieldVisibility.hsn && (
+                  <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
+                    HSN
+                  </th>
+                )}
+                {fieldVisibility.batch && (
+                  <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
+                    Batch
+                  </th>
+                )}
+                {fieldVisibility.exp && (
+                  <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
+                    Exp
+                  </th>
+                )}
+                {fieldVisibility.qty && (
+                  <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
+                    Qty
+                  </th>
+                )}
+                {fieldVisibility.mrp && (
+                  <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
+                    MRP
+                  </th>
+                )}
+                {fieldVisibility.rate && (
+                  <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
+                    Rate
+                  </th>
+                )}
+                {fieldVisibility.discount && (
+                  <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
+                    Dis%
+                  </th>
+                )}
+                {fieldVisibility.gst && (
+                  <th className="border-r-[1px] border-gray-800 font-medium p-1.5 text-center">
+                    GST%
+                  </th>
+                )}
                 <th className=" font-medium p-1.5 text-right">Amount</th>
               </tr>
             </thead>
@@ -283,40 +381,61 @@ const SalesInvoicePrint = () => {
                   <td className="border-r-[1px] border-gray-800 px-1.5">
                     {product.productName}
                   </td>
-                  <td className="border-r-[1px] border-gray-800 text-center px-1.5">
-                    {product.HSN}
-                  </td>
-                  <td className="border-r-[1px] border-gray-800 text-center px-1.5">
-                    {product.batchNumber}
-                  </td>
-                  <td className="border-r-[1px] border-gray-800 text-center px-1.5">
-                    {product.expiry}
-                  </td>
-                  <td className="border-r-[1px] border-gray-800 text-center px-1.5">
-                    {(() => {
-                      const packSize = product.pack || 1;
-                      if (packSize <= 1) {
-                        return product.quantity;
-                      }
-                      const quotient = Math.floor(product.quantity / packSize);
-                      const remainder = product.quantity % packSize;
-                      return remainder === 0
-                        ? `${quotient}`
-                        : `${quotient} : ${remainder}`;
-                    })()}
-                  </td>
-                  <td className="border-r-[1px] border-gray-800 text-center px-1.5">
-                    {product.mrp}
-                  </td>
-                  <td className="border-r-[1px] border-gray-800 text-center px-1.5">
-                    {product.saleRate}
-                  </td>
-                  <td className="border-r-[1px] border-gray-800 text-center px-1.5">
-                    {product?.discount || 0}
-                  </td>
-                  <td className="border-r-[1px] border-gray-800 text-center px-1.5">
-                    {product?.gstPer || 0}
-                  </td>
+                  {fieldVisibility.pack && (
+                    <td className="border-r-[1px] border-gray-800 text-center px-1.5">
+                      1*{product.pack}
+                    </td>
+                  )}
+                  {fieldVisibility.hsn && (
+                    <td className="border-r-[1px] border-gray-800 text-center px-1.5">
+                      {product.HSN}
+                    </td>
+                  )}
+                  {fieldVisibility.batch && (
+                    <td className="border-r-[1px] border-gray-800 text-center px-1.5">
+                      {product.batchNumber}
+                    </td>
+                  )}
+                  {fieldVisibility.exp && (
+                    <td className="border-r-[1px] border-gray-800 text-center px-1.5">
+                      {product.expiry}
+                    </td>
+                  )}
+                  {fieldVisibility.qty && (
+                    <td className="border-r-[1px] border-gray-800 text-center px-1.5">
+                      {(() => {
+                        const packSize = product.pack || 1;
+                        if (packSize <= 1) {
+                          return product.quantity;
+                        }
+                        const quotient = Math.floor(product.quantity / packSize);
+                        const remainder = product.quantity % packSize;
+                        return remainder === 0
+                          ? `${quotient}`
+                          : `${quotient} : ${remainder}`;
+                      })()}
+                    </td>
+                  )}
+                  {fieldVisibility.mrp && (
+                    <td className="border-r-[1px] border-gray-800 text-center px-1.5">
+                      {product.mrp}
+                    </td>
+                  )}
+                  {fieldVisibility.rate && (
+                    <td className="border-r-[1px] border-gray-800 text-center px-1.5">
+                      {product.saleRate}
+                    </td>
+                  )}
+                  {fieldVisibility.discount && (
+                    <td className="border-r-[1px] border-gray-800 text-center px-1.5">
+                      {product?.discount || 0}
+                    </td>
+                  )}
+                  {fieldVisibility.gst && (
+                    <td className="border-r-[1px] border-gray-800 text-center px-1.5">
+                      {product?.gstPer || 0}
+                    </td>
+                  )}
                   <td className=" text-right px-1.5">
                     {product.amount}{" "}
                     {product.types === "return" && (
@@ -330,14 +449,15 @@ const SalesInvoicePrint = () => {
                   <tr key={`empty-${index}`}>
                     <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
                     <td className="border-r-[1px] border-gray-800 pl-2 p-1.5"></td>
-                    <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
-                    <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
-                    <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
-                    <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
-                    <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
-                    <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
-                    <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
-                    <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>
+                    {fieldVisibility.pack && <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>}
+                    {fieldVisibility.hsn && <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>}
+                    {fieldVisibility.batch && <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>}
+                    {fieldVisibility.exp && <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>}
+                    {fieldVisibility.qty && <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>}
+                    {fieldVisibility.mrp && <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>}
+                    {fieldVisibility.rate && <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>}
+                    {fieldVisibility.discount && <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>}
+                    {fieldVisibility.gst && <td className="border-r-[1px] border-gray-800 text-center p-1.5"></td>}
                     {/* <td className=" text-right p-1.5"></td> */}
                   </tr>
                 )
